@@ -1,0 +1,239 @@
+---
+sidebar_position: 2
+description: 介绍如何在本知识库中新建文档，包括 Front Matter、Markdown 语法与 MDX（React）用法。
+tags: [使用指南]
+---
+
+import {useState} from 'react';
+
+export const Badge = ({children, color = '#25c2a0'}) => (
+  <span
+    style={{
+      backgroundColor: color,
+      borderRadius: '4px',
+      color: '#fff',
+      padding: '0.15rem 0.5rem',
+      fontSize: '0.85rem',
+      whiteSpace: 'nowrap',
+    }}>
+    {children}
+  </span>
+);
+
+export const Counter = () => {
+  const [count, setCount] = useState(0);
+  return (
+    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+      <button
+        className="button button--primary button--sm"
+        onClick={() => setCount(count + 1)}>
+        点我 +1
+      </button>
+      <span>当前计数：{count}</span>
+    </div>
+  );
+};
+
+# 如何创建新文档
+
+本知识库基于 [Docusaurus](https://docusaurus.io/)，所有内容都放在项目的 `docs/` 目录下。每新增一个文件，站点就多一个页面，侧边栏也会自动更新。
+
+| 格式 | 扩展名 | 能写 React |
+| --- | --- | --- |
+| Markdown | `.md` | 否 |
+| MDX | `.mdx` | 是（Markdown + JSX） |
+
+纯文字笔记用 `.md` 就够了；需要插入 React 组件、动态交互时，把文件后缀改成 `.mdx`。
+
+## 新建一个文档
+
+1. 在 `docs/` 目录下新建文件，例如 `docs/my-note.md`；
+2. 在文件开头写上 Front Matter（可选）；
+3. 文件名决定访问路径：`docs/my-note.md` 对应 `/docs/my-note`；
+4. 运行 `npm start` 本地预览，推送到 `main` 分支后自动部署。
+
+## Front Matter
+
+文件顶部用 `---` 包裹的部分是元信息，用来控制页面标题、侧边栏顺序等：
+
+```md
+---
+title: 我的笔记
+sidebar_label: 笔记
+sidebar_position: 3
+description: 一句话描述这个页面
+tags: [网络, 排障]
+---
+
+正文从这里开始……
+```
+
+常用字段：
+
+| 字段 | 作用 |
+| --- | --- |
+| `title` | 页面标题，不写则使用文件名 |
+| `sidebar_label` | 侧边栏中显示的名字 |
+| `sidebar_position` | 侧边栏排序，数字越小越靠前 |
+| `description` | 页面描述，用于 SEO |
+| `tags` | 标签，便于归类检索 |
+| `slug` | 自定义 URL，不写则由文件名生成 |
+
+## Markdown 常用语法
+
+标题、强调、链接、列表、引用：
+
+````md
+## 二级标题
+
+**加粗**、*斜体*、`行内代码`、[链接](https://example.com)
+
+- 无序列表
+- 第二项
+
+1. 有序列表
+2. 第二项
+
+> 引用一段话
+````
+
+代码块支持指定语言和文件名，还可以高亮某几行（`{2}` 表示第二行）：
+
+````md
+```js title="hello.js"
+console.log('第一行');
+console.log('高亮的第二行');
+```
+````
+
+提示框使用 `:::` 语法：
+
+```md
+:::note
+普通提示。
+:::
+
+:::tip
+实用技巧。
+:::
+
+:::warning
+需要注意的地方。
+:::
+
+:::danger
+危险操作，谨慎执行。
+:::
+```
+
+效果如下：
+
+:::note
+普通提示。
+:::
+
+:::tip
+实用技巧。
+:::
+
+:::warning
+需要注意的地方。
+:::
+
+:::danger
+危险操作，谨慎执行。
+:::
+
+图片放在 `docs/` 下对应的 `img/` 目录或 `static/img/` 中，然后引用：
+
+```md
+![图片描述](/img/logo.svg)
+```
+
+## 在 MDX 中使用 React
+
+把文件后缀写成 `.mdx` 后，就可以直接在文档里写 JSX。下面是几个实际运行的例子。
+
+### 方式一：在文档内定义组件
+
+````mdx
+export const Badge = ({children, color = '#25c2a0'}) => (
+  <span style={{backgroundColor: color, color: '#fff', padding: '0.15rem 0.5rem'}}>
+    {children}
+  </span>
+);
+
+这里有一个 <Badge color="#e74c3c">新</Badge> 标记。
+````
+
+渲染效果：这里有一个 <Badge color="#e74c3c">新</Badge> 标记，默认颜色是 <Badge>默认</Badge>。
+
+### 方式二：使用状态和事件
+
+MDX 里可以正常使用 React Hook：
+
+````mdx
+import {useState} from 'react';
+
+export const Counter = () => {
+  const [count, setCount] = useState(0);
+  return (
+    <button className="button button--primary" onClick={() => setCount(count + 1)}>
+      点我 +1（{count}）
+    </button>
+  );
+};
+
+<Counter />
+````
+
+渲染效果：
+
+<Counter />
+
+### 方式三：导入已有组件
+
+组件较多或需要在多个页面复用时，放到 `src/components/` 目录，然后导入：
+
+````mdx
+import MyComponent from '@site/src/components/MyComponent';
+
+<MyComponent />
+````
+
+`@site` 指向项目根目录，也可以导入第三方库的组件。
+
+:::tip
+`.md` 文件里写 JSX 不会生效，必须使用 `.mdx`。组件保持简单，太复杂时建议抽到 `src/components/` 中。
+:::
+
+## 目录与侧边栏
+
+侧边栏目前是自动生成的（见 `sidebars.js`），`docs/` 下的文件夹会变成可折叠的分类。可以在文件夹里放一个 `_category_.json` 来定制分类名称和顺序，例如 `docs/计算机网络/_category_.json`：
+
+```json
+{
+  "label": "计算机网络",
+  "position": 2,
+  "link": {
+    "type": "generated-index",
+    "description": "网络相关的笔记。"
+  }
+}
+```
+
+## 本地预览与发布
+
+```bash
+npm start        # 启动本地开发服务器，改动实时生效
+npm run build    # 生产构建，会检查坏链
+npm run serve    # 预览构建结果
+```
+
+推送到 `main` 分支后，GitHub Actions 会自动构建并部署到服务器，稍等一两分钟即可看到更新。
+
+## 几点建议
+
+- 文件名使用英文小写加连字符，生成的 URL 更友好；
+- 文档之间互相引用可以写 `/docs/xxx` 或相对路径；
+- 构建时会检查坏链（`onBrokenLinks: 'throw'`），提交前先跑一次 `npm run build` 更稳妥。
