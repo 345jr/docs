@@ -4,7 +4,7 @@
 
 ## 部署流程
 
-- 推送到 GitHub `main` 分支后，由 GitHub Actions（`.github/workflows/deploy.yml`）自动执行 `npm ci` + `npm run build`，再通过 rsync 部署到远端服务器的 `/var/www/docs`。
+- 推送到 GitHub `main` 分支后，由 GitHub Actions（`.github/workflows/deploy.yml`）自动执行 `npm ci` + `npm run build`，打包成 `docs-web.zip` 发布到 `docs-latest` release，再回调 Steward；Steward 下载 release 解压部署到远端服务器的 `/var/www/docs`，并通过 Telegram 通知部署结果。
 - 构建和部署基本都在远端完成，本地不需要保留 `node_modules/`、`build/`、`.docusaurus/`。
 - 如需本地预览：先 `npm ci`，再 `npm start`（开发）或 `npm run build`（生产构建，会检查坏链）。
 

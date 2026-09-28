@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: deploy-docs
@@ -15,6 +15,8 @@ concurrency:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,16 +33,41 @@ jobs:
       - name: Build site
         run: npm run build
 
-      - name: Deploy to server
-        env:
-          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      - name: Package
         run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts 2>/dev/null
-          # 服务端 authorized_keys 使用 rrsync 将密钥锁定到 /var/www/docs，
-          # 登录后工作目录即为该目录，因此远程路径写 "/"。
-          rsync -az --delete -e "ssh -i ~/.ssh/deploy_key" build/ "$DEPLOY_USER@$DEPLOY_HOST:/"
+          cd build
+          zip -r ../docs-web.zip .
+          ls -la ../docs-web.zip
+
+      - name: Create Release
+        run: |
+          gh release delete docs-latest --repo ${{ github.repository }} --yes 2>/dev/null || true
+          gh release create docs-latest \
+            --repo ${{ github.repository }} \
+            --title "Lopop Docs Latest" \
+            --notes "Built from ${{ github.sha }}" \
+            --target ${{ github.ref_name }}
+          gh release upload docs-latest docs-web.zip \
+            --repo ${{ github.repository }} --clobber
+
+      - name: Record Commit
+        if: github.event_name == 'push'
+        run: |
+          cat <<'PAYLOAD' | curl -sf -X POST "http://107.174.102.34/steward/hooks/commits?token=${{ secrets.STEWARD_HOOK_TOKEN }}" -H "Content-Type: application/json" -d @- || echo " ⚠ commit 记录失败"
+          {"project":"docs","sha":"${{ github.sha }}","message":${{ toJSON(github.event.head_commit.message) }}}
+          PAYLOAD
+
+      - name: Notify Steward
+        if: always()
+        run: |
+          STATUS=""
+          REASON=""
+          if [ "${{ job.status }}" != "success" ]; then
+            STATUS="build_failed"
+            REASON="GitHub Actions build failed: run ${{ github.run_id }}"
+          fi
+
+          curl -s -X POST "${{ secrets.DEPLOY_WEBHOOK_URL }}" \
+            -H "Authorization: Bearer ${{ secrets.DEPLOY_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"project\":\"docs\",\"status\":\"${STATUS}\",\"reason\":\"${REASON}\",\"ref\":\"${{ github.sha }}\"}" || true
