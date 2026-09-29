@@ -1,6 +1,6 @@
 # AGENTS.md
 
-本仓库是 Lopop 的个人知识库，基于 Docusaurus 3（classic 主题），只用于文档，不含博客。
+本仓库是 Lopop 的个人知识库，基于 Docusaurus 3（classic 主题），只用于文档，不含博客。当前锁定版本为 **3.10.2**（见 `package.json`），升级版本时需同步检查 Markdown 语法兼容性（如 admonition 标题在 3.1+ 必须用 `:::tip[标题]` 方括号写法，v2 的 `:::tip 标题` 会失效）。
 
 ## 部署流程
 
