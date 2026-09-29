@@ -145,10 +145,24 @@ function Editor({token, path, onBack, onDeleted}) {
   // 动态加载 Milkdown（避免 SSR 报错）
   useEffect(() => {
     let cancelled = false;
-    Promise.all([import('@milkdown/crepe'), import('@milkdown/kit/utils'), import('@milkdown/kit/core'), import('remark-directive')])
-      .then(([crepe, kitUtils, kitCore, directive]) => {
+    Promise.all([
+      import('@milkdown/crepe'),
+      import('@milkdown/kit/utils'),
+      import('@milkdown/kit/core'),
+      import('remark-directive'),
+      import('../theme/editor/admonition'),
+    ])
+      .then(([crepe, kitUtils, kitCore, directive, admonition]) => {
         if (cancelled) return;
-        setCrepeMod({Crepe: crepe.Crepe, CrepeFeature: crepe.CrepeFeature, replaceAll: kitUtils.replaceAll, remarkPluginsCtx: kitCore.remarkPluginsCtx, remarkDirective: directive.default ?? directive});
+        setCrepeMod({
+          Crepe: crepe.Crepe,
+          CrepeFeature: crepe.CrepeFeature,
+          replaceAll: kitUtils.replaceAll,
+          remarkPluginsCtx: kitCore.remarkPluginsCtx,
+          remarkDirective: directive.default ?? directive,
+          admonitionSchema: admonition.admonitionSchema,
+          admonitionView: admonition.admonitionView,
+        });
       })
       .catch((e) => setError(`编辑器加载失败: ${e.message}`));
     return () => {
@@ -181,7 +195,15 @@ function Editor({token, path, onBack, onDeleted}) {
   // 初始化 / 更新 Crepe（仅 .md，.mdx 用源码模式）
   useEffect(() => {
     if (body === null || isMdx || !crepeMod) return;
-    const {Crepe, CrepeFeature, replaceAll, remarkPluginsCtx, remarkDirective} = crepeMod;
+    const {
+      Crepe,
+      CrepeFeature,
+      replaceAll,
+      remarkPluginsCtx,
+      remarkDirective,
+      admonitionSchema,
+      admonitionView,
+    } = crepeMod;
     let crepe = crepeRef.current;
 
     if (!crepe && rootRef.current) {
@@ -195,10 +217,12 @@ function Editor({token, path, onBack, onDeleted}) {
           [CrepeFeature.ImageBlock]: true,
         },
       });
-      // 注入 remark-directive 支持 Docusaurus admonition（:::tip[标题]）
+      // 注入 remark-directive 支持 Docusaurus admonition 的解析
       crepe.editor.config((ctx) => {
         ctx.update(remarkPluginsCtx, (prev) => [...prev, {plugin: remarkDirective}]);
       });
+      // 注册 admonition 自定义节点（解析 + 渲染 + 序列化）
+      crepe.editor.use(admonitionSchema.node).use(admonitionView);
       // 内容变化时同步到 state（用于保存）
       crepe.on((api) => {
         api.markdownUpdated((_ctx, markdown) => {

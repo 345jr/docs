@@ -250,6 +250,48 @@
   min-height: 65vh;
 }
 
+/* ── admonition 提示框 ── */
+
+.milkdown :global(.milkdown-admonition) {
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  border-left: 4px solid;
+}
+
+.milkdown :global(.milkdown-admonition .milkdown-admonition-title) {
+  font-weight: 700;
+  margin: 0 0 0.4rem;
+}
+
+.milkdown :global(.milkdown-admonition .milkdown-admonition-body > *) :last-child {
+  margin-bottom: 0;
+}
+
+.milkdown :global(.admonition-info) {
+  background: var(--ifm-color-info-contrast-background);
+  border-color: var(--ifm-color-info);
+  color: var(--ifm-color-info-contrast-foreground);
+}
+
+.milkdown :global(.admonition-success) {
+  background: var(--ifm-color-success-contrast-background);
+  border-color: var(--ifm-color-success);
+  color: var(--ifm-color-success-contrast-foreground);
+}
+
+.milkdown :global(.admonition-warning) {
+  background: var(--ifm-color-warning-contrast-background);
+  border-color: var(--ifm-color-warning);
+  color: var(--ifm-color-warning-contrast-foreground);
+}
+
+.milkdown :global(.admonition-danger) {
+  background: var(--ifm-color-danger-contrast-background);
+  border-color: var(--ifm-color-danger);
+  color: var(--ifm-color-danger-contrast-foreground);
+}
+
 .source {
   width: 100%;
   min-height: 65vh;
