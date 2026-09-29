@@ -1,0 +1,8 @@
+{
+  "label": "在线编辑",
+  "position": 20,
+  "link": {
+    "type": "generated-index",
+    "description": "本站在线编辑功能的方案设计、实现过程与踩坑记录。"
+  }
+}

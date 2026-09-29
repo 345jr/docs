@@ -1,12 +1,12 @@
 ---
-sidebar_position: 3
+sidebar_position: 1
 description: 站点在线编辑功能的设计方案：密钥解锁、编辑器选型、Steward 后端接口与构建部署链路。
 tags: [站点建设, 运维]
 ---
 
-# 在线编辑功能设计
+# 在线编辑：设计方案
 
-这篇文档介绍本站正在规划的「在线编辑」功能：直接在浏览器里修改文档，保存后自动构建部署上线，不用再手动开编辑器、commit、push。
+这篇文档介绍本站的「在线编辑」功能：直接在浏览器里修改文档，保存后自动构建部署上线，不用再手动开编辑器、commit、push。**该功能已实现上线**，实际落地过程见[《实现记录》](./implementation)。
 
 ## 要解决的问题
 
@@ -61,8 +61,9 @@ Steward 部署回 /var/www/docs → 站点更新
 | `GET /docs-editor/tree` | 列出 `docs/` 目录树 |
 | `GET /docs-editor/read` | 读取单个文件内容 |
 | `POST /docs-editor/save` | 保存文件 → commit → push |
+| `POST /docs-editor/delete` | 删除文件 → commit → push |
 
-nginx 在 docs.lopop.top 上加一个 `/editor/api/` 反向代理指向 Steward，同源请求，不产生 CORS 问题。
+nginx 在 docs.lopop.top 上加一个 `/editor/api/` 反向代理指向 Steward（`/docs-api/docs-editor/`），同源请求，不产生 CORS 问题。
 
 ## 安全约束
 
