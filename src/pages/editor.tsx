@@ -1,6 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
 import Layout from '@theme/Layout';
-import matter from 'gray-matter';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkDirective from 'remark-directive';
@@ -27,15 +26,35 @@ async function api(path, options = {}) {
   return data;
 }
 
-// ── front matter 工具 ─────────────────────────────────
+// ── front matter 工具（纯正则实现，避免 gray-matter 依赖 Buffer）──
 
+// 解析 front matter：返回 {data, content}。data 只支持简单的标量 / 数组 / 内联对象。
 function parseFrontMatter(raw) {
-  try {
-    const {data, content} = matter(raw);
-    return {data, content};
-  } catch {
-    return {data: {}, content: raw};
+  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(raw);
+  if (!m) return {data: {}, content: raw};
+  const data = {};
+  for (const line of m[1].split('\n')) {
+    const kv = /^([A-Za-z_][\w]*)\s*:\s*(.*)$/.exec(line.trim());
+    if (!kv) continue;
+    const key = kv[1];
+    const val = kv[2].trim();
+    if (val.startsWith('[') && val.endsWith(']')) {
+      data[key] = val
+        .slice(1, -1)
+        .split(',')
+        .map((s) => s.trim().replace(/^["']|["']$/g, ''))
+        .filter(Boolean);
+    } else if (/^-?\d+$/.test(val)) {
+      data[key] = Number(val);
+    } else if (val === 'true') {
+      data[key] = true;
+    } else if (val === 'false') {
+      data[key] = false;
+    } else {
+      data[key] = val.replace(/^["']|["']$/g, '');
+    }
   }
+  return {data, content: raw.slice(m[0].length)};
 }
 
 function serializeFrontMatter(data, content) {
