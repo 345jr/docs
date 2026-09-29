@@ -1,0 +1,288 @@
+.page {
+  padding: 1.5rem 0;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.treeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.dir summary {
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.dir .dir,
+.dir .file {
+  margin-left: 1.25rem;
+}
+
+.file {
+  display: block;
+  text-align: left;
+  width: 100%;
+  padding: 0.3rem 0.75rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.95rem;
+}
+
+.file:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.file.active {
+  background: var(--ifm-color-primary);
+  color: #fff;
+}
+
+/* ── 解锁 ── */
+
+.unlockWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.unlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 360px;
+  padding: 2rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  background: var(--ifm-color-emphasis-0);
+}
+
+.unlock h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.unlockHint {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.unlock input {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 6px;
+  font-size: 1rem;
+}
+
+.unlock button {
+  padding: 0.6rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--ifm-color-primary);
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.unlock button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── 编辑器 ── */
+
+.editorWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  background: var(--ifm-color-emphasis-0);
+  flex-wrap: wrap;
+}
+
+.path {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.9rem;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.badge {
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background: var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-emphasis-800);
+}
+
+.spacer {
+  flex: 1;
+}
+
+.msgInput {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 6px;
+  min-width: 220px;
+  font-size: 0.9rem;
+}
+
+.btn {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 6px;
+  background: var(--ifm-color-emphasis-100);
+  color: var(--ifm-color-emphasis-800);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btn:hover {
+  background: var(--ifm-color-emphasis-200);
+}
+
+.btnDanger {
+  border-color: var(--ifm-color-danger);
+  color: var(--ifm-color-danger);
+  background: none;
+}
+
+.btnDanger:hover {
+  background: var(--ifm-color-danger);
+  color: #fff;
+}
+
+.btnPrimary {
+  padding: 0.4rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--ifm-color-primary);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.main {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .main {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fmPanel {
+  padding: 1rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  background: var(--ifm-color-emphasis-0);
+}
+
+.fmPanel h3 {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+}
+
+.fmPanel label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.fmPanel input,
+.fmPanel textarea {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-family: var(--ifm-font-family-monospace);
+}
+
+.fmPanel textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.bodyPanel {
+  min-height: 70vh;
+  padding: 1rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  background: var(--ifm-color-emphasis-0);
+}
+
+.milkdown {
+  min-height: 65vh;
+}
+
+.source {
+  width: 100%;
+  min-height: 65vh;
+  padding: 1rem;
+  border: none;
+  resize: vertical;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  background: none;
+  color: inherit;
+}
+
+.confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--ifm-color-danger);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ifm-color-danger) 8%, transparent);
+}
+
+.error {
+  color: var(--ifm-color-danger);
+  font-size: 0.9rem;
+}
+
+.ok {
+  color: var(--ifm-color-success);
+  font-size: 0.9rem;
+}
+
+.muted {
+  color: var(--ifm-color-emphasis-500);
+}
