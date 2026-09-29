@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import Layout from '@theme/Layout';
 import matter from 'gray-matter';
+import {admonitionSchema, admonitionView} from '../theme/editor/admonition';
 import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame.css';
 import styles from './editor.module.css';
@@ -142,7 +143,7 @@ function Editor({token, path, onBack, onDeleted}) {
   const [crepeMod, setCrepeMod] = useState(null);
   const isMdx = path.endsWith('.mdx');
 
-  // 动态加载 Milkdown（避免 SSR 报错）
+  // 动态加载 Milkdown（避免 SSR 报错）；admonition 插件静态引入避免多实例
   useEffect(() => {
     let cancelled = false;
     Promise.all([
@@ -150,9 +151,8 @@ function Editor({token, path, onBack, onDeleted}) {
       import('@milkdown/kit/utils'),
       import('@milkdown/kit/core'),
       import('remark-directive'),
-      import('../theme/editor/admonition'),
     ])
-      .then(([crepe, kitUtils, kitCore, directive, admonition]) => {
+      .then(([crepe, kitUtils, kitCore, directive]) => {
         if (cancelled) return;
         setCrepeMod({
           Crepe: crepe.Crepe,
@@ -160,8 +160,6 @@ function Editor({token, path, onBack, onDeleted}) {
           replaceAll: kitUtils.replaceAll,
           remarkPluginsCtx: kitCore.remarkPluginsCtx,
           remarkDirective: directive.default ?? directive,
-          admonitionSchema: admonition.admonitionSchema,
-          admonitionView: admonition.admonitionView,
         });
       })
       .catch((e) => setError(`编辑器加载失败: ${e.message}`));
@@ -195,15 +193,7 @@ function Editor({token, path, onBack, onDeleted}) {
   // 初始化 / 更新 Crepe（仅 .md，.mdx 用源码模式）
   useEffect(() => {
     if (body === null || isMdx || !crepeMod) return;
-    const {
-      Crepe,
-      CrepeFeature,
-      replaceAll,
-      remarkPluginsCtx,
-      remarkDirective,
-      admonitionSchema,
-      admonitionView,
-    } = crepeMod;
+    const {Crepe, CrepeFeature, replaceAll, remarkPluginsCtx, remarkDirective} = crepeMod;
     let crepe = crepeRef.current;
 
     if (!crepe && rootRef.current) {
@@ -222,7 +212,7 @@ function Editor({token, path, onBack, onDeleted}) {
         ctx.update(remarkPluginsCtx, (prev) => [...prev, {plugin: remarkDirective}]);
       });
       // 注册 admonition 自定义节点（解析 + 渲染 + 序列化）
-      crepe.editor.use(...admonitionSchema).use(admonitionView);
+      crepe.editor.use(admonitionSchema).use(admonitionView);
       // 内容变化时同步到 state（用于保存）
       crepe.on((api) => {
         api.markdownUpdated((_ctx, markdown) => {
