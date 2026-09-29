@@ -222,7 +222,7 @@ function Editor({token, path, onBack, onDeleted}) {
         ctx.update(remarkPluginsCtx, (prev) => [...prev, {plugin: remarkDirective}]);
       });
       // 注册 admonition 自定义节点（解析 + 渲染 + 序列化）
-      crepe.editor.use(admonitionSchema).use(admonitionView);
+      crepe.editor.use(...admonitionSchema).use(admonitionView);
       // 内容变化时同步到 state（用于保存）
       crepe.on((api) => {
         api.markdownUpdated((_ctx, markdown) => {
