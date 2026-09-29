@@ -3,6 +3,7 @@ import Layout from '@theme/Layout';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkDirective from 'remark-directive';
+import {visit} from 'unist-util-visit';
 import {admonitionSchema, admonitionView} from '../theme/editor/admonition';
 import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame.css';
@@ -147,31 +148,34 @@ function FileTree({token, active, onSelect}) {
   return <div className={styles.tree}>{tree.map(renderNode)}</div>;
 }
 
-// ── 预览（react-markdown，admonition 用自定义渲染）──────
+// ── 预览（react-markdown，admonition 用 remark 插件转 blockquote）──────
 
-const ADMONITION_LABEL = {
-  note: 'note',
-  tip: 'tip',
-  warning: 'warning',
-  danger: 'danger',
-  info: 'info',
-};
+// 把 :::note[标题] 等 containerDirective 转成带 class 的 blockquote，
+// react-markdown 通过 components.blockquote 自定义渲染。
+function directiveToBlockquote() {
+  return (tree) => {
+    visit(tree, 'containerDirective', (node) => {
+      if (!['note', 'tip', 'warning', 'danger', 'info'].includes(node.name)) return;
+      const titleNode = node.children[0]?.data?.directiveLabel ? node.children.shift() : null;
+      const title = titleNode ? titleNode.children.map((c) => c.value ?? '').join('').trim() : '';
+      node.type = 'blockquote';
+      node.data = {
+        hName: 'blockquote',
+        hProperties: {className: [`theme-admonition admonition-${node.name}`], 'data-title': title},
+      };
+    });
+  };
+}
 
-function Admonition({node, children}) {
-  const name = node?.name || 'note';
-  const label = ADMONITION_LABEL[name] || name;
-  // 第一个段落是 directiveLabel（标题），单独提取
-  const kids = Array.isArray(children) ? children : [children];
-  const first = kids[0];
-  const title =
-    first?.type === 'p' || first?.type === 'paragraph'
-      ? String(first.props?.children ?? '').replace(/<[^>]*>/g, '')
-      : '';
-  const rest = title ? kids.slice(1) : kids;
+function AdmonitionBlockquote(props) {
+  const cls = (props.node?.properties?.className || []).join(' ');
+  const m = /admonition-(\w+)/.exec(cls);
+  const name = m ? m[1] : 'note';
+  const title = props.node?.properties?.['data-title'] || props.node?.properties?.['dataTitle'] || '';
   return (
-    <div className={`theme-admonition admonition-${name} alert alert--${label}`}>
+    <div className={`theme-admonition admonition-${name}`}>
       {title && <div className="admonition-heading">{title}</div>}
-      <div className="admonition-content">{rest}</div>
+      <div className="admonition-content">{props.children}</div>
     </div>
   );
 }
@@ -180,8 +184,8 @@ function Preview({markdown}) {
   return (
     <div className={`${styles.preview} markdown`}>
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkDirective]}
-        components={{containerDirective: Admonition}}>
+        remarkPlugins={[remarkGfm, remarkDirective, directiveToBlockquote]}
+        components={{blockquote: AdmonitionBlockquote}}>
         {markdown}
       </ReactMarkdown>
     </div>
