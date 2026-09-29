@@ -191,41 +191,45 @@
 }
 
 .main {
-  display: grid;
-  grid-template-columns: 300px 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
-  align-items: start;
+  align-items: stretch;
 }
 
-@media (max-width: 900px) {
-  .main {
-    grid-template-columns: 1fr;
-  }
-}
+/* ── front matter 折叠面板 ── */
 
 .fmPanel {
-  padding: 1rem;
+  padding: 0.6rem 1rem;
   border: 1px solid var(--ifm-color-emphasis-200);
   border-radius: 8px;
   background: var(--ifm-color-emphasis-0);
 }
 
-.fmPanel h3 {
-  margin: 0 0 0.75rem;
-  font-size: 1rem;
+.fmPanel summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-800);
+  padding: 0.25rem 0;
 }
 
-.fmPanel label {
+.fmGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+.fmGrid label {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.85rem;
-  color: var(--ifm-color-emphasis-700);
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-600);
 }
 
-.fmPanel input,
-.fmPanel textarea {
+.fmGrid input,
+.fmGrid textarea {
   padding: 0.4rem 0.6rem;
   border: 1px solid var(--ifm-color-emphasis-300);
   border-radius: 6px;
@@ -233,9 +237,24 @@
   font-family: var(--ifm-font-family-monospace);
 }
 
-.fmPanel textarea {
-  min-height: 80px;
+.fmGrid textarea {
+  min-height: 60px;
   resize: vertical;
+}
+
+/* ── 左右分屏：编辑 | 预览 ── */
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  align-items: stretch;
+}
+
+@media (max-width: 1000px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
 }
 
 .bodyPanel {
@@ -244,6 +263,27 @@
   border: 1px solid var(--ifm-color-emphasis-200);
   border-radius: 8px;
   background: var(--ifm-color-emphasis-0);
+  overflow-y: auto;
+}
+
+.previewPanel {
+  min-height: 70vh;
+  max-height: 85vh;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  background: var(--ifm-color-emphasis-0);
+  overflow-y: auto;
+}
+
+.preview h1,
+.preview h2,
+.preview h3 {
+  margin-top: 1.2rem;
+}
+
+.preview h1:first-child {
+  margin-top: 0;
 }
 
 .milkdown {
@@ -290,6 +330,49 @@
   background: var(--ifm-color-danger-contrast-background);
   border-color: var(--ifm-color-danger);
   color: var(--ifm-color-danger-contrast-foreground);
+}
+
+/* ── 预览里的 admonition（react-markdown 渲染）── */
+
+.preview :global(.theme-admonition) {
+  border-left: 4px solid;
+  border-radius: 0.4rem;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+}
+
+.preview :global(.theme-admonition .admonition-heading) {
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.preview :global(.theme-admonition .admonition-content) > :last-child {
+  margin-bottom: 0;
+}
+
+.preview :global(.admonition-note) {
+  background: var(--ifm-color-secondary-contrast-background);
+  border-color: var(--ifm-color-secondary);
+}
+
+.preview :global(.admonition-tip) {
+  background: var(--ifm-color-success-contrast-background);
+  border-color: var(--ifm-color-success);
+}
+
+.preview :global(.admonition-warning) {
+  background: var(--ifm-color-warning-contrast-background);
+  border-color: var(--ifm-color-warning);
+}
+
+.preview :global(.admonition-danger) {
+  background: var(--ifm-color-danger-contrast-background);
+  border-color: var(--ifm-color-danger);
+}
+
+.preview :global(.admonition-info) {
+  background: var(--ifm-color-info-contrast-background);
+  border-color: var(--ifm-color-info);
 }
 
 .source {

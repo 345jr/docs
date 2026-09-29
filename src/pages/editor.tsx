@@ -1,6 +1,9 @@
 import React, {useEffect, useRef, useState} from 'react';
 import Layout from '@theme/Layout';
 import matter from 'gray-matter';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkDirective from 'remark-directive';
 import {admonitionSchema, admonitionView} from '../theme/editor/admonition';
 import '@milkdown/crepe/theme/common/style.css';
 import '@milkdown/crepe/theme/frame.css';
@@ -123,6 +126,47 @@ function FileTree({token, active, onSelect}) {
   if (error) return <p className={styles.error}>{error}</p>;
   if (!tree) return <p className={styles.muted}>加载中…</p>;
   return <div className={styles.tree}>{tree.map(renderNode)}</div>;
+}
+
+// ── 预览（react-markdown，admonition 用自定义渲染）──────
+
+const ADMONITION_LABEL = {
+  note: 'note',
+  tip: 'tip',
+  warning: 'warning',
+  danger: 'danger',
+  info: 'info',
+};
+
+function Admonition({node, children}) {
+  const name = node?.name || 'note';
+  const label = ADMONITION_LABEL[name] || name;
+  // 第一个段落是 directiveLabel（标题），单独提取
+  const kids = Array.isArray(children) ? children : [children];
+  const first = kids[0];
+  const title =
+    first?.type === 'p' || first?.type === 'paragraph'
+      ? String(first.props?.children ?? '').replace(/<[^>]*>/g, '')
+      : '';
+  const rest = title ? kids.slice(1) : kids;
+  return (
+    <div className={`theme-admonition admonition-${name} alert alert--${label}`}>
+      {title && <div className="admonition-heading">{title}</div>}
+      <div className="admonition-content">{rest}</div>
+    </div>
+  );
+}
+
+function Preview({markdown}) {
+  return (
+    <div className={`${styles.preview} markdown`}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, remarkDirective]}
+        components={{containerDirective: Admonition}}>
+        {markdown}
+      </ReactMarkdown>
+    </div>
+  );
 }
 
 // ── 编辑器主体（Milkdown 动态加载，仅客户端）────────────
@@ -327,19 +371,19 @@ function Editor({token, path, onBack, onDeleted}) {
       )}
 
       <div className={styles.main}>
-        {/* front matter 表单 */}
-        <div className={styles.fmPanel}>
-          <h3>Front Matter</h3>
+        {/* front matter 折叠面板 */}
+        <details className={styles.fmPanel} open={Object.keys(fm).length > 0}>
+          <summary>Front Matter（页面元信息）</summary>
           {body === null ? (
             <p className={styles.muted}>加载中…</p>
           ) : (
-            <>
+            <div className={styles.fmGrid}>
               <label>
-                标题 title
+                <span>标题 title</span>
                 <input value={fm.title ?? ''} onChange={(e) => setFmField('title', e.target.value)} />
               </label>
               <label>
-                排序 sidebar_position
+                <span>排序 sidebar_position</span>
                 <input
                   type="number"
                   value={fm.sidebar_position ?? ''}
@@ -347,14 +391,14 @@ function Editor({token, path, onBack, onDeleted}) {
                 />
               </label>
               <label>
-                描述 description
+                <span>描述 description</span>
                 <textarea
                   value={fm.description ?? ''}
                   onChange={(e) => setFmField('description', e.target.value)}
                 />
               </label>
               <label>
-                标签 tags（逗号分隔）
+                <span>标签 tags（逗号分隔）</span>
                 <input
                   value={Array.isArray(fm.tags) ? fm.tags.join(', ') : fm.tags ?? ''}
                   onChange={(e) =>
@@ -367,23 +411,33 @@ function Editor({token, path, onBack, onDeleted}) {
               </label>
               {Object.entries(extraFm).map(([k, v]) => (
                 <label key={k}>
-                  {k}
+                  <span>{k}</span>
                   <input value={String(v)} onChange={(e) => setFmField(k, e.target.value)} />
                 </label>
               ))}
-            </>
+            </div>
           )}
-        </div>
+        </details>
 
-        {/* 正文 */}
-        <div className={styles.bodyPanel}>
-          {body === null ? (
-            <p className={styles.muted}>加载中…</p>
-          ) : isMdx ? (
-            <textarea ref={sourceRef} className={styles.source} defaultValue={body} />
-          ) : (
-            <div ref={rootRef} className={styles.milkdown} />
-          )}
+        {/* 左右分屏：编辑 | 预览 */}
+        <div className={styles.split}>
+          <div className={styles.bodyPanel}>
+            {body === null ? (
+              <p className={styles.muted}>加载中…</p>
+            ) : isMdx ? (
+              <textarea
+                ref={sourceRef}
+                className={styles.source}
+                defaultValue={body}
+                onChange={(e) => setBody(e.target.value)}
+              />
+            ) : (
+              <div ref={rootRef} className={styles.milkdown} />
+            )}
+          </div>
+          <div className={styles.previewPanel}>
+            <Preview markdown={getBody()} />
+          </div>
         </div>
       </div>
     </div>
