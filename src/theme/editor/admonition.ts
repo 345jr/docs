@@ -18,15 +18,6 @@ function extractTitle(children) {
   return '';
 }
 
-// 反向：把标题段落重新包成 directiveLabel 形式
-function titleNode(title) {
-  return {
-    type: 'paragraph',
-    data: {directiveLabel: true},
-    children: [{type: 'text', value: title}],
-  };
-}
-
 export const admonitionSchema = $nodeSchema(
   'admonition',
   () => ({
@@ -37,44 +28,14 @@ export const admonitionSchema = $nodeSchema(
       name: {default: 'note'},
       title: {default: ''},
     },
-    parseDOM: [
-      {
-        tag: 'div[data-admonition]',
-        getAttrs: (dom) => ({
-          name: dom.getAttribute('data-admonition') || 'note',
-          title: dom.getAttribute('data-title') || '',
-        }),
-      },
-    ],
-    toDOM: (node) => {
-      const {name, title} = node.attrs;
-      const div = document.createElement('div');
-      div.setAttribute('data-admonition', name);
-      div.setAttribute('data-title', title);
-      div.className = `milkdown-admonition admonition-${name}`;
-      if (title) {
-        const h = document.createElement('p');
-        h.className = 'milkdown-admonition-title';
-        h.textContent = title;
-        div.appendChild(h);
-      }
-      const body = document.createElement('div');
-      body.className = 'milkdown-admonition-body';
-      div.appendChild(body);
-      return {
-        dom: div,
-        contentDOM: body,
-      };
-    },
     parseMarkdown: {
       match: (node) => node.type === 'containerDirective',
       runner: (state, node, type) => {
         const name = node.name || 'note';
-        const title = extractTitle(node.children);
+        const children = Array.isArray(node.children) ? node.children : [];
+        const title = extractTitle(children);
         // 跳过标题段落，只保留正文内容
-        const content = Array.isArray(node.children)
-          ? node.children.filter((c) => !c.data?.directiveLabel)
-          : [];
+        const content = children.filter((c) => !c.data?.directiveLabel);
         state.openNode(type, {name, title}).next(content).closeNode();
       },
     },
@@ -82,20 +43,19 @@ export const admonitionSchema = $nodeSchema(
       match: (node) => node.type.name === 'admonition',
       runner: (state, node) => {
         const {name, title} = node.attrs;
-        state
-          .openNode('containerDirective', undefined, {
-            name,
-            attributes: {},
-          })
-          .openNode('paragraph')
-          .addNode('text', title)
-          .closeNode()
-          .next(node.content)
-          .closeNode();
+        state.openNode('containerDirective', undefined, {name, attributes: {}});
+        if (title) {
+          // 标题段落带 directiveLabel 标记，remark-directive 会输出 :::name[标题]
+          state
+            .openNode('paragraph', undefined, {data: {directiveLabel: true}})
+            .addNode('text', undefined, title)
+            .closeNode();
+        }
+        state.next(node.content);
+        state.closeNode();
       },
     },
-  }),
-  true
+  })
 );
 
 // 提示框前缀类型到 CSS class 的映射（样式见 editor.module.css）
@@ -107,8 +67,8 @@ const ADMONITION_STYLE = {
   info: 'info',
 };
 
-// $view 的第一个参数需要传 $node schema 对象（$view(type, ...) 的 type 是 $Node）
-export const admonitionView = $view(admonitionSchema, (ctx: Ctx) => (node, view, getPos) => {
+// $view 的第一个参数需要传 $Node schema 对象（admonitionSchema.node 是 $Node）
+export const admonitionView = $view(admonitionSchema.node, (ctx: Ctx) => (node) => {
   const {name, title} = node.attrs;
   const style = ADMONITION_STYLE[name] || 'info';
   const div = document.createElement('div');
@@ -123,10 +83,9 @@ export const admonitionView = $view(admonitionSchema, (ctx: Ctx) => (node, view,
   }
   const body = document.createElement('div');
   body.className = 'milkdown-admonition-body';
-  div.appendChild(body);
-
   const contentDOM = document.createElement('div');
   body.appendChild(contentDOM);
+  div.appendChild(body);
 
   return {
     dom: div,
