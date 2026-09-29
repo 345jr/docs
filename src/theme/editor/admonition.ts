@@ -4,8 +4,6 @@
 import type {Ctx} from '@milkdown/ctx';
 import {$nodeSchema, $view} from '@milkdown/utils';
 
-export type AdmonitionType = 'note' | 'tip' | 'warning' | 'danger' | 'info';
-
 // 从 remark containerDirective 节点里提取标题。
 // remark-directive 把标题放在带 directiveLabel 标记的段落里。
 function extractTitle(children) {
@@ -109,31 +107,29 @@ const ADMONITION_STYLE = {
   info: 'info',
 };
 
-export const admonitionView = $view(
-  'admonition',
-  (ctx: Ctx) => (node, view, getPos) => {
-    const {name, title} = node.attrs;
-    const style = ADMONITION_STYLE[name] || 'info';
-    const div = document.createElement('div');
-    div.className = `milkdown-admonition admonition-${style}`;
-    div.setAttribute('data-admonition', name);
+// $view 的第一个参数需要传 $node schema 对象（$view(type, ...) 的 type 是 $Node）
+export const admonitionView = $view(admonitionSchema, (ctx: Ctx) => (node, view, getPos) => {
+  const {name, title} = node.attrs;
+  const style = ADMONITION_STYLE[name] || 'info';
+  const div = document.createElement('div');
+  div.className = `milkdown-admonition admonition-${style}`;
+  div.setAttribute('data-admonition', name);
 
-    if (title) {
-      const h = document.createElement('div');
-      h.className = 'milkdown-admonition-title';
-      h.textContent = title;
-      div.appendChild(h);
-    }
-    const body = document.createElement('div');
-    body.className = 'milkdown-admonition-body';
-    div.appendChild(body);
-
-    const contentDOM = document.createElement('div');
-    body.appendChild(contentDOM);
-
-    return {
-      dom: div,
-      contentDOM,
-    };
+  if (title) {
+    const h = document.createElement('div');
+    h.className = 'milkdown-admonition-title';
+    h.textContent = title;
+    div.appendChild(h);
   }
-);
+  const body = document.createElement('div');
+  body.className = 'milkdown-admonition-body';
+  div.appendChild(body);
+
+  const contentDOM = document.createElement('div');
+  body.appendChild(contentDOM);
+
+  return {
+    dom: div,
+    contentDOM,
+  };
+});
