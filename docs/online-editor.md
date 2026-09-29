@@ -49,7 +49,9 @@ Steward 部署回 /var/www/docs → 站点更新
 
 文档里有 front matter（YAML 元数据）和 `.mdx`（含 JSX），WYSIWYG 编辑器会把这些内容改坏，所以选「源码编辑 + 实时预览」分屏模式：
 
-- **ByteMD**：轻量、有官方 React 组件、插件生态成熟（GFM / Mermaid / 代码高亮），预览管线基于 remark，与 Docusaurus 同生态。
+- **Milkdown**：插件驱动的 WYSIWYG 编辑器（ProseMirror + remark），维护活跃、React 19 官方支持、月下载量百万级。支持表格、代码块、图片等开箱即用，体验接近 Typora。
+- **编辑策略**：front matter（YAML）拆出来做成独立表单字段，正文交给 Milkdown WYSIWYG，保存时再拼回完整文件。含 `:::tip` admonition 或 `.mdx` JSX 的文件自动切换源码模式，避免内容被 WYSIWYG 改写。
+- 备选：ByteMD（源码+预览分屏，但已停止维护）。
 
 ## Steward 端新增接口
 
