@@ -1,4 +1,5 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
 import Layout from '@theme/Layout';
 import {EditorContent, useEditor, useEditorState} from '@tiptap/react';
 import {StarterKit} from '@tiptap/starter-kit';
@@ -145,6 +146,94 @@ function categoryOptions(tree, pending) {
   return [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
 }
 
+// ── 正文锚点（解析 H1-H3）────────────────────────────
+
+function stripInline(s) {
+  return s
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/(\*\*|__)(.*?)\1/g, '$2')
+    .replace(/(\*|_)(.*?)\1/g, '$2')
+    .replace(/~~(.*?)~~/g, '$1')
+    .replace(/`([^`]*)`/g, '$1')
+    .trim();
+}
+
+function parseToc(md) {
+  const items = [];
+  const lines = md.split('\n');
+  let inFence = false;
+  let offset = 0;
+  for (const line of lines) {
+    if (/^\s*(```|~~~)/.test(line)) {
+      inFence = !inFence;
+    } else if (!inFence) {
+      const m = /^(#{1,3})\s+(.+?)\s*#*\s*$/.exec(line);
+      if (m) items.push({level: m[1].length, text: stripInline(m[2]), offset});
+    }
+    offset += line.length + 1;
+  }
+  return items;
+}
+
+// ── 图标 ─────────────────────────────────────────────
+
+function Ic({children, size = 16}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true">
+      {children}
+    </svg>
+  );
+}
+
+const IconPanelClose = () => (
+  <Ic>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <path d="M9 4v16" />
+    <path d="m13 10 3 3-3 3" />
+  </Ic>
+);
+
+const IconPanelOpen = () => (
+  <Ic>
+    <rect x="3" y="4" width="18" height="16" rx="2" />
+    <path d="M9 4v16" />
+    <path d="m11 10-3 3 3 3" />
+  </Ic>
+);
+
+const IconNewFile = () => (
+  <Ic>
+    <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z" />
+    <path d="M14 3v6h6" />
+    <path d="M12 12v6M9 15h6" />
+  </Ic>
+);
+
+const IconNewFolder = () => (
+  <Ic>
+    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+    <path d="M12 11v6M9 14h6" />
+  </Ic>
+);
+
+const IconLogout = () => (
+  <Ic>
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <path d="m16 17 5-5-5-5" />
+    <path d="M21 12H9" />
+  </Ic>
+);
+
 // ── 流水线状态 ────────────────────────────────────────
 
 function usePipeline(token) {
@@ -222,6 +311,48 @@ async function commitAndWait(refresh, loadingMsg, fn) {
   }
 }
 
+// 顶部栏流水线指示点：绿=成功 黄=运行中 红=失败 灰=未知。
+function PipelineDot({pipeline}) {
+  const {status, refresh} = pipeline;
+  const latest = status?.latest;
+  const busy = status?.busy;
+  let cls = '';
+  let label = '流水线状态未知';
+  if (busy) {
+    cls = styles.dotBusy;
+    label = 'CI/CD 构建部署中…';
+  } else if (latest?.status === 'completed' && latest.conclusion === 'success') {
+    cls = styles.dotOk;
+    label = '最近一次构建部署成功';
+  } else if (latest?.status === 'completed') {
+    cls = styles.dotFail;
+    label = `最近一次构建失败（${latest.conclusion || 'unknown'}）`;
+  } else if (latest) {
+    label = `最近一次：${latest.status}`;
+  }
+  if (latest?.html_url) {
+    return (
+      <a
+        className={`${styles.pipeDotWrap} ${cls}`}
+        href={latest.html_url}
+        target="_blank"
+        rel="noreferrer"
+        title={`${label}（查看日志）`}>
+        <span className={styles.pipeDot} />
+      </a>
+    );
+  }
+  return (
+    <button
+      type="button"
+      className={`${styles.pipeDotWrap} ${cls}`}
+      title={`${label}（点击刷新）`}
+      onClick={refresh}>
+      <span className={styles.pipeDot} />
+    </button>
+  );
+}
+
 // ── 登录 ──────────────────────────────────────────────
 
 function Login({onLogin}) {
@@ -274,44 +405,6 @@ function Login({onLogin}) {
   );
 }
 
-// ── 流水线状态条 ──────────────────────────────────────
-
-function PipelineBar({pipeline}) {
-  const {status, refresh} = pipeline;
-  const latest = status?.latest;
-  const busy = status?.busy;
-  let text = '流水线状态未知';
-  let cls = styles.pipeIdle;
-  if (busy) {
-    text = 'CI/CD 构建部署中…';
-    cls = styles.pipeBusy;
-  } else if (latest) {
-    if (latest.status === 'completed' && latest.conclusion === 'success') {
-      text = '最近一次构建部署成功';
-      cls = styles.pipeOk;
-    } else if (latest.status === 'completed') {
-      text = `最近一次构建失败（${latest.conclusion || 'unknown'}）`;
-      cls = styles.pipeFail;
-    } else {
-      text = `最近一次：${latest.status}`;
-    }
-  }
-  return (
-    <div className={`${styles.pipe} ${cls}`}>
-      <span className={styles.pipeDot} />
-      <span>{text}</span>
-      {latest?.html_url && (
-        <a href={latest.html_url} target="_blank" rel="noreferrer">
-          日志
-        </a>
-      )}
-      <button type="button" className={styles.linkBtn} onClick={refresh}>
-        刷新
-      </button>
-    </div>
-  );
-}
-
 // ── 文件树 ────────────────────────────────────────────
 
 function FileTree({tree, active, onSelect}) {
@@ -346,7 +439,7 @@ function FileTree({tree, active, onSelect}) {
 
 // ── 富文本编辑器（Tiptap）─────────────────────────────
 
-function TiptapBody({initialMarkdown, onChange}) {
+function TiptapBody({initialMarkdown, onChange, editorRef}) {
   const editor = useEditor(
     {
       extensions: [
@@ -364,6 +457,13 @@ function TiptapBody({initialMarkdown, onChange}) {
     },
     [],
   );
+
+  useEffect(() => {
+    editorRef.current = editor;
+    return () => {
+      editorRef.current = null;
+    };
+  }, [editor, editorRef]);
 
   return (
     <>
@@ -498,7 +598,7 @@ function MetaForm({fm, setFm}) {
           }
         />
       </label>
-      <label className={styles.metaWide}>
+      <label>
         <span>描述 description</span>
         <textarea
           rows={2}
@@ -506,7 +606,7 @@ function MetaForm({fm, setFm}) {
           onChange={(e) => setField('description', e.target.value)}
         />
       </label>
-      <label className={styles.metaWide}>
+      <label>
         <span>标签 tags（逗号分隔）</span>
         <input
           value={Array.isArray(tags) ? tags.join(', ') : tags ?? ''}
@@ -527,6 +627,12 @@ function MetaForm({fm, setFm}) {
 
 // ── 文章编辑器 ────────────────────────────────────────
 
+const TOC_LEVEL_CLASS = {
+  1: '',
+  2: styles.tocH2,
+  3: styles.tocH3,
+};
+
 function ArticleEditor({
   token,
   path,
@@ -534,6 +640,7 @@ function ArticleEditor({
   categories,
   pendingCategories,
   pipeline,
+  scrollRef,
   onSelect,
   onTreeChange,
   onDirtyChange,
@@ -542,6 +649,11 @@ function ArticleEditor({
 }) {
   const isNew = Boolean(draft);
   const activePath = draft?.path || path;
+
+  const editorRef = useRef(null);
+  const sourceRef = useRef(null);
+  const [slots, setSlots] = useState({meta: null, actions: null});
+  const [activeHead, setActiveHead] = useState(-1);
 
   const [loading, setLoading] = useState(!isNew);
   const [fm, setFm] = useState(draft?.fm || {});
@@ -554,6 +666,19 @@ function ArticleEditor({
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [dirty, setDirty] = useState(isNew);
+
+  const targetPath = `${category ? `${category}/` : ''}${fileName}${ext}`;
+  const isMdx = ext === '.mdx';
+  const pendingMeta = (pendingCategories || []).find((p) => p.path === category) || null;
+  const toc = useMemo(() => parseToc(body), [body]);
+
+  // 顶部栏插槽（portal 目标）
+  useEffect(() => {
+    setSlots({
+      meta: document.getElementById('editor-meta-slot'),
+      actions: document.getElementById('editor-actions-slot'),
+    });
+  }, []);
 
   // 初始化 / 切换文件
   useEffect(() => {
@@ -602,13 +727,51 @@ function ArticleEditor({
     return () => onDirtyChange?.(false);
   }, [dirty, onDirtyChange]);
 
+  // 滚动时高亮当前锚点（仅富文本模式）
+  useEffect(() => {
+    const el = scrollRef?.current;
+    if (!el || isMdx || sourceMode) {
+      setActiveHead(-1);
+      return undefined;
+    }
+    const measure = () => {
+      const ed = editorRef.current;
+      if (!ed) return;
+      const heads = ed.view.dom.querySelectorAll('h1, h2, h3');
+      const base = el.getBoundingClientRect().top;
+      let idx = -1;
+      heads.forEach((h, i) => {
+        if (h.getBoundingClientRect().top <= base + 80) idx = i;
+      });
+      setActiveHead(idx);
+    };
+    measure();
+    el.addEventListener('scroll', measure, {passive: true});
+    return () => el.removeEventListener('scroll', measure);
+  }, [scrollRef, isMdx, sourceMode, activePath]);
+
   const editFm = (updater) => {
     setDirty(true);
     setFm(updater);
   };
-  const targetPath = `${category ? `${category}/` : ''}${fileName}${ext}`;
-  const isMdx = ext === '.mdx';
-  const pendingMeta = (pendingCategories || []).find((p) => p.path === category) || null;
+
+  const jumpTo = (i) => {
+    const item = toc[i];
+    if (!item) return;
+    if (isMdx || sourceMode) {
+      // 源码模式：把光标移动到对应标题行
+      const ta = sourceRef.current;
+      if (!ta) return;
+      ta.focus();
+      ta.setSelectionRange(item.offset, item.offset);
+      return;
+    }
+    const ed = editorRef.current;
+    if (!ed) return;
+    const heads = ed.view.dom.querySelectorAll('h1, h2, h3');
+    heads[i]?.scrollIntoView({behavior: 'smooth', block: 'start'});
+    setActiveHead(i);
+  };
 
   const save = async () => {
     setSaving(true);
@@ -651,29 +814,40 @@ function ArticleEditor({
   if (loading) return <p className={styles.muted}>加载中…</p>;
 
   return (
-    <div className={styles.article}>
-      <div className={styles.topbar}>
-        <span className={styles.path}>{activePath}</span>
-        <span className={styles.badge}>{isMdx ? 'MDX' : sourceMode ? '源码' : '富文本'}</span>
-        {dirty && <span className={styles.dirtyBadge}>未保存</span>}
-        <div className={styles.spacer} />
-        {!isNew && (
-          <button type="button" className={styles.btn} onClick={() => setSourceMode((v) => !v)}>
-            {sourceMode ? '富文本' : '源码'}
-          </button>
+    <>
+      {slots.meta &&
+        createPortal(
+          <>
+            <span className={styles.path} title={targetPath}>
+              {targetPath}
+            </span>
+            <span className={styles.badge}>{isMdx ? 'MDX' : sourceMode ? '源码' : '富文本'}</span>
+            {dirty && <span className={styles.dirtyBadge}>未保存</span>}
+          </>,
+          slots.meta,
         )}
-        {!isNew && (
-          <button
-            type="button"
-            className={`${styles.btn} ${styles.btnDanger}`}
-            onClick={() => setConfirmDelete(true)}>
-            删除
-          </button>
+      {slots.actions &&
+        createPortal(
+          <>
+            {!isNew && !isMdx && (
+              <button type="button" className={styles.btn} onClick={() => setSourceMode((v) => !v)}>
+                {sourceMode ? '富文本' : '源码'}
+              </button>
+            )}
+            {!isNew && (
+              <button
+                type="button"
+                className={`${styles.btn} ${styles.btnDanger}`}
+                onClick={() => setConfirmDelete(true)}>
+                删除
+              </button>
+            )}
+            <button type="button" className={styles.btnPrimary} onClick={save} disabled={saving}>
+              {saving ? '处理中…' : isNew ? '创建并发布' : '保存并发布'}
+            </button>
+          </>,
+          slots.actions,
         )}
-        <button type="button" className={styles.btnPrimary} onClick={save} disabled={saving}>
-          {saving ? '处理中…' : isNew ? '创建并发布' : '保存并发布'}
-        </button>
-      </div>
 
       {confirmDelete && (
         <div className={styles.confirm}>
@@ -687,85 +861,112 @@ function ArticleEditor({
         </div>
       )}
 
-      <details className={styles.panel} open>
-        <summary>文章信息（分类 / 排序 / 元信息）</summary>
-        <div className={styles.locRow}>
-          <label>
-            <span>所属分类</span>
-            <select
-              value={category}
-              onChange={(e) => {
-                setDirty(true);
-                setCategory(e.target.value);
-              }}>
-              <option value="">（根目录）</option>
-              {categories.map((c) => (
-                <option key={c.path} value={c.path}>
-                  {'\u00A0'.repeat(c.depth * 2)}
-                  {c.label}
-                  {c.pending ? '（待创建）' : ''}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>文件名</span>
-            <input
-              value={fileName}
-              onChange={(e) => {
-                setDirty(true);
-                setFileName(e.target.value.trim());
-              }}
-              placeholder="english-lowercase-hyphen"
-            />
-          </label>
-          <label>
-            <span>格式</span>
-            <select
-              value={ext}
-              onChange={(e) => {
-                setDirty(true);
-                setExt(e.target.value);
-              }}>
-              <option value=".md">.md</option>
-              <option value=".mdx">.mdx</option>
-            </select>
-          </label>
+      <div className={styles.editorRow}>
+        <div className={styles.editorMain}>
+          <div className={styles.editorArea}>
+            {isMdx || sourceMode ? (
+              <textarea
+                ref={sourceRef}
+                className={styles.source}
+                value={body}
+                onChange={(e) => {
+                  setDirty(true);
+                  setBody(e.target.value);
+                }}
+                spellCheck={false}
+              />
+            ) : (
+              <TiptapBody
+                key={activePath}
+                editorRef={editorRef}
+                initialMarkdown={body}
+                onChange={(v) => {
+                  setDirty(true);
+                  setBody(v);
+                }}
+              />
+            )}
+          </div>
         </div>
-        <MetaForm fm={fm} setFm={editFm} />
-        <label className={styles.msgField}>
-          <span>提交信息（可选）</span>
-          <input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="默认：docs: 在线编辑更新 <路径>"
-          />
-        </label>
-      </details>
 
-      <div className={styles.editorArea}>
-        {isMdx || sourceMode ? (
-          <textarea
-            className={styles.source}
-            value={body}
-            onChange={(e) => {
-              setDirty(true);
-              setBody(e.target.value);
-            }}
-            spellCheck={false}
-          />
-        ) : (
-          <TiptapBody
-            key={activePath}
-            initialMarkdown={body}
-            onChange={(v) => {
-              setDirty(true);
-              setBody(v);
-            }}
-          />
-        )}
+        <aside className={styles.metaPanel}>
+          {toc.length > 0 && (
+            <section className={styles.metaSection}>
+              <h3>锚点</h3>
+              <nav className={styles.toc}>
+                {toc.map((h, i) => (
+                  <button
+                    key={`${h.offset}-${i}`}
+                    type="button"
+                    className={`${styles.tocItem} ${TOC_LEVEL_CLASS[h.level]} ${
+                      !(isMdx || sourceMode) && i === activeHead ? styles.tocActive : ''
+                    }`}
+                    onClick={() => jumpTo(i)}>
+                    {h.text || '（空标题）'}
+                  </button>
+                ))}
+              </nav>
+            </section>
+          )}
+
+          <section className={styles.metaSection}>
+            <h3>文章信息</h3>
+            <div className={styles.locRow}>
+              <label>
+                <span>所属分类</span>
+                <select
+                  value={category}
+                  onChange={(e) => {
+                    setDirty(true);
+                    setCategory(e.target.value);
+                  }}>
+                  <option value="">（根目录）</option>
+                  {categories.map((c) => (
+                    <option key={c.path} value={c.path}>
+                      {'\u00A0'.repeat(c.depth * 2)}
+                      {c.label}
+                      {c.pending ? '（待创建）' : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>文件名</span>
+                <input
+                  value={fileName}
+                  onChange={(e) => {
+                    setDirty(true);
+                    setFileName(e.target.value.trim());
+                  }}
+                  placeholder="english-lowercase-hyphen"
+                />
+              </label>
+              <label>
+                <span>格式</span>
+                <select
+                  value={ext}
+                  onChange={(e) => {
+                    setDirty(true);
+                    setExt(e.target.value);
+                  }}>
+                  <option value=".md">.md</option>
+                  <option value=".mdx">.mdx</option>
+                </select>
+              </label>
+            </div>
+            <MetaForm fm={fm} setFm={editFm} />
+            <label className={styles.msgField}>
+              <span>提交信息（可选）</span>
+              <input
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="默认：docs: 在线编辑更新 <路径>"
+              />
+            </label>
+          </section>
+        </aside>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -907,7 +1108,9 @@ export default function EditorPage() {
   const [mode, setMode] = useState('idle');
   const [refresh, setRefresh] = useState(0);
   const [dirty, setDirty] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
 
+  const mainRef = useRef(null);
   const pipeline = usePipeline(token);
 
   useEffect(() => {
@@ -945,7 +1148,7 @@ export default function EditorPage() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [dirty]);
 
-  const lock = () => {
+  const exitEdit = () => {
     sessionStorage.removeItem('docs-editor-token');
     setToken(null);
     setSelected(null);
@@ -985,112 +1188,113 @@ export default function EditorPage() {
     }
   };
 
+  const startNew = (m) => {
+    if (dirty && !window.confirm('有未保存的修改，确定要离开吗？')) return;
+    setDraft(null);
+    setSelected(null);
+    setMode(m);
+  };
+
   return (
     <Layout title="在线编辑">
       <Toaster position="top-center" toastOptions={{duration: 4000}} />
       {!mounted ? null : !token ? (
         <Login onLogin={setToken} />
       ) : (
-        <div className={styles.layout}>
-          <aside className={styles.sidebar}>
-            <div className={styles.sidebarHeader}>
-              <strong>在线编辑</strong>
-              <button type="button" className={styles.btn} onClick={lock}>
-                退出
-              </button>
-            </div>
-            <PipelineBar pipeline={pipeline} />
-            <div className={styles.sideActions}>
-              <button
-                type="button"
-                className={styles.btn}
-                onClick={() => {
-                  if (dirty && !window.confirm('有未保存的修改，确定要离开吗？')) return;
-                  setDraft(null);
-                  setSelected(null);
-                  setMode('new-article');
-                }}>
-                ＋ 新建文章
-              </button>
-              <button
-                type="button"
-                className={styles.btn}
-                onClick={() => {
-                  if (dirty && !window.confirm('有未保存的修改，确定要离开吗？')) return;
-                  setDraft(null);
-                  setSelected(null);
-                  setMode('new-category');
-                }}>
-                ＋ 新建分类
-              </button>
-            </div>
+        <div className={styles.shell}>
+          <header className={styles.subbar}>
+            <button
+              type="button"
+              className={styles.iconBtn}
+              onClick={() => setCollapsed((v) => !v)}
+              title={collapsed ? '展开侧栏' : '收起侧栏'}>
+              {collapsed ? <IconPanelOpen /> : <IconPanelClose />}
+            </button>
+            <span className={styles.brand}>在线编辑</span>
+            <span id="editor-meta-slot" className={styles.metaSlot} />
+            <div className={styles.spacer} />
+            <div id="editor-actions-slot" className={styles.actionsSlot} />
+            <span className={styles.subbarSep} />
+            <button type="button" className={styles.barBtn} onClick={() => startNew('new-article')}>
+              <IconNewFile />
+              新建文章
+            </button>
+            <button type="button" className={styles.barBtn} onClick={() => startNew('new-category')}>
+              <IconNewFolder />
+              新建分类
+            </button>
+            <PipelineDot pipeline={pipeline} />
+            <button type="button" className={styles.barBtn} onClick={exitEdit}>
+              <IconLogout />
+              退出
+            </button>
+          </header>
 
-            {pending.length > 0 && (
-              <div className={styles.pendingBox}>
-                <div className={styles.pendingTitle}>待创建分类</div>
-                {pending.map((p) => (
-                  <div key={p.path} className={styles.pendingItem}>
-                    <span>{p.label}</span>
-                    <button
-                      type="button"
-                      className={styles.linkBtn}
-                      onClick={() => createCategoryNow(p)}>
-                      立即创建
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className={styles.body}>
+            <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
+              {pending.length > 0 && (
+                <div className={styles.pendingBox}>
+                  <div className={styles.pendingTitle}>待创建分类</div>
+                  {pending.map((p) => (
+                    <div key={p.path} className={styles.pendingItem}>
+                      <span>{p.label}</span>
+                      <button
+                        type="button"
+                        className={styles.linkBtn}
+                        onClick={() => createCategoryNow(p)}>
+                        立即创建
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <FileTree tree={tree} active={draft ? null : selected} onSelect={selectFile} />
+            </aside>
 
-            <FileTree
-              tree={tree}
-              active={draft ? null : selected}
-              onSelect={selectFile}
-            />
-          </aside>
-
-          <main className={styles.main}>
-            {mode === 'new-article' ? (
-              <NewArticle
-                categories={categories}
-                onCreate={(d) => {
-                  setDraft(d);
-                  setMode('idle');
-                  setSelected(null);
-                }}
-                onCancel={() => setMode('idle')}
-              />
-            ) : mode === 'new-category' ? (
-              <NewCategory
-                categories={categories}
-                onCreate={addPending}
-                onCancel={() => setMode('idle')}
-              />
-            ) : draft || selected ? (
-              <ArticleEditor
-                key={draft ? `draft:${draft.path}` : selected}
-                token={token}
-                path={draft ? undefined : selected}
-                draft={draft}
-                categories={categories}
-                pendingCategories={pending}
-                pipeline={pipeline}
-                onSelect={(p) => {
-                  setDraft(null);
-                  setSelected(p);
-                }}
-                onTreeChange={reload}
-                onDirtyChange={handleDirty}
-                onCategoryBundled={(p) => setPending((prev) => prev.filter((x) => x.path !== p))}
-                onDraftSaved={(p) => {
-                  setDraft(null);
-                  setSelected(p);
-                }}
-              />
-            ) : (
-              <p className={styles.placeholder}>从左侧选择一篇文章，或新建文章 / 分类。</p>
-            )}
-          </main>
+            <main className={styles.main} ref={mainRef}>
+              {mode === 'new-article' ? (
+                <NewArticle
+                  categories={categories}
+                  onCreate={(d) => {
+                    setDraft(d);
+                    setMode('idle');
+                    setSelected(null);
+                  }}
+                  onCancel={() => setMode('idle')}
+                />
+              ) : mode === 'new-category' ? (
+                <NewCategory
+                  categories={categories}
+                  onCreate={addPending}
+                  onCancel={() => setMode('idle')}
+                />
+              ) : draft || selected ? (
+                <ArticleEditor
+                  key={draft ? `draft:${draft.path}` : selected}
+                  token={token}
+                  path={draft ? undefined : selected}
+                  draft={draft}
+                  categories={categories}
+                  pendingCategories={pending}
+                  pipeline={pipeline}
+                  scrollRef={mainRef}
+                  onSelect={(p) => {
+                    setDraft(null);
+                    setSelected(p);
+                  }}
+                  onTreeChange={reload}
+                  onDirtyChange={handleDirty}
+                  onCategoryBundled={(p) => setPending((prev) => prev.filter((x) => x.path !== p))}
+                  onDraftSaved={(p) => {
+                    setDraft(null);
+                    setSelected(p);
+                  }}
+                />
+              ) : (
+                <p className={styles.placeholder}>从左侧选择一篇文章开始编辑，或点击上方「新建文章」。</p>
+              )}
+            </main>
+          </div>
         </div>
       )}
     </Layout>
