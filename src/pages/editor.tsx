@@ -230,6 +230,15 @@ const IconLogout = () => (
   </Ic>
 );
 
+const IconSliders = () => (
+  <Ic>
+    <path d="M4 21v-7M4 10V3" />
+    <path d="M12 21v-9M12 8V3" />
+    <path d="M20 21v-5M20 12V3" />
+    <path d="M2 14h4M10 8h4M18 16h4" />
+  </Ic>
+);
+
 // ── 流水线状态 ────────────────────────────────────────
 
 function usePipeline(token) {
@@ -648,9 +657,9 @@ function ArticleEditor({
 
   const editorRef = useRef(null);
   const sourceRef = useRef(null);
-  const metaPanelRef = useRef(null);
   const [slots, setSlots] = useState({meta: null, actions: null});
   const [activeHead, setActiveHead] = useState(-1);
+  const [showMeta, setShowMeta] = useState(false);
 
   const [loading, setLoading] = useState(!isNew);
   const [fm, setFm] = useState(draft?.fm || {});
@@ -747,22 +756,6 @@ function ArticleEditor({
     return () => el.removeEventListener('scroll', measure);
   }, [scrollRef, isMdx, sourceMode, activePath]);
 
-  // 右栏滚轮拦截：悬停在输入框上时也滚动右栏而非页面，到边界后放行
-  useEffect(() => {
-    const el = metaPanelRef.current;
-    if (!el) return undefined;
-    const onWheel = (e) => {
-      if (!e.deltaY || el.scrollHeight <= el.clientHeight) return;
-      const atTop = el.scrollTop <= 0 && e.deltaY < 0;
-      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 && e.deltaY > 0;
-      if (atTop || atBottom) return;
-      e.preventDefault();
-      el.scrollTop += e.deltaY;
-    };
-    el.addEventListener('wheel', onWheel, {passive: false});
-    return () => el.removeEventListener('wheel', onWheel);
-  }, []);
-
   // 源码模式：textarea 随内容自动撑高，避免内部滚动条
   useEffect(() => {
     const ta = sourceRef.current;
@@ -770,6 +763,16 @@ function ArticleEditor({
     ta.style.height = 'auto';
     ta.style.height = `${ta.scrollHeight + 2}px`;
   }, [body, sourceMode, isMdx, loading]);
+
+  // 元信息模态框：Esc 关闭
+  useEffect(() => {
+    if (!showMeta) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setShowMeta(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showMeta]);
 
   const editFm = (updater) => {
     setDirty(true);
@@ -850,6 +853,10 @@ function ArticleEditor({
       {slots.actions &&
         createPortal(
           <>
+            <button type="button" className={styles.btn} onClick={() => setShowMeta(true)}>
+              <IconSliders />
+              元信息
+            </button>
             {!isNew && !isMdx && (
               <button type="button" className={styles.btn} onClick={() => setSourceMode((v) => !v)}>
                 {sourceMode ? '富文本' : '源码'}
@@ -910,83 +917,102 @@ function ArticleEditor({
           </div>
         </div>
 
-        <aside className={styles.metaPanel} ref={metaPanelRef}>
-          {toc.length > 0 && (
-            <section className={styles.metaSection}>
-              <h3>锚点</h3>
-              <nav className={styles.toc}>
-                {toc.map((h, i) => (
-                  <button
-                    key={`${h.offset}-${i}`}
-                    type="button"
-                    className={`${styles.tocItem} ${TOC_LEVEL_CLASS[h.level]} ${
-                      !(isMdx || sourceMode) && i === activeHead ? styles.tocActive : ''
-                    }`}
-                    onClick={() => jumpTo(i)}>
-                    {h.text || '（空标题）'}
-                  </button>
-                ))}
-              </nav>
-            </section>
-          )}
-
-          <section className={styles.metaSection}>
-            <h3>文章信息</h3>
-            <div className={styles.locRow}>
-              <label>
-                <span>所属分类</span>
-                <select
-                  value={category}
-                  onChange={(e) => {
-                    setDirty(true);
-                    setCategory(e.target.value);
-                  }}>
-                  <option value="">（根目录）</option>
-                  {categories.map((c) => (
-                    <option key={c.path} value={c.path}>
-                      {'\u00A0'.repeat(c.depth * 2)}
-                      {c.label}
-                      {c.pending ? '（待创建）' : ''}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>文件名</span>
-                <input
-                  value={fileName}
-                  onChange={(e) => {
-                    setDirty(true);
-                    setFileName(e.target.value.trim());
-                  }}
-                  placeholder="english-lowercase-hyphen"
-                />
-              </label>
-              <label>
-                <span>格式</span>
-                <select
-                  value={ext}
-                  onChange={(e) => {
-                    setDirty(true);
-                    setExt(e.target.value);
-                  }}>
-                  <option value=".md">.md</option>
-                  <option value=".mdx">.mdx</option>
-                </select>
-              </label>
-            </div>
-            <MetaForm fm={fm} setFm={editFm} />
-            <label className={styles.msgField}>
-              <span>提交信息（可选）</span>
-              <input
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="默认：docs: 在线编辑更新 <路径>"
-              />
-            </label>
-          </section>
-        </aside>
+        {toc.length > 0 && (
+          <aside className={styles.tocPanel}>
+            <div className={styles.tocTitle}>锚点</div>
+            <nav className={styles.toc}>
+              {toc.map((h, i) => (
+                <button
+                  key={`${h.offset}-${i}`}
+                  type="button"
+                  className={`${styles.tocItem} ${TOC_LEVEL_CLASS[h.level]} ${
+                    !(isMdx || sourceMode) && i === activeHead ? styles.tocActive : ''
+                  }`}
+                  onClick={() => jumpTo(i)}>
+                  {h.text || '（空标题）'}
+                </button>
+              ))}
+            </nav>
+          </aside>
+        )}
       </div>
+
+      {showMeta &&
+        createPortal(
+          <div className={styles.modalBackdrop} onClick={() => setShowMeta(false)}>
+            <div
+              className={styles.modal}
+              role="dialog"
+              aria-label="文章信息"
+              onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h3>文章信息</h3>
+                <button
+                  type="button"
+                  className={styles.modalClose}
+                  onClick={() => setShowMeta(false)}
+                  title="关闭（Esc）">
+                  ×
+                </button>
+              </div>
+              <div className={styles.modalBody}>
+                <div className={styles.locRow}>
+                  <label>
+                    <span>所属分类</span>
+                    <select
+                      value={category}
+                      onChange={(e) => {
+                        setDirty(true);
+                        setCategory(e.target.value);
+                      }}>
+                      <option value="">（根目录）</option>
+                      {categories.map((c) => (
+                        <option key={c.path} value={c.path}>
+                          {'\u00A0'.repeat(c.depth * 2)}
+                          {c.label}
+                          {c.pending ? '（待创建）' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    <span>文件名</span>
+                    <input
+                      value={fileName}
+                      onChange={(e) => {
+                        setDirty(true);
+                        setFileName(e.target.value.trim());
+                      }}
+                      placeholder="english-lowercase-hyphen"
+                    />
+                  </label>
+                  <label>
+                    <span>格式</span>
+                    <select
+                      value={ext}
+                      onChange={(e) => {
+                        setDirty(true);
+                        setExt(e.target.value);
+                      }}>
+                      <option value=".md">.md</option>
+                      <option value=".mdx">.mdx</option>
+                    </select>
+                  </label>
+                </div>
+                <MetaForm fm={fm} setFm={editFm} />
+                <label className={styles.msgField}>
+                  <span>提交信息（可选）</span>
+                  <input
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="默认：docs: 在线编辑更新 <路径>"
+                  />
+                </label>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
