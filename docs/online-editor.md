@@ -5,7 +5,7 @@ description: 记录文档站在线编辑功能从需求、Tiptap 选型、前后
 tags: [站点建设, 运维, 前端]
 ---
 
-# 在线编辑模块：从选型到上线
+# 在线编辑模块设计
 
 本文记录这个文档站「在线编辑」功能从 0 到 1 的完整过程：为什么要做、为什么选 Tiptap、前后端怎么分工、中间踩了哪些坑、最后怎么验证上线。整个模块分两部分——**Docusaurus 前端（`/editor` 页面）** 和 **Steward 后端（`/docs-api/docs-editor/`）**。
 
@@ -23,7 +23,7 @@ tags: [站点建设, 运维, 前端]
 
 ## 二、技术选型：为什么是 Tiptap
 
-上一版用的是 Milkdown。它的 WYSIWYG 体验其实不差，但和「Docusaurus Markdown 站点」这个场景错位——尤其是 admonition（`:::tip[标题]`）的 round-trip 极不稳定，最后核心的富文本编辑反而不可用，所以才整体推倒重来。
+上一版用的是 Milkdown。它的 WYSIWYG 体验其实不差，但和「Docusaurus Markdown 站点」这个场景错位——尤其是 admonition（ `:::tip[标题]`）的 round-trip 极不稳定，最后核心的富文本编辑反而不可用，所以才整体推倒重来。
 
 这次换 **Tiptap v3**，关键结论（用 Context7 查官方文档得到）：
 
@@ -31,12 +31,14 @@ tags: [站点建设, 运维, 前端]
 - 提供 `markdownTokenizer` / `parseMarkdown` / `renderMarkdown` 扩展点，可以**精确 round-trip 任意语法**，这正是 Docusaurus admonition 需要的。
 - React 19 官方支持；SSR 场景下用 `immediatelyRender: false` 即可。
 
-| 维度 | Milkdown | Tiptap（本次） |
-| --- | --- | --- |
-| Markdown 往返 | 需要自己写较多转换，易坏 | 官方 Markdown 扩展，稳定 |
-| 自定义语法 | 自定义 ProseMirror 节点，调试成本高 | tokenizer + parse/render，接口清晰 |
-| 生态 / 维护 | 活跃 | 活跃，扩展丰富 |
-| 心智负担 | 对「富文本 → Markdown」不友好 | 原生面向 Markdown |
+
+| 维度          | Milkdown                 | Tiptap（本次）                    |
+| ----------- | ------------------------ | ----------------------------- |
+| Markdown 往返 | 需要自己写较多转换，易坏             | 官方 Markdown 扩展，稳定             |
+| 自定义语法       | 自定义 ProseMirror 节点，调试成本高 | tokenizer + parse/render，接口清晰 |
+| 生态 / 维护     | 活跃                       | 活跃，扩展丰富                       |
+| 心智负担        | 对「富文本 → Markdown」不友好     | 原生面向 Markdown                 |
+
 
 ## 三、整体架构
 
@@ -69,17 +71,19 @@ Actions 回调 Steward /deploy/webhook  →  解压部署到 /var/www/docs
 
 所有接口挂在 `/docs-api/docs-editor/` 下，除 `unlock` 外都要求 session。
 
-| 接口 | 方法 | 作用 |
-| --- | --- | --- |
-| `/unlock` | POST | 密钥换 24h session token |
-| `/status` | GET | 查 docs 的 GitHub Actions 流水线状态 |
-| `/tree` | GET | 返回分类 + 文章目录树（含元信息） |
-| `/read` | GET | 读取单个文件 |
-| `/save` | POST | 新建/更新文章，可携带分类 |
-| `/move` | POST | 移动/改名，可同时覆写内容与创建分类 |
-| `/delete` | POST | 删除文章 |
-| `/category` | POST | 新建/更新 `_category_.json` |
-| `/category/delete` | POST | 删除空分类 |
+
+| 接口                 | 方法   | 作用                            |
+| ------------------ | ---- | ----------------------------- |
+| `/unlock`          | POST | 密钥换 24h session token         |
+| `/status`          | GET  | 查 docs 的 GitHub Actions 流水线状态 |
+| `/tree`            | GET  | 返回分类 + 文章目录树（含元信息）            |
+| `/read`            | GET  | 读取单个文件                        |
+| `/save`            | POST | 新建/更新文章，可携带分类                 |
+| `/move`            | POST | 移动/改名，可同时覆写内容与创建分类            |
+| `/delete`          | POST | 删除文章                          |
+| `/category`        | POST | 新建/更新 `_category_.json`       |
+| `/category/delete` | POST | 删除空分类                         |
+
 
 ### 鉴权与密钥
 
@@ -149,7 +153,7 @@ useEditor({
 
 ### admonition 自定义节点
 
-这是整个模块最关键的一段。Docusaurus 语法是 `:::tip[标题]`，Tiptap 通过一个自定义 block 节点精确往返：
+这是整个模块最关键的一段。Docusaurus 语法是  `:::tip[标题]`，Tiptap 通过一个自定义 block 节点精确往返：
 
 ```ts
 markdownTokenizer: {
@@ -218,17 +222,17 @@ location ^~ /editor/api/ {
 ## 八、踩坑记录
 
 1. **admonition 关闭符必须独占一行**
-   最初 `renderMarkdown` 输出成 `内容:::`,再次解析时 tokenizer 匹配不上，方括号被转义成 `\[标题\]`，越改越乱。修成 `内容\n:::` 后幂等。
+ 最初 `renderMarkdown` 输出成 `内容:::`,再次解析时 tokenizer 匹配不上，方括号被转义成 `\[标题\]`，越改越乱。修成 `内容\n:::` 后幂等。
 2. **末尾空行会滚雪球**
-   提示框作为最后一个块时，序列化会在文件尾不断追加空行。前端保存前 `body.replace(/\s+$/, '')` 兜底。
+ 提示框作为最后一个块时，序列化会在文件尾不断追加空行。前端保存前 `body.replace(/\s+$/, '')` 兜底。
 3. **表格序列化差异是正常的**
-   Tiptap 会把表格列对齐、并把 `_` / `~` 转义（`node_modules` → `node\_modules`）。语义等价且稳定，不需要强行还原。
+ Tiptap 会把表格列对齐、并把 `_` / `~` 转义（`node_modules` → `node\_modules`）。语义等价且稳定，不需要强行还原。
 4. **SSR**
-   Docusaurus 构建时会 SSG，Tiptap 必须 `immediatelyRender: false`，页面再用 `mounted` 状态兜一层。
+ Docusaurus 构建时会 SSG，Tiptap 必须 `immediatelyRender: false`，页面再用 `mounted` 状态兜一层。
 5. **CI 回调偶发 502**
-   如果后端在自更新重启时正好收到 docs 的部署回调，会 502。解决：先推后端、等自更新完成，再推前端；必要时用 `/control/ops/docs/restart` 手动重拉 release。
+ 如果后端在自更新重启时正好收到 docs 的部署回调，会 502。解决：先推后端、等自更新完成，再推前端；必要时用 `/control/ops/docs/restart` 手动重拉 release。
 6. **别让「新建」偷偷提交**
-   创建文章/分类都先暂存，等用户编辑完再一次性提交，否则会产生多余的 commit 和构建。
+ 创建文章/分类都先暂存，等用户编辑完再一次性提交，否则会产生多余的 commit 和构建。
 
 ## 九、文件清单
 
