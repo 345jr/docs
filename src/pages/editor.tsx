@@ -597,7 +597,7 @@ function MetaForm({fm, setFm}) {
       <label>
         <span>描述 description</span>
         <textarea
-          rows={2}
+          rows={3}
           value={fm.description ?? ''}
           onChange={(e) => setField('description', e.target.value)}
         />
@@ -648,6 +648,7 @@ function ArticleEditor({
 
   const editorRef = useRef(null);
   const sourceRef = useRef(null);
+  const metaPanelRef = useRef(null);
   const [slots, setSlots] = useState({meta: null, actions: null});
   const [activeHead, setActiveHead] = useState(-1);
 
@@ -745,6 +746,22 @@ function ArticleEditor({
     el.addEventListener('scroll', measure, {passive: true});
     return () => el.removeEventListener('scroll', measure);
   }, [scrollRef, isMdx, sourceMode, activePath]);
+
+  // 右栏滚轮拦截：悬停在输入框上时也滚动右栏而非页面，到边界后放行
+  useEffect(() => {
+    const el = metaPanelRef.current;
+    if (!el) return undefined;
+    const onWheel = (e) => {
+      if (!e.deltaY || el.scrollHeight <= el.clientHeight) return;
+      const atTop = el.scrollTop <= 0 && e.deltaY < 0;
+      const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1 && e.deltaY > 0;
+      if (atTop || atBottom) return;
+      e.preventDefault();
+      el.scrollTop += e.deltaY;
+    };
+    el.addEventListener('wheel', onWheel, {passive: false});
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
 
   // 源码模式：textarea 随内容自动撑高，避免内部滚动条
   useEffect(() => {
@@ -893,7 +910,7 @@ function ArticleEditor({
           </div>
         </div>
 
-        <aside className={styles.metaPanel}>
+        <aside className={styles.metaPanel} ref={metaPanelRef}>
           {toc.length > 0 && (
             <section className={styles.metaSection}>
               <h3>锚点</h3>

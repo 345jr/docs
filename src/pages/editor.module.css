@@ -625,6 +625,11 @@ button.pipeDotWrap {
   gap: 0.7rem;
 }
 
+.metaGrid textarea,
+.form textarea {
+  resize: vertical;
+}
+
 .msgField {
   margin-top: 0.7rem;
 }
