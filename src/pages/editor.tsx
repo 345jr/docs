@@ -746,6 +746,14 @@ function ArticleEditor({
     return () => el.removeEventListener('scroll', measure);
   }, [scrollRef, isMdx, sourceMode, activePath]);
 
+  // 源码模式：textarea 随内容自动撑高，避免内部滚动条
+  useEffect(() => {
+    const ta = sourceRef.current;
+    if (!ta || !(isMdx || sourceMode)) return;
+    ta.style.height = 'auto';
+    ta.style.height = `${ta.scrollHeight + 2}px`;
+  }, [body, sourceMode, isMdx, loading]);
+
   const editFm = (updater) => {
     setDirty(true);
     setFm(updater);

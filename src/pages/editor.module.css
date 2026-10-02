@@ -546,8 +546,15 @@ button.pipeDotWrap {
   display: flex;
   flex-direction: column;
   gap: 1.2rem;
+  max-height: calc(100vh - var(--ifm-navbar-height) - var(--editor-subbar-height) - 1.5rem);
+  overflow-y: auto;
+  scrollbar-width: none;
   padding-left: 1.25rem;
   border-left: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.metaPanel::-webkit-scrollbar {
+  display: none;
 }
 
 .metaSection h3 {
@@ -677,7 +684,8 @@ button.pipeDotWrap {
   padding: 1rem 0.25rem;
   border: none;
   outline: none;
-  resize: vertical;
+  resize: none;
+  overflow: hidden;
   background: transparent;
   color: inherit;
   font-family: var(--ifm-font-family-monospace);
@@ -781,6 +789,8 @@ button.pipeDotWrap {
   .metaPanel {
     width: 100%;
     position: static;
+    max-height: none;
+    overflow-y: visible;
     padding-left: 0;
     border-left: none;
     border-top: 1px solid var(--ifm-color-emphasis-200);
