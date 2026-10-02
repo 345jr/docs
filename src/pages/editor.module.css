@@ -5,37 +5,98 @@
   min-height: calc(100vh - var(--ifm-navbar-height));
 }
 
-/* ── 解锁 ─────────────────────────────────────────── */
+/* ── 登录 ─────────────────────────────────────────── */
 
-.unlockWrap {
+.loginWrap {
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 15vh 1rem;
+  min-height: calc(100vh - var(--ifm-navbar-height));
+  padding: 2rem 1rem;
 }
 
-.unlock {
-  width: min(420px, 100%);
+.login {
+  width: min(520px, 100%);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 2rem;
-  border: 1px solid var(--ifm-color-emphasis-300);
-  border-radius: 12px;
-  background: var(--ifm-background-surface-color);
-  box-shadow: var(--ifm-global-shadow-md);
+  gap: 3.5rem;
+  margin-top: -10vh;
+  animation: loginFade 0.5s ease both;
 }
 
-.unlock h2 {
+@keyframes loginFade {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.loginTitle {
   margin: 0;
+  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  font-weight: 600;
+  letter-spacing: 0.14em;
 }
 
-.unlockHint {
-  margin: 0;
-  color: var(--ifm-color-emphasis-700);
-  font-size: 0.9rem;
+.loginForm {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-400);
+  transition: border-color 0.25s;
 }
 
-.unlock input,
+.loginForm:focus-within {
+  border-color: var(--ifm-color-primary);
+}
+
+.loginForm input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1.05rem;
+  padding: 0.85rem 0;
+}
+
+.loginForm input::placeholder {
+  color: var(--ifm-color-emphasis-500);
+}
+
+.loginBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: none;
+  background: transparent;
+  color: var(--ifm-color-primary);
+  font: inherit;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0.6rem 0.2rem;
+  white-space: nowrap;
+}
+
+.loginBtn:disabled {
+  color: var(--ifm-color-emphasis-500);
+  cursor: default;
+}
+
+.loginBtn svg {
+  transition: transform 0.2s ease;
+}
+
+.loginBtn:not(:disabled):hover svg {
+  transform: translateX(3px);
+}
+
 .form input,
 .form select,
 .form textarea,

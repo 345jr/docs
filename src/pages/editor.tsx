@@ -222,9 +222,9 @@ async function commitAndWait(refresh, loadingMsg, fn) {
   }
 }
 
-// ── 解锁 ──────────────────────────────────────────────
+// ── 登录 ──────────────────────────────────────────────
 
-function Unlock({onUnlock}) {
+function Login({onLogin}) {
   const [key, setKey] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -234,8 +234,8 @@ function Unlock({onUnlock}) {
     try {
       const {token} = await api('/unlock', {method: 'POST', body: {key}});
       sessionStorage.setItem('docs-editor-token', token);
-      onUnlock(token);
-      toast.success('已解锁');
+      onLogin(token);
+      toast.success('已进入');
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -245,21 +245,31 @@ function Unlock({onUnlock}) {
   };
 
   return (
-    <div className={styles.unlockWrap}>
-      <form className={styles.unlock} onSubmit={submit}>
-        <h2>解锁在线编辑</h2>
-        <p className={styles.unlockHint}>输入解锁密钥进入编辑专区，密钥只在本次会话生效。</p>
-        <input
-          type="password"
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          placeholder="解锁密钥"
-          autoFocus
-        />
-        <button type="submit" disabled={loading || !key}>
-          {loading ? '解锁中…' : '解锁'}
-        </button>
-      </form>
+    <div className={styles.loginWrap}>
+      <div className={styles.login}>
+        <h1 className={styles.loginTitle}>在线编辑</h1>
+        <form className={styles.loginForm} onSubmit={submit}>
+          <input
+            type="password"
+            value={key}
+            onChange={(e) => setKey(e.target.value)}
+            placeholder="密钥"
+            autoFocus
+          />
+          <button type="submit" className={styles.loginBtn} disabled={loading || !key}>
+            <span>{loading ? '进入中…' : '进入'}</span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path
+                d="M2 8h11M9 3.5 13.5 8 9 12.5"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
@@ -979,14 +989,14 @@ export default function EditorPage() {
     <Layout title="在线编辑">
       <Toaster position="top-center" toastOptions={{duration: 4000}} />
       {!mounted ? null : !token ? (
-        <Unlock onUnlock={setToken} />
+        <Login onLogin={setToken} />
       ) : (
         <div className={styles.layout}>
           <aside className={styles.sidebar}>
             <div className={styles.sidebarHeader}>
               <strong>在线编辑</strong>
               <button type="button" className={styles.btn} onClick={lock}>
-                锁定
+                退出
               </button>
             </div>
             <PipelineBar pipeline={pipeline} />
