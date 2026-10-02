@@ -195,19 +195,15 @@ function Ic({children, size = 16}) {
   );
 }
 
-const IconPanelClose = () => (
+const IconChevronLeft = () => (
   <Ic>
-    <rect x="3" y="4" width="18" height="16" rx="2" />
-    <path d="M9 4v16" />
-    <path d="m13 10 3 3-3 3" />
+    <path d="m15 6-6 6 6 6" />
   </Ic>
 );
 
-const IconPanelOpen = () => (
+const IconChevronRight = () => (
   <Ic>
-    <rect x="3" y="4" width="18" height="16" rx="2" />
-    <path d="M9 4v16" />
-    <path d="m11 10-3 3 3 3" />
+    <path d="m9 6 6 6-6 6" />
   </Ic>
 );
 
@@ -1202,15 +1198,40 @@ export default function EditorPage() {
         <Login onLogin={setToken} />
       ) : (
         <div className={styles.shell}>
-          <header className={styles.subbar}>
-            <button
-              type="button"
-              className={styles.iconBtn}
-              onClick={() => setCollapsed((v) => !v)}
-              title={collapsed ? '展开侧栏' : '收起侧栏'}>
-              {collapsed ? <IconPanelOpen /> : <IconPanelClose />}
-            </button>
-            <span className={styles.brand}>在线编辑</span>
+          <div className={styles.body}>
+            <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
+              <div className={styles.sidebarScroll}>
+                {pending.length > 0 && (
+                  <div className={styles.pendingBox}>
+                    <div className={styles.pendingTitle}>待创建分类</div>
+                    {pending.map((p) => (
+                      <div key={p.path} className={styles.pendingItem}>
+                        <span>{p.label}</span>
+                        <button
+                          type="button"
+                          className={styles.linkBtn}
+                          onClick={() => createCategoryNow(p)}>
+                          立即创建
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <FileTree tree={tree} active={draft ? null : selected} onSelect={selectFile} />
+              </div>
+              <button
+                type="button"
+                className={styles.collapseBtn}
+                onClick={() => setCollapsed(true)}
+                title="收起侧边栏">
+                <IconChevronLeft />
+                收起侧边栏
+              </button>
+            </aside>
+
+            <div className={styles.contentCol}>
+              <header className={styles.subbar}>
+                <span className={styles.brand}>在线编辑</span>
             <span id="editor-meta-slot" className={styles.metaSlot} />
             <div className={styles.spacer} />
             <div id="editor-actions-slot" className={styles.actionsSlot} />
@@ -1228,30 +1249,9 @@ export default function EditorPage() {
               <IconLogout />
               退出
             </button>
-          </header>
+              </header>
 
-          <div className={styles.body}>
-            <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
-              {pending.length > 0 && (
-                <div className={styles.pendingBox}>
-                  <div className={styles.pendingTitle}>待创建分类</div>
-                  {pending.map((p) => (
-                    <div key={p.path} className={styles.pendingItem}>
-                      <span>{p.label}</span>
-                      <button
-                        type="button"
-                        className={styles.linkBtn}
-                        onClick={() => createCategoryNow(p)}>
-                        立即创建
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <FileTree tree={tree} active={draft ? null : selected} onSelect={selectFile} />
-            </aside>
-
-            <main className={styles.main} ref={mainRef}>
+              <main className={styles.main} ref={mainRef}>
               {mode === 'new-article' ? (
                 <NewArticle
                   categories={categories}
@@ -1293,8 +1293,18 @@ export default function EditorPage() {
               ) : (
                 <p className={styles.placeholder}>从左侧选择一篇文章开始编辑，或点击上方「新建文章」。</p>
               )}
-            </main>
+              </main>
+            </div>
           </div>
+          {collapsed && (
+            <button
+              type="button"
+              className={styles.expandBtn}
+              onClick={() => setCollapsed(false)}
+              title="展开侧边栏">
+              <IconChevronRight />
+            </button>
+          )}
         </div>
       )}
     </Layout>
