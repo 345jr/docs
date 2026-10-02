@@ -1,0 +1,456 @@
+/* 在线编辑页面样式 */
+
+.layout {
+  display: flex;
+  min-height: calc(100vh - var(--ifm-navbar-height));
+}
+
+/* ── 解锁 ─────────────────────────────────────────── */
+
+.unlockWrap {
+  display: flex;
+  justify-content: center;
+  padding: 15vh 1rem;
+}
+
+.unlock {
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 2rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 12px;
+  background: var(--ifm-background-surface-color);
+  box-shadow: var(--ifm-global-shadow-md);
+}
+
+.unlock h2 {
+  margin: 0;
+}
+
+.unlockHint {
+  margin: 0;
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.9rem;
+}
+
+.unlock input,
+.form input,
+.form select,
+.form textarea,
+.metaGrid input,
+.metaGrid textarea,
+.locRow input,
+.locRow select,
+.msgField input {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 6px;
+  background: var(--ifm-background-color);
+  color: inherit;
+  font: inherit;
+}
+
+/* ── 侧边栏 ───────────────────────────────────────── */
+
+.sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--ifm-color-emphasis-300);
+  padding: 1rem;
+  overflow-y: auto;
+  background: var(--ifm-background-surface-color);
+}
+
+.sidebarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.sideActions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.sideActions .btn {
+  flex: 1;
+}
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 0.92rem;
+}
+
+.dir > summary {
+  cursor: pointer;
+  padding: 0.3rem 0.4rem;
+  border-radius: 5px;
+  font-weight: 600;
+}
+
+.dir > summary:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.catTag {
+  margin-left: 0.4rem;
+  padding: 0 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--ifm-color-emphasis-700);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 4px;
+}
+
+.file {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  padding: 0.3rem 0.4rem;
+  border-radius: 5px;
+  font: inherit;
+}
+
+.file:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.file.active {
+  background: var(--ifm-color-primary);
+  color: var(--ifm-color-white);
+}
+
+/* ── 主区域 ───────────────────────────────────────── */
+
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 1rem 1.25rem 3rem;
+  overflow-y: auto;
+}
+
+.placeholder {
+  color: var(--ifm-color-emphasis-600);
+  margin-top: 3rem;
+  text-align: center;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.path {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-700);
+  overflow-wrap: anywhere;
+}
+
+.badge {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.72rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 999px;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* ── 按钮 ─────────────────────────────────────────── */
+
+.btn,
+.btnPrimary,
+.btnDanger {
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-surface-color);
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.btnPrimary {
+  background: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-white);
+}
+
+.btnPrimary:disabled,
+.btnDanger:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btnDanger {
+  color: var(--ifm-color-danger);
+  border-color: var(--ifm-color-danger);
+  background: transparent;
+}
+
+.btnDanger:hover {
+  background: var(--ifm-color-danger);
+  color: var(--ifm-color-white);
+}
+
+/* ── 表单 ─────────────────────────────────────────── */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-width: 620px;
+}
+
+.form h2 {
+  margin: 0 0 0.25rem;
+}
+
+.form label,
+.metaGrid label,
+.locRow label,
+.msgField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.formActions {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+}
+
+/* ── 文章信息面板 ─────────────────────────────────── */
+
+.panel {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 0.9rem;
+}
+
+.panel > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.locRow {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 0.8rem 0;
+}
+
+.locRow label {
+  flex: 1;
+  min-width: 160px;
+}
+
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.7rem;
+}
+
+.metaWide {
+  grid-column: 1 / -1;
+}
+
+.msgField {
+  margin-top: 0.7rem;
+}
+
+/* ── 编辑区 ───────────────────────────────────────── */
+
+.editorArea {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--ifm-background-surface-color);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-color-emphasis-100);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.toolBtn {
+  min-width: 2rem;
+  height: 1.9rem;
+  padding: 0 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.toolBtn:hover {
+  background: var(--ifm-color-emphasis-200);
+}
+
+.toolBtnActive {
+  background: var(--ifm-color-primary);
+  color: var(--ifm-color-white);
+}
+
+.toolSep {
+  width: 1px;
+  height: 1.3rem;
+  margin: 0 0.25rem;
+  background: var(--ifm-color-emphasis-300);
+}
+
+.tiptap {
+  padding: 0.5rem 0;
+}
+
+.source {
+  display: block;
+  width: 100%;
+  min-height: 60vh;
+  padding: 1rem;
+  border: none;
+  outline: none;
+  resize: vertical;
+  background: transparent;
+  color: inherit;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+/* ProseMirror 内容区（全局类名） */
+:global(.tiptap-content) {
+  padding: 0.5rem 1rem 2rem;
+  outline: none;
+  min-height: 50vh;
+}
+
+:global(.tiptap-content:focus) {
+  outline: none;
+}
+
+:global(.tiptap-content table) {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8rem 0;
+}
+
+:global(.tiptap-content th),
+:global(.tiptap-content td) {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  padding: 0.4rem 0.6rem;
+}
+
+:global(.tiptap-content th) {
+  background: var(--ifm-color-emphasis-100);
+}
+
+:global(.tiptap-content img) {
+  max-width: 100%;
+  height: auto;
+}
+
+:global(.tiptap-content pre) {
+  background: var(--ifm-code-background);
+  border-radius: 6px;
+  padding: 0.8rem 1rem;
+  overflow-x: auto;
+}
+
+:global(.tiptap-content code) {
+  font-family: var(--ifm-font-family-monospace);
+}
+
+:global(.tiptap-content blockquote) {
+  border-left: 4px solid var(--ifm-color-emphasis-300);
+  padding-left: 0.9rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+:global(.tiptap-content .selectedCell) {
+  background: var(--ifm-color-primary-lightest);
+}
+
+:global(.tiptap-content .column-resize-handle) {
+  background: var(--ifm-color-primary);
+}
+
+/* ── 提示 / 状态 ──────────────────────────────────── */
+
+.error {
+  color: var(--ifm-color-danger);
+  font-size: 0.88rem;
+}
+
+.ok {
+  color: var(--ifm-color-success);
+  font-size: 0.88rem;
+}
+
+.muted {
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.88rem;
+}
+
+.confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0.8rem;
+  border: 1px solid var(--ifm-color-danger);
+  border-radius: 6px;
+  background: var(--ifm-color-danger-contrast-background);
+  font-size: 0.88rem;
+}
+
+@media (max-width: 768px) {
+  .layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--ifm-color-emphasis-300);
+    max-height: 40vh;
+  }
+}

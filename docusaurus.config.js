@@ -87,6 +87,11 @@ const config = {
             label: '文档',
           },
           {
+            to: '/editor',
+            position: 'left',
+            label: '在线编辑',
+          },
+          {
             href: 'https://github.com/345jr/docs',
             label: 'GitHub',
             position: 'right',

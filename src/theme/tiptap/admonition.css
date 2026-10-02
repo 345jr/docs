@@ -1,0 +1,64 @@
+/* Docusaurus admonition 节点（Tiptap NodeView）样式 */
+
+.admonition-node {
+  margin: 1em 0;
+  border-left: 4px solid var(--ifm-color-primary);
+  border-radius: 4px;
+  background: var(--ifm-background-surface-color);
+  padding: 0.6em 0.9em;
+}
+
+.admonition-node__header {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin-bottom: 0.4em;
+}
+
+.admonition-node__type {
+  font-weight: 600;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  padding: 0.1em 0.3em;
+}
+
+.admonition-node__title {
+  flex: 1;
+  font-weight: 600;
+  border: none;
+  border-bottom: 1px dashed var(--ifm-color-emphasis-300);
+  background: transparent;
+  color: inherit;
+  padding: 0.1em 0.2em;
+}
+
+.admonition-node__title:focus {
+  outline: none;
+  border-bottom-color: var(--ifm-color-primary);
+}
+
+.admonition-node__content > :first-child {
+  margin-top: 0;
+}
+
+.admonition-node__content > :last-child {
+  margin-bottom: 0;
+}
+
+.admonition-node--note {
+  border-left-color: var(--ifm-color-info);
+}
+.admonition-node--tip {
+  border-left-color: var(--ifm-color-success);
+}
+.admonition-node--info {
+  border-left-color: var(--ifm-color-info);
+}
+.admonition-node--warning {
+  border-left-color: var(--ifm-color-warning);
+}
+.admonition-node--danger {
+  border-left-color: var(--ifm-color-danger);
+}
