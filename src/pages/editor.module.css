@@ -109,6 +109,103 @@
   border-radius: 4px;
 }
 
+/* ── 流水线状态条 ─────────────────────────────────── */
+
+.pipe {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  margin-bottom: 0.75rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-color-emphasis-100);
+  flex-wrap: wrap;
+}
+
+.pipe a {
+  margin-left: auto;
+}
+
+.pipeDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ifm-color-emphasis-500);
+  flex-shrink: 0;
+}
+
+.pipeBusy {
+  border-color: var(--ifm-color-warning);
+  background: var(--ifm-color-warning-contrast-background);
+}
+.pipeBusy .pipeDot {
+  background: var(--ifm-color-warning);
+  animation: pipePulse 1.2s infinite;
+}
+.pipeOk .pipeDot {
+  background: var(--ifm-color-success);
+}
+.pipeFail {
+  border-color: var(--ifm-color-danger);
+  background: var(--ifm-color-danger-contrast-background);
+}
+.pipeFail .pipeDot {
+  background: var(--ifm-color-danger);
+}
+
+@keyframes pipePulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.linkBtn {
+  border: none;
+  background: transparent;
+  color: var(--ifm-color-primary);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.dirtyBadge {
+  padding: 0.1rem 0.4rem;
+  font-size: 0.72rem;
+  border-radius: 999px;
+  background: var(--ifm-color-warning);
+  color: var(--ifm-color-black);
+}
+
+/* ── 待创建分类 ───────────────────────────────────── */
+
+.pendingBox {
+  border: 1px dashed var(--ifm-color-emphasis-400);
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.pendingTitle {
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.pendingItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+}
+
 .file {
   display: block;
   width: 100%;
