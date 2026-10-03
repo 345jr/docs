@@ -1,10 +1,10 @@
 ---
 sidebar_position: 40
-description: 完整记录在 Pi 中接入 OpenCode Zen 免费模型的过程——从 403 FreeTierError 的排查、TLS 中间人抓包、两个社区扩展的对比，到定位“User-Agent + 非空 tools”这一真实门槛并最终跑通。
-tags: [pi, opencode, 模型接入, 抓包, 排障]
+description: 完整记录在 Pi 中接入 OpenCode 免费模型的过程——从 403 FreeTierError 的排查、TLS 中间人抓包、两个社区扩展的对比，到定位“User-Agent + 非空 tools”这一真实门槛，并让 CLI 与 pi-web 都成功加载 provider。
+tags: [pi, opencode, pi-web, 模型接入, 抓包, 排障]
 ---
 
-# 在 Pi 中接入 OpenCode Zen 免费模型
+# 在 Pi 中接入 OpenCode 免费模型
 
 > 一次完整的接入与排障记录：把 OpenCode 的免费模型接进 Pi，经历 403 `FreeTierError`、TLS 中间人抓包、社区扩展对比，最终定位到服务端的真实门槛并跑通。涉及命令、抓包方法和结论，可作为同类“把第三方模型接进 Pi”问题的参考。
 
@@ -43,7 +43,7 @@ tags: [pi, opencode, 模型接入, 抓包, 排障]
 ```
 
 :::tip[一句话结论]
-Pi 自带 `opencode` / `opencode-go` 两个原生 provider，但抓不到免费额度；真正能跑通的是第三方扩展 **`pi-opencode-direct`**。服务端判定“必须来自 OpenCode”的条件是 **`User-Agent` 为 opencode 的 UA + 请求体里带非空 `tools` 列表**（再配合 `Authorization: Bearer public` 与合法 `ses_` 格式会话 id）。**用 `--no-tools` 测试一定 403。**
+Pi 自带 `opencode` / `opencode-go` 两个原生 provider，但抓不到免费额度；真正能跑通的是第三方扩展 **`pi-opencode-direct`**。服务端判定“必须来自 OpenCode”的条件是 **`User-Agent` 为 opencode 的 UA + 请求体里带非空 `tools` 列表**（再配合 `Authorization: Bearer public` 与合法 `ses_` 格式会话 id）。**用 `--no-tools` 测试一定 403。** 另外 CLI 能加载的扩展 **pi-web 不一定能加载**，最终以“本地扩展 + 改两行 import”收尾。
 :::
 
 ## 二、第一轮：直接用 Pi 原生 provider
@@ -224,6 +224,8 @@ pi --print --no-session --provider opencode-zen-free \
 # MUSE_OK
 ```
 
+> 以上是 **CLI 的中间方案**。pi-web 里一开始看不到这个 provider，原因和最终处理见**第十节《让 pi-web 也能用》**。
+
 ## 九、可用模型矩阵
 
 实测结果（`opencode-zen-free` provider）：
@@ -239,7 +241,87 @@ pi --print --no-session --provider opencode-zen-free \
 | `muse-spark-1.3-contributor-free` | ✅（Responses API） |
 | `ling-3.0-flash-fin-free` | ❌ 上游 `Endpoint is unavailable`（模型下线，非鉴权问题） |
 
-## 十、最终配置
+## 十、让 pi-web 也能用
+
+CLI 跑通后，pi-web 的模型选择器里仍然看不到这个 provider。定位过程：
+
+1. pi-web 用的是**自带的 SDK**（这台机器上是 **0.87.1**），扩展加载器与 CLI 宿主不是同一套版本；
+2. 用 pi-web 的 SDK 离线跑一遍 `createAgentSessionServices`，拿到扩展加载报错：
+
+```text
+Failed to load extension: Cannot find module
+'.../pi-ai/dist/compat.js/api/openai-completions.lazy'
+```
+
+原因：pi-web 的加载器把 `@earendil-works/pi-ai` 别名到兼容入口 `/compat`，但**白名单里没有 `/api/*` 子路径**，而扩展 import 了：
+
+```ts
+import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
+import { openAIResponsesApi } from "@earendil-works/pi-ai/api/openai-responses.lazy";
+```
+
+于是被拼成了不存在的 `dist/compat.js/api/...`。**CLI 宿主能加载、pi-web 不能**，差异就在这里。
+
+### 处理办法：本地扩展 + 只改两行 import
+
+`/compat` 本身就导出了这两个 API 工厂，所以从 `/compat` 导入即可。为避免 `pi update` 覆盖、也为了摆脱 npm 包带来的混版本依赖，直接把扩展放进 Pi 的用户扩展目录：
+
+```text
+~/.pi/agent/extensions/opencode-zen-free/
+├── index.ts
+└── provider.ts   # 仅把 /api/*.lazy 两行改为从 @earendil-works/pi-ai/compat 导入
+```
+
+补丁内容：
+
+```diff
+- import { getApiProvider, registerApiProvider } from "@earendil-works/pi-ai/compat";
+- import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
+- import { openAIResponsesApi } from "@earendil-works/pi-ai/api/openai-responses.lazy";
++ import {
++   getApiProvider,
++   registerApiProvider,
++   openAICompletionsApi,
++   openAIResponsesApi,
++ } from "@earendil-works/pi-ai/compat";
+```
+
+然后移除 npm 包（避免重复注册同名 provider）：
+
+```bash
+pi remove npm:pi-opencode-direct
+```
+
+### 验证
+
+用 pi-web 自带的 SDK 离线校验：
+
+```text
+loaded extensions: [ '/root/.pi/agent/extensions/opencode-zen-free/index.ts' ]
+extension errors: []
+has opencode-zen-free: true
+opencode-zen-free models: 7
+```
+
+再查询**正在运行**的 pi-web（无需重启）：
+
+```bash
+curl -sS -u "pi:<PI_WEB_PASSWORD>" -H "Host: 127.0.0.1:30141" \
+  "http://127.0.0.1:30141/api/models?cwd=/root"
+# opencode-zen-free:big-pickle / mimo-v2.6-flash-free / muse-spark-1.3-contributor-free ...
+```
+
+:::tip[pi-web 的模型缓存]
+pi-web 的模型列表有 **60 秒**内存缓存（`__piModelsCacheState`，按 cwd 分键）。改完扩展后刷新浏览器即可，**不要贸然 `systemctl restart pi-web`**——重启会中断当前正在进行的会话。
+:::
+
+## 十一、最终配置
+
+扩展为**本地扩展**（非 npm）：
+
+```text
+~/.pi/agent/extensions/opencode-zen-free/{index.ts,provider.ts}
+```
 
 `/root/.pi/agent/settings.json`：
 
@@ -247,7 +329,7 @@ pi --print --no-session --provider opencode-zen-free \
 {
   "defaultModel": "deepseek-v4.1-flash",
   "defaultProvider": "volcengine-coding-plan",
-  "packages": ["npm:pi-opencode-direct"]
+  "packages": []
 }
 ```
 
@@ -258,18 +340,21 @@ pi --print --no-session --provider opencode-zen-free \
 - 排障日志：`PI_OPENCODE_DIRECT_DEBUG=1`；
 - 自定义 key（可选）：`/login opencode-zen-free` 或设置 `OPENCODE_API_KEY`；不设置则走匿名免费层。
 
-## 十一、经验与注意事项
+## 十二、经验与注意事项
 
 - **不要用 `--no-tools` 测 OpenCode 免费层**，这是本次排查耗时最久的坑。
 - `User-Agent` 是硬门槛，Pi 原生 `opencode` provider 用的是 `pi (...)`，因此即便配上 key 也过不了免费层。
+- **CLI 能加载的扩展，pi-web 不一定能加载**：两边 SDK 版本与别名白名单不同，遇到 `@earendil-works/pi-ai/api/*` 这类深层子路径要改成 `/compat`。
+- pi-web 模型列表有 60 秒缓存，改完扩展刷新页面即可，避免贸然重启。
 - 免费额度按出口 IP 共享，大量请求可能触发 `429` 或 `FreeTierError`；轻量使用。
 - Go 系列需要有效订阅，普通 key 不行。
 - 抓包用完要**还原 `/etc/hosts`、关闭代理**，并注意文档/日志里不要落明文 key。
-- 启动时 `Warning: ... @earendil-works/pi-ai` 是扩展把宿主包写进了 `dependencies` 而非 `peerDependencies`，属打包瑕疵，不影响功能。
+- 用 npm 包时启动会出现 `Warning: ... @earendil-works/pi-ai`，那是扩展把宿主包写进了 `dependencies` 而非 `peerDependencies`；改成本地扩展后即消失。
 - 未修改 `/root/.pi/agent/models.json`：本方案由扩展直接注册 provider，无需手写 models 配置。
 
 ## 附录：准备环境时用到的信息
 
-- Pi 扩展加载入口：`~/.pi/agent/settings.json` 的 `packages` 数组；
-- Pi 会为扩展做模块别名（把 `@earendil-works/pi-ai` 指到兼容入口），本地包可用 `pi -e ./path` 临时加载；
+- 扩展加载入口：用户扩展目录 `~/.pi/agent/extensions/`，或 `~/.pi/agent/settings.json` 的 `packages` 数组（npm / git / 本地包）；
+- Pi 会为扩展做模块别名：`@earendil-works/pi-ai` 指向 `/compat`，同 `compat` / `oauth` / `providers/all`；**不含 `/api/*`**；
+- 本地扩展可用 `pi -e ./path` 临时加载；
 - 非交互式（`--print` / `--list-models`）下扩展的 `refreshModels` 可能因 `allowNetwork=false` 不联网，模型会回落到内置目录或已持久化的快照。
