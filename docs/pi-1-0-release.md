@@ -1,11 +1,11 @@
 ---
-title: Pi 1.0 发布公告：翻译与总结
+title: "Pi 1.0 翻译&总结"
 sidebar_position: 41
 description: Earendil 官方博文《Pi 1.0》的中文翻译与要点总结——Pi 1.0 的七项新特性，以及实验性新包 Pi Durable 的定位。
 tags: [pi, 翻译, 发布]
 ---
 
-# Pi 1.0 发布公告：翻译与总结
+# Pi 1.0 翻译&amp;总结
 
 > 原文：[Pi 1.0 | Earendil](https://earendil.com/posts/pi-1-0/)（Date: Thu, 01 Oct 2026）
 > 本文第一部分为全文中译，第二部分为要点总结。
@@ -14,12 +14,14 @@ tags: [pi, 翻译, 发布]
 
 原文以信件形式呈现：
 
-| 字段 | 内容 |
-| --- | --- |
-| Date | Thu, 01 Oct 2026 |
-| From | Earendil \<rfc@earendil.com\> |
-| To | You |
-| Subject | Pi 1.0 |
+
+| 字段      | 内容                                                           |
+| ------- | ------------------------------------------------------------ |
+| Date    | Thu, 01 Oct 2026                                             |
+| From    | Earendil &lt;[rfc@earendil.com](mailto:rfc@earendil.com)&gt; |
+| To      | You                                                          |
+| Subject | Pi 1.0                                                       |
+
 
 今天，我们自豪地发布 **Pi 1.0**：一个经过加固、极简、可扩展的智能体框架（agent harness），你可以把它变成你自己的工具。每周有数十万人在世界各地使用 Pi，许多人给我们提交 issue 和 pull request。经过数月时间，我们利用这些反馈，把 Pi 打磨、加固、演进成一款个人与企业都可以依赖的稳定软件。
 
@@ -81,10 +83,12 @@ npm install @earendil-works/pi-durable @earendil-works/pi-ai @earendil-works/cho
 
 ### 1. 发布了什么
 
-| 产品 | 定位 | 状态 | 许可证 |
-| --- | --- | --- | --- |
-| **Pi 1.0** | 加固、极简、可扩展的智能体框架 | 正式稳定版 | MIT |
-| **Pi Durable** | 构建长时运行智能体应用的新基座 | 实验性包 | MIT |
+
+| 产品             | 定位              | 状态    | 许可证 |
+| -------------- | --------------- | ----- | --- |
+| **Pi 1.0**     | 加固、极简、可扩展的智能体框架 | 正式稳定版 | MIT |
+| **Pi Durable** | 构建长时运行智能体应用的新基座 | 实验性包  | MIT |
+
 
 ### 2. Pi 1.0 的七项新特性
 
