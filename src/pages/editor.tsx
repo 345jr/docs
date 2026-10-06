@@ -16,6 +16,8 @@ import '../theme/tiptap/admonition.css';
 // ── API ──────────────────────────────────────────────
 
 const API = '/editor/api';
+// session 失效时广播，EditorPage 监听后清 token、回到登录页。
+const UNAUTHORIZED_EVENT = 'docs-editor:unauthorized';
 
 async function api(path, options = {}) {
   const headers = {...(options.headers || {})};
@@ -27,7 +29,17 @@ async function api(path, options = {}) {
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  if (!res.ok) {
+    // 401 表示 session 失效（如 Steward 重启后内存 session 清空）；
+    // unlock 本身返回 401 是密码错误，不触发登出。
+    if (res.status === 401 && path !== '/unlock' && typeof window !== 'undefined') {
+      if (sessionStorage.getItem('docs-editor-token')) {
+        sessionStorage.removeItem('docs-editor-token');
+        window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+      }
+    }
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
   return data;
 }
 
@@ -1743,6 +1755,19 @@ export default function EditorPage() {
   useEffect(() => {
     setMounted(true);
     setToken(sessionStorage.getItem('docs-editor-token'));
+  }, []);
+
+  // session 失效时自动退出登录，无需手动点退出。
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setToken(null);
+      setSelected(null);
+      setDraft(null);
+      setMode('idle');
+      toast.error('登录已失效，请重新登录');
+    };
+    window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, []);
 
   useEffect(() => {
