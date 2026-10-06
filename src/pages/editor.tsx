@@ -6,6 +6,9 @@ import {StarterKit} from '@tiptap/starter-kit';
 import {Markdown} from '@tiptap/markdown';
 import {TableKit} from '@tiptap/extension-table';
 import {Image} from '@tiptap/extension-image';
+import {Dialog} from '@base-ui/react/dialog';
+import {Select} from '@base-ui/react/select';
+import {Combobox} from '@base-ui/react/combobox';
 import toast, {Toaster} from 'react-hot-toast';
 import {Admonition} from '../theme/tiptap/admonition';
 import styles from './editor.module.css';
@@ -236,6 +239,24 @@ const IconSliders = () => (
     <path d="M12 21v-9M12 8V3" />
     <path d="M20 21v-5M20 12V3" />
     <path d="M2 14h4M10 8h4M18 16h4" />
+  </Ic>
+);
+
+const IconChevronDown = () => (
+  <Ic>
+    <path d="m6 9 6 6 6-6" />
+  </Ic>
+);
+
+const IconCheck = () => (
+  <Ic>
+    <path d="m20 6-11 11-5-5" />
+  </Ic>
+);
+
+const IconX = () => (
+  <Ic size={12}>
+    <path d="M18 6 6 18M6 6l12 12" />
   </Ic>
 );
 
@@ -577,6 +598,99 @@ function Toolbar({editor}) {
 
 // ── 元信息表单 ────────────────────────────────────────
 
+function TagsField({value, onChange}) {
+  const tags = useMemo(
+    () => (Array.isArray(value) ? value : value ? [value] : []),
+    [value],
+  );
+  const [items, setItems] = useState(() => tags.map((t) => ({value: t})));
+  const [query, setQuery] = useState('');
+  const tagKey = tags.join('\u0000');
+
+  // 外部值变化时补齐候选项
+  useEffect(() => {
+    setItems((prev) => {
+      const seen = new Set(prev.map((i) => i.value));
+      const extra = tags.filter((t) => !seen.has(t)).map((t) => ({value: t}));
+      return extra.length ? [...prev, ...extra] : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tagKey]);
+
+  const selected = useMemo(
+    () => tags.map((t) => items.find((i) => i.value === t)).filter(Boolean),
+    [tags, items],
+  );
+
+  const trimmed = query.trim();
+  const lowered = trimmed.toLowerCase();
+  const exact = items.some((i) => i.value.toLowerCase() === lowered);
+  const view = trimmed && !exact ? [...items, {value: trimmed, creatable: true}] : items;
+
+  const handleValueChange = (next) => {
+    const created = next.find((i) => i.creatable);
+    if (created) {
+      const tag = created.value;
+      setItems((prev) => (prev.some((i) => i.value === tag) ? prev : [...prev, {value: tag}]));
+      setQuery('');
+      onChange([...tags, tag]);
+      return;
+    }
+    onChange(next.map((i) => i.value));
+  };
+
+  return (
+    <Combobox.Root
+      items={view}
+      multiple
+      value={selected}
+      onValueChange={handleValueChange}
+      onInputValueChange={setQuery}
+      itemToStringLabel={(item) => item.value}
+      isItemEqualToValue={(a, b) => a.value === b.value}>
+      <Combobox.InputGroup className={styles.comboGroup}>
+        <Combobox.Value>
+          {(sel) => (
+            <Combobox.Chips className={styles.comboChips}>
+              {sel.map((item) => (
+                <Combobox.Chip key={item.value} className={styles.comboChip}>
+                  {item.value}
+                  <Combobox.ChipRemove
+                    className={styles.comboChipRemove}
+                    aria-label={`移除 ${item.value}`}>
+                    <IconX />
+                  </Combobox.ChipRemove>
+                </Combobox.Chip>
+              ))}
+              <Combobox.Input
+                className={styles.comboInput}
+                placeholder={sel.length ? '' : '例如：docusaurus'}
+              />
+            </Combobox.Chips>
+          )}
+        </Combobox.Value>
+      </Combobox.InputGroup>
+      <Combobox.Portal>
+        <Combobox.Positioner className={styles.comboPositioner} sideOffset={4}>
+          <Combobox.Popup className={styles.comboPopup}>
+            <Combobox.Empty className={styles.comboEmpty}>输入后回车创建新标签</Combobox.Empty>
+            <Combobox.List>
+              {(item) => (
+                <Combobox.Item
+                  key={item.creatable ? `create:${item.value}` : item.value}
+                  value={item}
+                  className={styles.comboItem}>
+                  {item.creatable ? `创建标签「${item.value}」` : item.value}
+                </Combobox.Item>
+              )}
+            </Combobox.List>
+          </Combobox.Popup>
+        </Combobox.Positioner>
+      </Combobox.Portal>
+    </Combobox.Root>
+  );
+}
+
 function MetaForm({fm, setFm}) {
   const setField = (key, value) => {
     setFm((prev) => {
@@ -586,7 +700,6 @@ function MetaForm({fm, setFm}) {
       return next;
     });
   };
-  const tags = fm.tags;
   return (
     <div className={styles.metaGrid}>
       <label>
@@ -612,18 +725,10 @@ function MetaForm({fm, setFm}) {
         />
       </label>
       <label>
-        <span>标签 tags（逗号分隔）</span>
-        <input
-          value={Array.isArray(tags) ? tags.join(', ') : tags ?? ''}
-          onChange={(e) =>
-            setField(
-              'tags',
-              e.target.value
-                .split(',')
-                .map((s) => s.trim())
-                .filter(Boolean),
-            )
-          }
+        <span>标签 tags（输入后回车创建）</span>
+        <TagsField
+          value={fm.tags}
+          onChange={(next) => setField('tags', next.length ? next : undefined)}
         />
       </label>
     </div>
@@ -764,15 +869,7 @@ function ArticleEditor({
     ta.style.height = `${ta.scrollHeight + 2}px`;
   }, [body, sourceMode, isMdx, loading]);
 
-  // 元信息模态框：Esc 关闭
-  useEffect(() => {
-    if (!showMeta) return undefined;
-    const onKey = (e) => {
-      if (e.key === 'Escape') setShowMeta(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showMeta]);
+  // 元信息模态框的 Esc 关闭由 Base UI Dialog 处理
 
   const editFm = (updater) => {
     setDirty(true);
@@ -937,82 +1034,130 @@ function ArticleEditor({
         )}
       </div>
 
-      {showMeta &&
-        createPortal(
-          <div className={styles.modalBackdrop} onClick={() => setShowMeta(false)}>
-            <div
-              className={styles.modal}
-              role="dialog"
-              aria-label="文章信息"
-              onClick={(e) => e.stopPropagation()}>
-              <div className={styles.modalHeader}>
-                <h3>文章信息</h3>
-                <button
-                  type="button"
-                  className={styles.modalClose}
-                  onClick={() => setShowMeta(false)}
-                  title="关闭（Esc）">
-                  ×
-                </button>
-              </div>
-              <div className={styles.modalBody}>
-                <div className={styles.locRow}>
-                  <label>
-                    <span>所属分类</span>
-                    <select
-                      value={category}
-                      onChange={(e) => {
-                        setDirty(true);
-                        setCategory(e.target.value);
-                      }}>
-                      <option value="">（根目录）</option>
-                      {categories.map((c) => (
-                        <option key={c.path} value={c.path}>
-                          {'\u00A0'.repeat(c.depth * 2)}
-                          {c.label}
-                          {c.pending ? '（待创建）' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>文件名</span>
-                    <input
-                      value={fileName}
-                      onChange={(e) => {
-                        setDirty(true);
-                        setFileName(e.target.value.trim());
-                      }}
-                      placeholder="english-lowercase-hyphen"
-                    />
-                  </label>
-                  <label>
-                    <span>格式</span>
-                    <select
-                      value={ext}
-                      onChange={(e) => {
-                        setDirty(true);
-                        setExt(e.target.value);
-                      }}>
-                      <option value=".md">.md</option>
-                      <option value=".mdx">.mdx</option>
-                    </select>
-                  </label>
-                </div>
-                <MetaForm fm={fm} setFm={editFm} />
-                <label className={styles.msgField}>
-                  <span>提交信息（可选）</span>
+      <Dialog.Root open={showMeta} onOpenChange={setShowMeta}>
+        <Dialog.Portal>
+          <Dialog.Backdrop className={styles.modalBackdrop} />
+          <Dialog.Popup className={styles.modal} aria-label="文章信息">
+            <div className={styles.modalHeader}>
+              <Dialog.Title className={styles.modalTitle} render={<h3 />}>
+                文章信息
+              </Dialog.Title>
+              <Dialog.Close className={styles.modalClose} title="关闭（Esc）">
+                ×
+              </Dialog.Close>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.locRow}>
+                <label>
+                  <span>所属分类</span>
+                  <Select.Root
+                    value={category || '__root__'}
+                    onValueChange={(v) => {
+                      setDirty(true);
+                      setCategory(v === '__root__' ? '' : v);
+                    }}>
+                    <Select.Trigger className={styles.selectTrigger}>
+                      <Select.Value>
+                        {(v) =>
+                          v === '__root__'
+                            ? '（根目录）'
+                            : categories.find((c) => c.path === v)?.label ?? v
+                        }
+                      </Select.Value>
+                      <Select.Icon className={styles.selectIcon}>
+                        <IconChevronDown />
+                      </Select.Icon>
+                    </Select.Trigger>
+                    <Select.Portal>
+                      <Select.Positioner
+                        className={styles.selectPositioner}
+                        sideOffset={4}
+                        alignItemWithTrigger={false}>
+                        <Select.Popup className={styles.selectPopup}>
+                          <Select.Item value="__root__" className={styles.selectItem}>
+                            <Select.ItemIndicator className={styles.selectItemIndicator}>
+                              <IconCheck />
+                            </Select.ItemIndicator>
+                            <Select.ItemText className={styles.selectItemText}>
+                              （根目录）
+                            </Select.ItemText>
+                          </Select.Item>
+                          {categories.map((c) => (
+                            <Select.Item key={c.path} value={c.path} className={styles.selectItem}>
+                              <Select.ItemIndicator className={styles.selectItemIndicator}>
+                                <IconCheck />
+                              </Select.ItemIndicator>
+                              <Select.ItemText className={styles.selectItemText}>
+                                <span style={{paddingLeft: c.depth * 12}}>
+                                  {c.label}
+                                  {c.pending ? '（待创建）' : ''}
+                                </span>
+                              </Select.ItemText>
+                            </Select.Item>
+                          ))}
+                        </Select.Popup>
+                      </Select.Positioner>
+                    </Select.Portal>
+                  </Select.Root>
+                </label>
+                <label>
+                  <span>文件名</span>
                   <input
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="默认：docs: 在线编辑更新 <路径>"
+                    value={fileName}
+                    onChange={(e) => {
+                      setDirty(true);
+                      setFileName(e.target.value.trim());
+                    }}
+                    placeholder="english-lowercase-hyphen"
                   />
                 </label>
+                <label>
+                  <span>格式</span>
+                  <Select.Root
+                    value={ext}
+                    onValueChange={(v) => {
+                      setDirty(true);
+                      setExt(v);
+                    }}>
+                    <Select.Trigger className={styles.selectTrigger}>
+                      <Select.Value />
+                      <Select.Icon className={styles.selectIcon}>
+                        <IconChevronDown />
+                      </Select.Icon>
+                    </Select.Trigger>
+                    <Select.Portal>
+                      <Select.Positioner
+                        className={styles.selectPositioner}
+                        sideOffset={4}
+                        alignItemWithTrigger={false}>
+                        <Select.Popup className={styles.selectPopup}>
+                          {['.md', '.mdx'].map((v) => (
+                            <Select.Item key={v} value={v} className={styles.selectItem}>
+                              <Select.ItemIndicator className={styles.selectItemIndicator}>
+                                <IconCheck />
+                              </Select.ItemIndicator>
+                              <Select.ItemText className={styles.selectItemText}>{v}</Select.ItemText>
+                            </Select.Item>
+                          ))}
+                        </Select.Popup>
+                      </Select.Positioner>
+                    </Select.Portal>
+                  </Select.Root>
+                </label>
               </div>
+              <MetaForm fm={fm} setFm={editFm} />
+              <label className={styles.msgField}>
+                <span>提交信息（可选）</span>
+                <input
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="默认：docs: 在线编辑更新 <路径>"
+                />
+              </label>
             </div>
-          </div>,
-          document.body,
-        )}
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
     </>
   );
 }

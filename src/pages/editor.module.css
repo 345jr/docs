@@ -592,25 +592,22 @@ button.pipeDotWrap {
   position: fixed;
   inset: 0;
   z-index: 1000;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 10vh 1rem 2rem;
   background: rgba(0, 0, 0, 0.45);
-  animation: modalFade 0.15s ease;
+  transition: opacity 0.15s ease;
 }
 
-@keyframes modalFade {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.modalBackdrop[data-starting-style],
+.modalBackdrop[data-ending-style] {
+  opacity: 0;
 }
 
 .modal {
-  width: min(560px, 100%);
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1001;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 2rem));
   max-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -618,18 +615,13 @@ button.pipeDotWrap {
   border: 1px solid var(--ifm-color-emphasis-200);
   border-radius: 12px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
-  animation: modalPop 0.18s ease;
+  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-@keyframes modalPop {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.98);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
+.modal[data-starting-style],
+.modal[data-ending-style] {
+  opacity: 0;
+  transform: translate(-50%, calc(-50% + 10px)) scale(0.98);
 }
 
 .modalHeader {
@@ -639,7 +631,7 @@ button.pipeDotWrap {
   padding: 0.9rem 1.25rem 0.5rem;
 }
 
-.modalHeader h3 {
+.modalTitle {
   margin: 0;
   font-size: 1rem;
 }
@@ -736,6 +728,198 @@ button.pipeDotWrap {
 
 .msgField {
   margin-top: 0.7rem;
+}
+
+/* ── Base UI Select ───────────────────────────────── */
+
+.selectTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 6px;
+  background: var(--ifm-background-color);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.selectTrigger:hover {
+  border-color: var(--ifm-color-emphasis-500);
+}
+
+.selectTrigger:focus-visible {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: 1px;
+}
+
+.selectIcon {
+  display: inline-flex;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.selectPositioner {
+  z-index: 1100;
+}
+
+.selectPopup {
+  min-width: var(--anchor-width);
+  max-height: var(--available-height);
+  overflow-y: auto;
+  padding: 0.25rem;
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.selectPopup[data-starting-style],
+.selectPopup[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.98);
+}
+
+.selectItem {
+  display: grid;
+  grid-template-columns: 1.1rem 1fr;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+
+.selectItem[data-highlighted] {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.selectItemIndicator {
+  display: inline-flex;
+  grid-column: 1;
+  color: var(--ifm-color-primary);
+}
+
+.selectItemText {
+  grid-column: 2;
+}
+
+/* ── Base UI Combobox（标签）──────────────────────── */
+
+.comboGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+  min-height: 2.4rem;
+  padding: 0.35rem 0.45rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 6px;
+  background: var(--ifm-background-color);
+  cursor: text;
+}
+
+.comboGroup:focus-within {
+  border-color: var(--ifm-color-primary);
+}
+
+.comboChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  width: 100%;
+}
+
+.comboChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.12rem 0.25rem 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: var(--ifm-color-emphasis-200);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.comboChipRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.comboChipRemove:hover {
+  background: var(--ifm-color-emphasis-300);
+}
+
+/* 提高优先级，覆盖 .metaGrid input 的基础样式 */
+.metaGrid .comboInput {
+  flex: 1;
+  min-width: 6rem;
+  padding: 0.15rem 0;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.comboPositioner {
+  z-index: 1100;
+}
+
+.comboPopup {
+  min-width: var(--anchor-width);
+  max-height: var(--available-height);
+  overflow-y: auto;
+  padding: 0.25rem;
+  background: var(--ifm-background-surface-color);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.comboPopup[data-starting-style],
+.comboPopup[data-ending-style] {
+  opacity: 0;
+  transform: scale(0.98);
+}
+
+.comboItem {
+  padding: 0.4rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.88rem;
+  cursor: pointer;
+  user-select: none;
+  outline: none;
+}
+
+.comboItem[data-highlighted] {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.comboEmpty {
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  color: var(--ifm-color-emphasis-600);
 }
 
 /* ── 编辑区 ───────────────────────────────────────── */
