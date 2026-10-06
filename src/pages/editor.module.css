@@ -1032,8 +1032,9 @@
 /* ── 排序管理模态框 ────────────────────────────────── */
 
 .sortModal {
-  width: min(640px, calc(100vw - 2rem));
-  max-height: 82vh;
+  width: min(1180px, 94vw);
+  height: min(840px, 88vh);
+  max-height: 88vh;
 }
 
 .steps {
@@ -1132,124 +1133,68 @@
   white-space: nowrap;
 }
 
-.sortBody {
+.flowWrap {
+  position: relative;
   flex: 1;
-  min-height: 220px;
-  max-height: 52vh;
-  overflow-y: auto;
-  padding: 0.6rem 0.75rem;
-  overscroll-behavior: contain;
+  min-height: 0;
+  background: var(--ifm-background-color);
 }
 
-.sortRow {
-  position: relative;
+.flowNode {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.32rem 0.5rem;
-  border-radius: 6px;
-  border: 1px solid transparent;
+  gap: 0.4rem;
+  min-width: 150px;
+  max-width: 240px;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-color-emphasis-800);
+  font-size: 0.82rem;
+  line-height: 1.2;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   cursor: grab;
-  user-select: none;
 }
 
-.sortRow:hover {
+.flowNode:active {
+  cursor: grabbing;
+}
+
+.flowNodeRoot {
+  border: 1.5px dashed var(--ifm-color-primary);
   background: var(--ifm-color-emphasis-100);
+  font-weight: 700;
 }
 
-.sortRowDragging {
-  opacity: 0.4;
+.flowNodeCat {
+  border-left: 3px solid var(--ifm-color-primary);
+  font-weight: 600;
 }
 
-.dropInside {
-  border-color: var(--ifm-color-primary);
-  background: var(--ifm-color-emphasis-100);
+.flowNodeDoc {
+  border-left: 3px solid var(--ifm-color-emphasis-400);
 }
 
-.dropBefore::before,
-.dropAfter::after {
-  content: '';
-  position: absolute;
-  left: 0.5rem;
-  right: 0.5rem;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--ifm-color-primary);
-}
-
-.dropBefore::before {
-  top: -1px;
-}
-
-.dropAfter::after {
-  bottom: -1px;
-}
-
-.sortGrip {
-  display: inline-flex;
-  align-items: center;
-  color: var(--ifm-color-emphasis-400);
-  flex-shrink: 0;
-}
-
-.sortToggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: var(--ifm-color-emphasis-500);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.sortToggle svg {
-  width: 14px;
-  height: 14px;
-}
-
-.sortIcon {
+.flowNodeIcon {
   display: inline-flex;
   align-items: center;
   color: var(--ifm-color-emphasis-600);
   flex-shrink: 0;
 }
 
-.sortLabel {
-  flex: 1;
+.flowNodeLabel {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.88rem;
 }
 
-.sortCatTag {
-  flex-shrink: 0;
-  font-size: 0.68rem;
-  padding: 0.05rem 0.35rem;
-  border-radius: 4px;
-  background: var(--ifm-color-emphasis-200);
-  color: var(--ifm-color-emphasis-700);
-}
-
-.sortRootDrop {
-  margin-top: 0.5rem;
-  padding: 0.7rem;
-  border: 1px dashed var(--ifm-color-emphasis-400);
-  border-radius: 6px;
-  text-align: center;
-  font-size: 0.8rem;
-  color: var(--ifm-color-emphasis-500);
-}
-
-.sortRootDropActive {
-  border-color: var(--ifm-color-primary);
-  color: var(--ifm-color-primary);
-  background: var(--ifm-color-emphasis-100);
+.flowHandle {
+  width: 7px;
+  height: 7px;
+  border: 2px solid var(--ifm-background-surface-color);
+  background: var(--ifm-color-primary);
 }
 
 .sortFooter {

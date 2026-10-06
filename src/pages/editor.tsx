@@ -8,6 +8,16 @@ import {TableKit} from '@tiptap/extension-table';
 import {Image} from '@tiptap/extension-image';
 import {Dialog} from '@base-ui/react/dialog';
 import {Select} from '@base-ui/react/select';
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  Handle,
+  Position,
+  useNodesState,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
 import toast, {Toaster} from 'react-hot-toast';
 import {Admonition} from '../theme/tiptap/admonition';
 import styles from './editor.module.css';
@@ -271,12 +281,6 @@ const IconSort = () => (
   <Ic>
     <path d="M7 4v16M7 4 3 8M7 4l4 4" />
     <path d="M17 20V4M17 20l-4-4M17 20l4-4" />
-  </Ic>
-);
-
-const IconGrip = () => (
-  <Ic size={14}>
-    <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" />
   </Ic>
 );
 
@@ -1226,16 +1230,13 @@ function NewCategory({categories, onCreate, onCancel}) {
   );
 }
 
-// ── 排序管理：树的克隆 / 展平 / 拖拽移动 ───────────
+// ── 排序管理：目录树 ⇄ 画布图 ───────────────────────
 
-function cloneTree(nodes) {
-  return (nodes || []).map((n) => ({
-    ...n,
-    children: n.is_dir ? cloneTree(n.children) : undefined,
-  }));
-}
+const SORT_ROOT_ID = '__root__';
+const FLOW_X_GAP = 300;
+const FLOW_Y_GAP = 76;
 
-// 只保留分类目录与 .md/.mdx 文档；图片等 colocated 资源不入排序树，由后端随目录一起搬。
+// 只保留分类目录与 .md/.mdx 文档；图片等 colocated 资源不入画布，由后端随目录一起搬。
 function filterReorderNodes(nodes) {
   const out = [];
   for (const n of nodes || []) {
@@ -1248,60 +1249,7 @@ function filterReorderNodes(nodes) {
   return out;
 }
 
-function findNode(nodes, path) {
-  for (const n of nodes || []) {
-    if (n.path === path) return n;
-    if (n.is_dir) {
-      const hit = findNode(n.children, path);
-      if (hit) return hit;
-    }
-  }
-  return null;
-}
-
-function detachNode(nodes, path) {
-  for (let i = 0; i < nodes.length; i++) {
-    if (nodes[i].path === path) return nodes.splice(i, 1)[0];
-    if (nodes[i].is_dir) {
-      const hit = detachNode(nodes[i].children || [], path);
-      if (hit) return hit;
-    }
-  }
-  return null;
-}
-
-function findParentList(nodes, path) {
-  for (const n of nodes || []) {
-    if (n.path === path) return {list: nodes, index: nodes.indexOf(n)};
-    if (n.is_dir) {
-      const hit = findParentList(n.children || [], path);
-      if (hit) return hit;
-    }
-  }
-  return null;
-}
-
-// path 是否位于 ancestor（含自身）之下。
-function isDescendantPath(ancestor, path) {
-  return path === ancestor || path.startsWith(`${ancestor}/`);
-}
-
-function baseName(p) {
-  const i = p.lastIndexOf('/');
-  return i < 0 ? p : p.slice(i + 1);
-}
-
-function flattenTree(nodes, collapsed, depth = 0, out = []) {
-  for (const n of nodes || []) {
-    out.push({node: n, depth});
-    if (n.is_dir && !collapsed.has(n.path)) {
-      flattenTree(n.children, collapsed, depth + 1, out);
-    }
-  }
-  return out;
-}
-
-// 只上报「结构 + 原路径」，position 由后端按展开顺序计算。
+// 只上报「结构 + 原路径」，position 由后端按画布顺序计算。
 function serializeReorderTree(nodes) {
   return (nodes || []).map((n) =>
     n.is_dir
@@ -1309,6 +1257,146 @@ function serializeReorderTree(nodes) {
       : {path: n.path, is_dir: false},
   );
 }
+
+// 「叶子依次排开、父节点居中」的简洁树布局，返回画布节点。
+function tidyLayout(items) {
+  const byId = new Map(items.map((it) => [it.id, it]));
+  const byParent = new Map();
+  for (const it of items) {
+    if (it.parentId == null) continue;
+    if (!byParent.has(it.parentId)) byParent.set(it.parentId, []);
+    byParent.get(it.parentId).push(it);
+  }
+  const depthOf = (it) => {
+    let d = 0;
+    let p = it.parentId;
+    while (p != null) {
+      d += 1;
+      p = byId.get(p)?.parentId ?? null;
+    }
+    return d;
+  };
+  const yById = new Map();
+  let cursor = 0;
+  const place = (id) => {
+    const kids = byParent.get(id) || [];
+    if (kids.length === 0) {
+      const y = cursor * FLOW_Y_GAP;
+      cursor += 1;
+      yById.set(id, y);
+      return y;
+    }
+    const ys = kids.map((k) => place(k.id));
+    const y = (ys[0] + ys[ys.length - 1]) / 2;
+    yById.set(id, y);
+    return y;
+  };
+  place(SORT_ROOT_ID);
+  return items.map((it) => ({
+    id: it.id,
+    type: 'treeNode',
+    position: {x: depthOf(it) * FLOW_X_GAP, y: yById.get(it.id) ?? 0},
+    data: {label: it.label, isDir: it.isDir, isRoot: it.isRoot, parentId: it.parentId},
+    draggable: !it.isRoot,
+  }));
+}
+
+// 目录树 → 画布节点（扁平，父子关系存在 data.parentId）。
+function treeToFlowNodes(tree) {
+  const items = [
+    {id: SORT_ROOT_ID, label: '文档根目录', isDir: true, isRoot: true, parentId: null},
+  ];
+  const walk = (list, parentId) => {
+    for (const n of list || []) {
+      items.push({
+        id: n.path,
+        label: n.label || n.title || n.name || n.path,
+        isDir: !!n.is_dir,
+        isRoot: false,
+        parentId,
+      });
+      if (n.is_dir) walk(n.children, n.path);
+    }
+  };
+  walk(tree, SORT_ROOT_ID);
+  return tidyLayout(items);
+}
+
+// 画布节点 → 边（父 → 子）。
+function flowEdges(nodes) {
+  return nodes
+    .filter((n) => n.id !== SORT_ROOT_ID && n.data.parentId)
+    .map((n) => ({
+      id: `e:${n.data.parentId}->${n.id}`,
+      source: n.data.parentId,
+      target: n.id,
+      type: 'smoothstep',
+      style: {strokeWidth: 1.5, stroke: 'var(--ifm-color-emphasis-400)'},
+    }));
+}
+
+// 画布节点 → 重排用的目录树（同级按 y 从上到下排序）。
+function flowToTree(nodes) {
+  const byParent = new Map();
+  for (const n of nodes) {
+    if (n.id === SORT_ROOT_ID) continue;
+    const p = n.data.parentId || SORT_ROOT_ID;
+    if (!byParent.has(p)) byParent.set(p, []);
+    byParent.get(p).push(n);
+  }
+  const build = (parentId) =>
+    (byParent.get(parentId) || [])
+      .slice()
+      .sort((a, b) => a.position.y - b.position.y || a.position.x - b.position.x)
+      .map((n) =>
+        n.data.isDir
+          ? {path: n.id, is_dir: true, children: build(n.id)}
+          : {path: n.id, is_dir: false},
+      );
+  return build(SORT_ROOT_ID);
+}
+
+// id 是否为 ancestorId 的后代（用于阻止把分类拖进自己的子节点）。
+function flowIsDescendant(nodes, ancestorId, id) {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  let cur = byId.get(id);
+  while (cur && cur.data.parentId) {
+    if (cur.data.parentId === ancestorId) return true;
+    cur = byId.get(cur.data.parentId);
+  }
+  return false;
+}
+
+function rectOf(node) {
+  const w = node.measured?.width ?? node.width ?? 200;
+  const h = node.measured?.height ?? node.height ?? 44;
+  return {x: node.position.x, y: node.position.y, w, h};
+}
+
+function overlapArea(a, b) {
+  const ox = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
+  const oy = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
+  return ox * oy;
+}
+
+// 画布自定义节点。
+function FlowTreeNode({data}) {
+  return (
+    <div
+      className={`${styles.flowNode} ${
+        data.isRoot ? styles.flowNodeRoot : data.isDir ? styles.flowNodeCat : styles.flowNodeDoc
+      }`}>
+      <Handle type="target" position={Position.Left} className={styles.flowHandle} />
+      <span className={styles.flowNodeIcon}>
+        {data.isDir ? <IconFolderSmall /> : <IconFileSmall />}
+      </span>
+      <span className={styles.flowNodeLabel}>{data.label}</span>
+      <Handle type="source" position={Position.Right} className={styles.flowHandle} />
+    </div>
+  );
+}
+
+const FLOW_NODE_TYPES = {treeNode: FlowTreeNode};
 
 // 提交后轮询对应 commit 的 workflow，回调步骤：0 排队 / 1 构建 / 3 完成。
 async function pollReorderBuild(refresh, commit, onStep) {
@@ -1387,11 +1475,9 @@ function BuildSteps({phase, activeStep, inline = false}) {
 // ── 排序管理模态框 ───────────────────────────────────
 
 function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
-  const [workTree, setWorkTree] = useState([]);
-  const [original, setOriginal] = useState([]);
-  const [collapsed, setCollapsed] = useState(() => new Set());
-  const [dragPath, setDragPath] = useState(null);
-  const [dropTarget, setDropTarget] = useState(null);
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const originalRef = useRef([]);
+  const flowRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [phase, setPhase] = useState('idle');
   const [activeStep, setActiveStep] = useState(0);
@@ -1399,80 +1485,79 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
   const treeRef = useRef(tree);
   treeRef.current = tree;
 
-  // 每次打开都从最新目录树重新克隆，避免构建完成后被父级刷新打断。
+  // 每次打开都从最新目录树重新构建画布，避免构建完成后被父级刷新打断。
   useEffect(() => {
-    if (!open) return;
-    const clone = filterReorderNodes(treeRef.current);
-    setWorkTree(clone);
-    setOriginal(clone);
-    setCollapsed(new Set());
-    setDragPath(null);
-    setDropTarget(null);
+    if (!open) return undefined;
+    const filtered = filterReorderNodes(treeRef.current);
+    setNodes(treeToFlowNodes(filtered));
+    originalRef.current = serializeReorderTree(filtered);
     setSaving(false);
     setPhase('idle');
     setActiveStep(0);
-  }, [open]);
+    const timer = window.setTimeout(
+      () => flowRef.current?.fitView({padding: 0.25, duration: 300}),
+      120,
+    );
+    return () => window.clearTimeout(timer);
+  }, [open, setNodes]);
 
-  const rows = useMemo(() => flattenTree(workTree, collapsed), [workTree, collapsed]);
+  const edges = useMemo(() => flowEdges(nodes), [nodes]);
+  const currentTree = useMemo(() => flowToTree(nodes), [nodes]);
   const dirty = useMemo(
-    () => JSON.stringify(workTree) !== JSON.stringify(original),
-    [workTree, original],
+    () => JSON.stringify(currentTree) !== JSON.stringify(originalRef.current),
+    [currentTree],
   );
   const running = phase === 'running';
 
-  const toggleCollapse = (p) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(p)) next.delete(p);
-      else next.add(p);
-      return next;
-    });
-  };
-
-  const applyMove = (from, target) => {
-    if (!from || !target || from === target.path) return;
-    if (isDescendantPath(from, target.path)) return;
-    const next = cloneTree(workTree);
-    const moved = detachNode(next, from);
-    if (!moved) return;
-    const name = baseName(moved.path);
-    if (target.position === 'inside') {
-      const node = findNode(next, target.path);
-      if (!node || !node.is_dir) return;
-      node.children = node.children || [];
-      if (node.children.some((n) => baseName(n.path) === name)) {
-        toast.error('目标分类里已有同名条目，无法放入');
-        return;
+  // 拖拽结束：与哪个分类节点重叠最多，就把它当作新的父分类。
+  const onNodeDragStop = (event, node) => {
+    const allNodes = nodes;
+    const dragged = allNodes.find((n) => n.id === node.id) || node;
+    const dRect = rectOf(dragged);
+    const minArea = 0.35 * dRect.w * dRect.h;
+    let bestId = null;
+    let bestArea = 0;
+    for (const c of allNodes) {
+      if (!c.data.isDir || c.id === dragged.id) continue;
+      if (flowIsDescendant(allNodes, dragged.id, c.id)) continue;
+      const area = overlapArea(dRect, rectOf(c));
+      if (area > bestArea) {
+        bestArea = area;
+        bestId = c.id;
       }
-      node.children.push(moved);
-    } else {
-      const loc = findParentList(next, target.path);
-      if (!loc) return;
-      if (loc.list.some((n) => baseName(n.path) === name)) {
-        toast.error('该分类里已有同名条目，无法放入');
-        return;
-      }
-      loc.list.splice(target.position === 'after' ? loc.index + 1 : loc.index, 0, moved);
     }
-    setWorkTree(next);
-  };
-
-  const appendRoot = (from) => {
-    if (!from) return;
-    const next = cloneTree(workTree);
-    const moved = detachNode(next, from);
-    if (!moved) return;
-    if (next.some((n) => baseName(n.path) === baseName(moved.path))) {
-      toast.error('根目录里已有同名条目，无法放入');
+    if (!bestId || bestArea < minArea || bestId === dragged.data.parentId) return;
+    const name = dragged.id.slice(dragged.id.lastIndexOf('/') + 1);
+    const conflict = allNodes.some(
+      (n) =>
+        n.id !== dragged.id &&
+        (n.data.parentId || SORT_ROOT_ID) === bestId &&
+        n.id.slice(n.id.lastIndexOf('/') + 1) === name,
+    );
+    if (conflict) {
+      toast.error('目标分类里已有同名条目，无法放入');
       return;
     }
-    next.push(moved);
-    setWorkTree(next);
+    setNodes((nds) =>
+      nds.map((n) => (n.id === dragged.id ? {...n, data: {...n.data, parentId: bestId}} : n)),
+    );
   };
 
-  const endDrag = () => {
-    setDragPath(null);
-    setDropTarget(null);
+  const autoLayout = () => {
+    setNodes((nds) => {
+      const byId = new Map(nds.map((n) => [n.id, n]));
+      const fresh = tidyLayout(
+        nds.map((n) => ({
+          id: n.id,
+          label: n.data.label,
+          isDir: n.data.isDir,
+          isRoot: n.data.isRoot,
+          parentId: n.data.parentId,
+        })),
+      );
+      return fresh.map((n) => ({...byId.get(n.id), ...n}));
+    });
+    window.setTimeout(() => flowRef.current?.fitView({padding: 0.25, duration: 400}), 0);
   };
 
   const save = async () => {
@@ -1485,7 +1570,7 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
       const res = await api('/reorder', {
         method: 'POST',
         token,
-        body: {tree: serializeReorderTree(workTree)},
+        body: {tree: currentTree},
       });
       if (!res.commit) {
         toast('顺序没有变化');
@@ -1520,69 +1605,16 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
     onClose();
   };
 
-  const renderRow = ({node, depth}) => {
-    const dragging = dragPath === node.path;
-    const isTarget = dropTarget?.path === node.path;
-    const dropCls = isTarget
-      ? dropTarget.position === 'before'
-        ? styles.dropBefore
-        : dropTarget.position === 'after'
-          ? styles.dropAfter
-          : styles.dropInside
-      : '';
-    return (
-      <div
-        key={node.path}
-        className={`${styles.sortRow} ${dragging ? styles.sortRowDragging : ''} ${dropCls}`}
-        style={{paddingLeft: `${0.5 + depth * 1.15}rem`}}
-        draggable={!running}
-        onDragStart={(e) => {
-          e.stopPropagation();
-          e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', node.path);
-          setDragPath(node.path);
-        }}
-        onDragEnd={endDrag}
-        onDragOver={(e) => {
-          if (!dragPath || dragPath === node.path || isDescendantPath(dragPath, node.path)) return;
-          e.preventDefault();
-          e.dataTransfer.dropEffect = 'move';
-          const rect = e.currentTarget.getBoundingClientRect();
-          const y = e.clientY - rect.top;
-          let position = 'inside';
-          if (y < rect.height * 0.3) position = 'before';
-          else if (y > rect.height * 0.7) position = 'after';
-          else if (!node.is_dir) position = y < rect.height / 2 ? 'before' : 'after';
-          setDropTarget({path: node.path, position});
-        }}
-        onDrop={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (dropTarget && dropTarget.path !== dragPath) applyMove(dragPath, dropTarget);
-          endDrag();
-        }}>
-        <span className={styles.sortGrip} aria-hidden="true">
-          <IconGrip />
-        </span>
-        {node.is_dir ? (
-          <button
-            type="button"
-            className={styles.sortToggle}
-            onClick={() => toggleCollapse(node.path)}
-            title={collapsed.has(node.path) ? '展开' : '折叠'}>
-            {collapsed.has(node.path) ? <IconChevronRight /> : <IconChevronDown />}
-          </button>
-        ) : (
-          <span className={styles.sortToggle} />
-        )}
-        <span className={styles.sortIcon}>
-          {node.is_dir ? <IconFolderSmall /> : <IconFileSmall />}
-        </span>
-        <span className={styles.sortLabel}>{node.label || node.title || node.name}</span>
-        {node.is_dir && <span className={styles.sortCatTag}>分类</span>}
-      </div>
-    );
-  };
+  const hint =
+    phase === 'idle'
+      ? '拖动节点调整顺序；把节点拖到某个分类节点上即可移入，拖到「文档根目录」可移出。'
+      : phase === 'running'
+        ? '正在构建部署，完成后可关闭。'
+        : phase === 'success'
+          ? '构建部署完成，可以关闭了。'
+          : phase === 'failure'
+            ? '构建或部署失败，请到 Steward 查看日志。'
+            : '已提交，等待流水线完成。';
 
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange} disablePointerDismissal={running}>
@@ -1598,46 +1630,52 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
             </Dialog.Close>
           </div>
           <BuildSteps phase={phase} activeStep={activeStep} />
-          <div className={styles.sortBody}>
-            {rows.map(renderRow)}
-            <div
-              className={`${styles.sortRootDrop} ${
-                dropTarget?.path === '__root__' ? styles.sortRootDropActive : ''
-              }`}
-              onDragOver={(e) => {
-                if (!dragPath) return;
-                e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
-                setDropTarget({path: '__root__', position: 'inside'});
+          <div className={styles.flowWrap}>
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={FLOW_NODE_TYPES}
+              onInit={(instance) => {
+                flowRef.current = instance;
               }}
-              onDrop={(e) => {
-                e.preventDefault();
-                appendRoot(dragPath);
-                endDrag();
-              }}>
-              拖到这里移到根目录
-            </div>
+              onNodesChange={onNodesChange}
+              onNodeDragStop={onNodeDragStop}
+              nodesDraggable={!running}
+              nodesConnectable={false}
+              elementsSelectable={false}
+              fitView
+              fitViewOptions={{padding: 0.25}}
+              minZoom={0.2}
+              maxZoom={1.6}
+              proOptions={{hideAttribution: false}}>
+              <Background variant="dots" gap={20} size={1} />
+              <Controls showInteractive={false} />
+              <MiniMap
+                pannable
+                zoomable
+                nodeColor={(n) =>
+                  n.data.isRoot ? '#9ca3af' : n.data.isDir ? '#3b82f6' : '#a3a3a3'
+                }
+              />
+            </ReactFlow>
           </div>
           <div className={styles.sortFooter}>
-            <span className={styles.sortHint}>
-              {phase === 'idle'
-                ? '拖动调整顺序；拖到分类上可移入，拖到根目录区可移出。保存后自动构建部署。'
-                : phase === 'running'
-                  ? '正在构建部署，完成后可关闭。'
-                  : phase === 'success'
-                    ? '构建部署完成，可以关闭了。'
-                    : phase === 'failure'
-                      ? '构建或部署失败，请到 Steward 查看日志。'
-                      : '已提交，等待流水线完成。'}
-            </span>
+            <span className={styles.sortHint}>{hint}</span>
             <div className={styles.formActions}>
               {phase === 'idle' ? (
                 <>
                   <button
                     type="button"
                     className={styles.btn}
+                    onClick={autoLayout}
+                    disabled={saving || running}>
+                    自动布局
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btn}
                     onClick={onClose}
-                    disabled={running || saving}>
+                    disabled={saving || running}>
                     取消
                   </button>
                   <button
