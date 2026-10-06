@@ -370,46 +370,12 @@ async function commitAndWait(refresh, loadingMsg, fn) {
   }
 }
 
-// 顶部栏流水线指示点：绿=成功 黄=运行中 红=失败 灰=未知。
-function PipelineDot({pipeline}) {
-  const {status, refresh} = pipeline;
-  const latest = status?.latest;
-  const busy = status?.busy;
-  let cls = '';
-  let label = '流水线状态未知';
-  if (busy) {
-    cls = styles.dotBusy;
-    label = 'CI/CD 构建部署中…';
-  } else if (latest?.status === 'completed' && latest.conclusion === 'success') {
-    cls = styles.dotOk;
-    label = '最近一次构建部署成功';
-  } else if (latest?.status === 'completed') {
-    cls = styles.dotFail;
-    label = `最近一次构建失败（${latest.conclusion || 'unknown'}）`;
-  } else if (latest) {
-    label = `最近一次：${latest.status}`;
-  }
-  if (latest?.html_url) {
-    return (
-      <a
-        className={`${styles.pipeDotWrap} ${cls}`}
-        href={latest.html_url}
-        target="_blank"
-        rel="noreferrer"
-        title={`${label}（查看日志）`}>
-        <span className={styles.pipeDot} />
-      </a>
-    );
-  }
-  return (
-    <button
-      type="button"
-      className={`${styles.pipeDotWrap} ${cls}`}
-      title={`${label}（点击刷新）`}
-      onClick={refresh}>
-      <span className={styles.pipeDot} />
-    </button>
-  );
+// 顶部栏构建状态：有正在跑的流水线就显示三步骤，否则显示「当前暂无更新」。
+function TopBuildStatus({pipeline}) {
+  const runs = pipeline.status?.runs || [];
+  const active = runs.find((r) => r.status === 'queued' || r.status === 'in_progress');
+  if (!active) return <span className={styles.noUpdate}>当前暂无更新</span>;
+  return <BuildSteps phase="running" activeStep={active.status === 'in_progress' ? 1 : 0} inline />;
 }
 
 // ── 登录 ──────────────────────────────────────────────
@@ -1364,7 +1330,7 @@ async function pollReorderBuild(refresh, commit, onStep) {
 }
 
 // 三步骤进度条：排队 → 构建 → 完成（参考 Steward 的构建状态条）。
-function BuildSteps({phase, activeStep}) {
+function BuildSteps({phase, activeStep, inline = false}) {
   if (phase === 'idle') return null;
   const labels = ['排队', '构建', '完成'];
   const stateOf = (i) => {
@@ -1382,7 +1348,7 @@ function BuildSteps({phase, activeStep}) {
     fail: styles.stepFail,
   };
   return (
-    <div className={styles.steps}>
+    <div className={`${styles.steps} ${inline ? styles.stepsInline : ''}`}>
       {labels.map((label, i) => {
         const st = stateOf(i);
         return (
@@ -1403,15 +1369,17 @@ function BuildSteps({phase, activeStep}) {
           </div>
         );
       })}
-      <span className={styles.stepNote}>
-        {phase === 'success'
-          ? '构建部署完成'
-          : phase === 'failure'
-            ? '构建或部署失败'
-            : phase === 'timeout'
-              ? '未在预期时间内检测到结束'
-              : '构建部署中…'}
-      </span>
+      {!inline && (
+        <span className={styles.stepNote}>
+          {phase === 'success'
+            ? '构建部署完成'
+            : phase === 'failure'
+              ? '构建或部署失败'
+              : phase === 'timeout'
+                ? '未在预期时间内检测到结束'
+                : '构建部署中…'}
+        </span>
+      )}
     </div>
   );
 }
@@ -1851,6 +1819,7 @@ export default function EditorPage() {
               <header className={styles.subbar}>
                 <span className={styles.brand}>在线编辑</span>
             <span id="editor-meta-slot" className={styles.metaSlot} />
+            <TopBuildStatus pipeline={pipeline} />
             <div className={styles.spacer} />
             <div id="editor-actions-slot" className={styles.actionsSlot} />
             <span className={styles.subbarSep} />
@@ -1866,7 +1835,6 @@ export default function EditorPage() {
               <IconSort />
               排序管理
             </button>
-            <PipelineDot pipeline={pipeline} />
             <button type="button" className={styles.barBtn} onClick={exitEdit}>
               <IconLogout />
               退出

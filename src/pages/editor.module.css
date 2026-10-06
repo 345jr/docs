@@ -66,8 +66,7 @@
   flex-shrink: 0;
 }
 
-.barBtn:hover,
-.pipeDotWrap:hover {
+.barBtn:hover {
   background: var(--ifm-color-emphasis-100);
 }
 
@@ -91,53 +90,13 @@
   color: var(--ifm-color-primary);
 }
 
-/* ── 流水线指示点 ─────────────────────────────────── */
+/* ── 顶栏构建状态 ─────────────────────────────────── */
 
-.pipeDotWrap {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 6px;
-  color: inherit;
-  flex-shrink: 0;
-}
-
-button.pipeDotWrap {
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
-}
-
-.pipeDot {
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  background: var(--ifm-color-emphasis-500);
-}
-
-.dotBusy .pipeDot {
-  background: var(--ifm-color-warning);
-  animation: pipePulse 1.2s infinite;
-}
-
-.dotOk .pipeDot {
-  background: var(--ifm-color-success);
-}
-
-.dotFail .pipeDot {
-  background: var(--ifm-color-danger);
-}
-
-@keyframes pipePulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
-  }
+.noUpdate {
+  margin-left: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-500);
+  white-space: nowrap;
 }
 
 /* ── 登录 ─────────────────────────────────────────── */
@@ -1085,6 +1044,13 @@ button.pipeDotWrap {
   border-bottom: 1px solid var(--ifm-color-emphasis-200);
   background: var(--ifm-color-emphasis-100);
   font-size: 0.8rem;
+}
+
+.stepsInline {
+  margin-left: 0.5rem;
+  padding: 0;
+  border-bottom: none;
+  background: transparent;
 }
 
 .stepItem {
