@@ -1,5 +1,5 @@
 ---
-sidebar_position: 40
+sidebar_position: 1
 description: 完整记录在 Pi 中接入 OpenCode 免费模型的过程——从 403 FreeTierError 的排查、TLS 中间人抓包、两个社区扩展的对比，到定位“User-Agent + 非空 tools”这一真实门槛，并让 CLI 与 pi-web 都成功加载 provider。
 tags: [pi, opencode, pi-web, 模型接入, 抓包, 排障]
 ---

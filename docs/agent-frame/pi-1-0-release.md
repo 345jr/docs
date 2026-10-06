@@ -1,6 +1,6 @@
 ---
 title: "Pi 1.0 翻译&总结"
-sidebar_position: 41
+sidebar_position: 2
 description: Earendil 官方博文《Pi 1.0》的中文翻译与要点总结——Pi 1.0 的七项新特性，以及实验性新包 Pi Durable 的定位。
 tags: [pi, 翻译, 发布]
 ---
