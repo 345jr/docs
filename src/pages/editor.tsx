@@ -13,8 +13,6 @@ import {
   Background,
   Controls,
   MiniMap,
-  Handle,
-  Position,
   useNodesState,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -1230,11 +1228,9 @@ function NewCategory({categories, onCreate, onCancel}) {
   );
 }
 
-// ── 排序管理：目录树 ⇄ 画布图 ───────────────────────
+// ── 排序管理：目录树 ⇄ 容器画布 ─────────────────────
 
-const SORT_ROOT_ID = '__root__';
-const FLOW_X_GAP = 300;
-const FLOW_Y_GAP = 76;
+const BOARD = {CARD_W: 220, CARD_H: 44, MIN_W: 244, MIN_H: 120, HEADER: 42, PAD: 12, GAP: 8, COL_GAP: 36};
 
 // 只保留分类目录与 .md/.mdx 文档；图片等 colocated 资源不入画布，由后端随目录一起搬。
 function filterReorderNodes(nodes) {
@@ -1258,94 +1254,94 @@ function serializeReorderTree(nodes) {
   );
 }
 
-// 「叶子依次排开、父节点居中」的简洁树布局，返回画布节点。
-function tidyLayout(items) {
-  const byId = new Map(items.map((it) => [it.id, it]));
-  const byParent = new Map();
-  for (const it of items) {
-    if (it.parentId == null) continue;
-    if (!byParent.has(it.parentId)) byParent.set(it.parentId, []);
-    byParent.get(it.parentId).push(it);
-  }
-  const depthOf = (it) => {
-    let d = 0;
-    let p = it.parentId;
-    while (p != null) {
-      d += 1;
-      p = byId.get(p)?.parentId ?? null;
-    }
-    return d;
-  };
-  const yById = new Map();
-  let cursor = 0;
-  const place = (id) => {
-    const kids = byParent.get(id) || [];
-    if (kids.length === 0) {
-      const y = cursor * FLOW_Y_GAP;
-      cursor += 1;
-      yById.set(id, y);
-      return y;
-    }
-    const ys = kids.map((k) => place(k.id));
-    const y = (ys[0] + ys[ys.length - 1]) / 2;
-    yById.set(id, y);
-    return y;
-  };
-  place(SORT_ROOT_ID);
-  return items.map((it) => ({
-    id: it.id,
-    type: 'treeNode',
-    position: {x: depthOf(it) * FLOW_X_GAP, y: yById.get(it.id) ?? 0},
-    data: {label: it.label, isDir: it.isDir, isRoot: it.isRoot, parentId: it.parentId},
-    draggable: !it.isRoot,
-  }));
-}
-
-// 目录树 → 画布节点（扁平，父子关系存在 data.parentId）。
-function treeToFlowNodes(tree) {
-  const items = [
-    {id: SORT_ROOT_ID, label: '文档根目录', isDir: true, isRoot: true, parentId: null},
-  ];
+// 目录树 → 扁平条目 {id,label,isDir,parentId}。
+function flattenBoard(tree) {
+  const items = [];
   const walk = (list, parentId) => {
     for (const n of list || []) {
       items.push({
         id: n.path,
         label: n.label || n.title || n.name || n.path,
         isDir: !!n.is_dir,
-        isRoot: false,
         parentId,
       });
       if (n.is_dir) walk(n.children, n.path);
     }
   };
-  walk(tree, SORT_ROOT_ID);
-  return tidyLayout(items);
+  walk(tree, null);
+  return items;
 }
 
-// 画布节点 → 边（父 → 子）。
-function flowEdges(nodes) {
-  return nodes
-    .filter((n) => n.id !== SORT_ROOT_ID && n.data.parentId)
-    .map((n) => ({
-      id: `e:${n.data.parentId}->${n.id}`,
-      source: n.data.parentId,
-      target: n.id,
-      type: 'smoothstep',
-      style: {strokeWidth: 1.5, stroke: 'var(--ifm-color-emphasis-400)'},
-    }));
+// 自底向上算每个分类容器的最小尺寸。
+function boardSizes(items) {
+  const kidsOf = (pid) => items.filter((it) => it.parentId === pid);
+  const size = new Map();
+  const calc = (it) => {
+    if (size.has(it.id)) return size.get(it.id);
+    let s;
+    if (!it.isDir) {
+      s = {w: BOARD.CARD_W, h: BOARD.CARD_H};
+    } else {
+      let y = BOARD.HEADER;
+      let w = 0;
+      for (const k of kidsOf(it.id)) {
+        const ks = calc(k);
+        w = Math.max(w, ks.w);
+        y += ks.h + BOARD.GAP;
+      }
+      s = {w: Math.max(BOARD.MIN_W, w + 2 * BOARD.PAD), h: Math.max(BOARD.MIN_H, y + BOARD.PAD)};
+    }
+    size.set(it.id, s);
+    return s;
+  };
+  for (const it of items) calc(it);
+  return {kidsOf, size};
 }
 
-// 画布节点 → 重排用的目录树（同级按 y 从上到下排序）。
+// 条目列表 → React Flow 节点（分类作为父节点，子节点相对父节点定位）。
+function itemsToNodes(items) {
+  const {kidsOf, size} = boardSizes(items);
+  const nodes = [];
+  const emit = (it, pos, parentId) => {
+    const s = size.get(it.id);
+    nodes.push({
+      id: it.id,
+      type: it.isDir ? 'category' : 'doc',
+      position: pos,
+      ...(parentId ? {parentId} : {}),
+      data: {label: it.label, isDir: it.isDir},
+      style: {width: s.w, height: s.h},
+    });
+    if (it.isDir) {
+      let y = BOARD.HEADER;
+      for (const k of kidsOf(it.id)) {
+        emit(k, {x: BOARD.PAD, y}, it.id);
+        y += size.get(k.id).h + BOARD.GAP;
+      }
+    }
+  };
+  let x = 0;
+  for (const it of kidsOf(null)) {
+    emit(it, {x, y: 0}, null);
+    x += size.get(it.id).w + BOARD.COL_GAP;
+  }
+  return nodes;
+}
+
+function treeToBoard(tree) {
+  return itemsToNodes(flattenBoard(tree));
+}
+
+// 画布节点 → 目录树（同级按从上到下、再从左到右）。
 function flowToTree(nodes) {
   const byParent = new Map();
   for (const n of nodes) {
-    if (n.id === SORT_ROOT_ID) continue;
-    const p = n.data.parentId || SORT_ROOT_ID;
+    const p = n.parentId || '';
     if (!byParent.has(p)) byParent.set(p, []);
     byParent.get(p).push(n);
   }
-  const build = (parentId) =>
-    (byParent.get(parentId) || [])
+  const build = (pid) =>
+    (byParent.get(pid) || [])
       .slice()
       .sort((a, b) => a.position.y - b.position.y || a.position.x - b.position.x)
       .map((n) =>
@@ -1353,50 +1349,88 @@ function flowToTree(nodes) {
           ? {path: n.id, is_dir: true, children: build(n.id)}
           : {path: n.id, is_dir: false},
       );
-  return build(SORT_ROOT_ID);
+  return build('');
 }
 
-// id 是否为 ancestorId 的后代（用于阻止把分类拖进自己的子节点）。
-function flowIsDescendant(nodes, ancestorId, id) {
+function nodeAbsPos(nodes, node) {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  let x = node.position.x;
+  let y = node.position.y;
+  let pid = node.parentId;
+  while (pid) {
+    const p = byId.get(pid);
+    if (!p) break;
+    x += p.position.x;
+    y += p.position.y;
+    pid = p.parentId;
+  }
+  return {x, y};
+}
+
+function nodeBox(node) {
+  const w = node.style?.width ?? node.measured?.width ?? BOARD.CARD_W;
+  const h = node.style?.height ?? node.measured?.height ?? BOARD.CARD_H;
+  return {w, h};
+}
+
+function isAncestor(nodes, ancestorId, id) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   let cur = byId.get(id);
-  while (cur && cur.data.parentId) {
-    if (cur.data.parentId === ancestorId) return true;
-    cur = byId.get(cur.data.parentId);
+  while (cur && cur.parentId) {
+    if (cur.parentId === ancestorId) return true;
+    cur = byId.get(cur.parentId);
   }
   return false;
 }
 
-function rectOf(node) {
-  const w = node.measured?.width ?? node.width ?? 200;
-  const h = node.measured?.height ?? node.height ?? 44;
-  return {x: node.position.x, y: node.position.y, w, h};
+// 找出包含某点、层级最深的分类容器（排除自身及其后代）。
+function deepestContainer(nodes, point, excludeId) {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  let best = null;
+  let bestDepth = -1;
+  for (const n of nodes) {
+    if (!n.data.isDir || n.id === excludeId) continue;
+    if (isAncestor(nodes, excludeId, n.id)) continue;
+    const p = nodeAbsPos(nodes, n);
+    const {w, h} = nodeBox(n);
+    if (point.x < p.x || point.x > p.x + w || point.y < p.y || point.y > p.y + h) continue;
+    let depth = 0;
+    let pid = n.parentId;
+    while (pid) {
+      depth += 1;
+      pid = byId.get(pid)?.parentId;
+    }
+    if (depth > bestDepth) {
+      bestDepth = depth;
+      best = n;
+    }
+  }
+  return best;
 }
 
-function overlapArea(a, b) {
-  const ox = Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x));
-  const oy = Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
-  return ox * oy;
-}
-
-// 画布自定义节点。
-function FlowTreeNode({data}) {
+// 分类容器节点。
+function CategoryNode({data}) {
   return (
-    <div
-      className={`${styles.flowNode} ${
-        data.isRoot ? styles.flowNodeRoot : data.isDir ? styles.flowNodeCat : styles.flowNodeDoc
-      }`}>
-      <Handle type="target" position={Position.Left} className={styles.flowHandle} />
-      <span className={styles.flowNodeIcon}>
-        {data.isDir ? <IconFolderSmall /> : <IconFileSmall />}
-      </span>
-      <span className={styles.flowNodeLabel}>{data.label}</span>
-      <Handle type="source" position={Position.Right} className={styles.flowHandle} />
+    <div className={styles.catBox}>
+      <div className={styles.catHeader}>
+        <IconFolderSmall />
+        <span className={styles.catHeaderLabel}>{data.label}</span>
+      </div>
     </div>
   );
 }
 
-const FLOW_NODE_TYPES = {treeNode: FlowTreeNode};
+// 文档卡片节点。
+function DocNode({data}) {
+  return (
+    <div className={styles.docCard}>
+      <IconFileSmall />
+      <span className={styles.docCardLabel}>{data.label}</span>
+    </div>
+  );
+}
+
+const BOARD_NODE_TYPES = {category: CategoryNode, doc: DocNode};
 
 // 提交后轮询对应 commit 的 workflow，回调步骤：0 排队 / 1 构建 / 3 完成。
 async function pollReorderBuild(refresh, commit, onStep) {
@@ -1489,19 +1523,18 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
   useEffect(() => {
     if (!open) return undefined;
     const filtered = filterReorderNodes(treeRef.current);
-    setNodes(treeToFlowNodes(filtered));
+    setNodes(treeToBoard(filtered));
     originalRef.current = serializeReorderTree(filtered);
     setSaving(false);
     setPhase('idle');
     setActiveStep(0);
     const timer = window.setTimeout(
-      () => flowRef.current?.fitView({padding: 0.25, duration: 300}),
-      120,
+      () => flowRef.current?.fitView({padding: 0.2, duration: 300}),
+      150,
     );
     return () => window.clearTimeout(timer);
   }, [open, setNodes]);
 
-  const edges = useMemo(() => flowEdges(nodes), [nodes]);
   const currentTree = useMemo(() => flowToTree(nodes), [nodes]);
   const dirty = useMemo(
     () => JSON.stringify(currentTree) !== JSON.stringify(originalRef.current),
@@ -1509,55 +1542,73 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
   );
   const running = phase === 'running';
 
-  // 拖拽结束：与哪个分类节点重叠最多，就把它当作新的父分类。
+  // 拖拽结束：按落点决定新的父容器与插入位置，然后整体重新排布（容器自适应大小）。
   const onNodeDragStop = (event, node) => {
-    const allNodes = nodes;
-    const dragged = allNodes.find((n) => n.id === node.id) || node;
-    const dRect = rectOf(dragged);
-    const minArea = 0.35 * dRect.w * dRect.h;
-    let bestId = null;
-    let bestArea = 0;
-    for (const c of allNodes) {
-      if (!c.data.isDir || c.id === dragged.id) continue;
-      if (flowIsDescendant(allNodes, dragged.id, c.id)) continue;
-      const area = overlapArea(dRect, rectOf(c));
-      if (area > bestArea) {
-        bestArea = area;
-        bestId = c.id;
+    const dragged = nodes.find((n) => n.id === node.id) || node;
+    const abs = nodeAbsPos(nodes, dragged);
+    const {w, h} = nodeBox(dragged);
+    const center = {x: abs.x + w / 2, y: abs.y + h / 2};
+    const target = deepestContainer(nodes, center, dragged.id);
+    const targetId = target ? target.id : null;
+
+    const others = nodes.filter((n) => n.id !== dragged.id);
+    const byParent = new Map();
+    for (const n of others) {
+      const p = n.parentId || '';
+      if (!byParent.has(p)) byParent.set(p, []);
+      byParent.get(p).push(n);
+    }
+    const absCache = new Map(others.map((n) => [n.id, nodeAbsPos(others, n)]));
+    for (const list of byParent.values()) {
+      list.sort(
+        (a, b) =>
+          absCache.get(a.id).y - absCache.get(b.id).y ||
+          absCache.get(a.id).x - absCache.get(b.id).x,
+      );
+    }
+
+    const list = byParent.get(targetId || '') || [];
+    const useX = targetId === null;
+    let index = list.length;
+    for (let i = 0; i < list.length; i++) {
+      const sAbs = absCache.get(list[i].id);
+      const sBox = nodeBox(list[i]);
+      const mid = useX ? sAbs.x + sBox.w / 2 : sAbs.y + sBox.h / 2;
+      const at = useX ? center.x : center.y;
+      if (at < mid) {
+        index = i;
+        break;
       }
     }
-    if (!bestId || bestArea < minArea || bestId === dragged.data.parentId) return;
-    const name = dragged.id.slice(dragged.id.lastIndexOf('/') + 1);
-    const conflict = allNodes.some(
-      (n) =>
-        n.id !== dragged.id &&
-        (n.data.parentId || SORT_ROOT_ID) === bestId &&
-        n.id.slice(n.id.lastIndexOf('/') + 1) === name,
-    );
-    if (conflict) {
-      toast.error('目标分类里已有同名条目，无法放入');
-      return;
+    list.splice(index, 0, dragged);
+    byParent.set(targetId || '', list);
+
+    const items = [];
+    for (const l of byParent.values()) {
+      for (const n of l) {
+        items.push({
+          id: n.id,
+          label: n.data.label,
+          isDir: !!n.data.isDir,
+          parentId: n.id === dragged.id ? targetId : n.parentId || null,
+        });
+      }
     }
-    setNodes((nds) =>
-      nds.map((n) => (n.id === dragged.id ? {...n, data: {...n.data, parentId: bestId}} : n)),
-    );
+    setNodes(itemsToNodes(items));
   };
 
   const autoLayout = () => {
-    setNodes((nds) => {
-      const byId = new Map(nds.map((n) => [n.id, n]));
-      const fresh = tidyLayout(
-        nds.map((n) => ({
+    setNodes(
+      itemsToNodes(
+        nodes.map((n) => ({
           id: n.id,
           label: n.data.label,
-          isDir: n.data.isDir,
-          isRoot: n.data.isRoot,
-          parentId: n.data.parentId,
+          isDir: !!n.data.isDir,
+          parentId: n.parentId || null,
         })),
-      );
-      return fresh.map((n) => ({...byId.get(n.id), ...n}));
-    });
-    window.setTimeout(() => flowRef.current?.fitView({padding: 0.25, duration: 400}), 0);
+      ),
+    );
+    window.setTimeout(() => flowRef.current?.fitView({padding: 0.2, duration: 400}), 0);
   };
 
   const save = async () => {
@@ -1607,7 +1658,7 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
 
   const hint =
     phase === 'idle'
-      ? '拖动节点调整顺序；把节点拖到某个分类节点上即可移入，拖到「文档根目录」可移出。'
+      ? '把卡片/分类拖进目标分类框即可归入；松手后按视觉位置自动排布，顺序即站点顺序。'
       : phase === 'running'
         ? '正在构建部署，完成后可关闭。'
         : phase === 'success'
@@ -1633,8 +1684,7 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
           <div className={styles.flowWrap}>
             <ReactFlow
               nodes={nodes}
-              edges={edges}
-              nodeTypes={FLOW_NODE_TYPES}
+              nodeTypes={BOARD_NODE_TYPES}
               onInit={(instance) => {
                 flowRef.current = instance;
               }}
@@ -1642,21 +1692,13 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
               onNodeDragStop={onNodeDragStop}
               nodesDraggable={!running}
               nodesConnectable={false}
-              elementsSelectable={false}
               fitView
-              fitViewOptions={{padding: 0.25}}
+              fitViewOptions={{padding: 0.2}}
               minZoom={0.2}
-              maxZoom={1.6}
-              proOptions={{hideAttribution: false}}>
+              maxZoom={1.6}>
               <Background variant="dots" gap={20} size={1} />
               <Controls showInteractive={false} />
-              <MiniMap
-                pannable
-                zoomable
-                nodeColor={(n) =>
-                  n.data.isRoot ? '#9ca3af' : n.data.isDir ? '#3b82f6' : '#a3a3a3'
-                }
-              />
+              <MiniMap pannable zoomable />
             </ReactFlow>
           </div>
           <div className={styles.sortFooter}>
