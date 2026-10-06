@@ -1156,6 +1156,8 @@ export default function EditorPage() {
   const [refresh, setRefresh] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  // 内层是否已隐藏并显示展开按钮：等宽度动画结束后再切换，避免动画中内容回流
+  const [collapsedShown, setCollapsedShown] = useState(false);
 
   const mainRef = useRef(null);
   const pipeline = usePipeline(token);
@@ -1164,6 +1166,17 @@ export default function EditorPage() {
     setMounted(true);
     setToken(sessionStorage.getItem('docs-editor-token'));
   }, []);
+
+  useEffect(() => {
+    if (!collapsed) {
+      setCollapsedShown(false);
+      return;
+    }
+    // 关闭动画偏好下 transitionend 不会触发，直接切换
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setCollapsedShown(true);
+    }
+  }, [collapsed]);
 
   useEffect(() => {
     if (!token) return undefined;
@@ -1242,6 +1255,11 @@ export default function EditorPage() {
     setMode(m);
   };
 
+  // 侧栏宽度动画结束后才隐藏内层、显示展开按钮（参考文档站 hideable sidebar）
+  const handleSidebarTransitionEnd = (e) => {
+    if (e.propertyName === 'width' && collapsed) setCollapsedShown(true);
+  };
+
   return (
     <Layout title="在线编辑">
       <Toaster position="top-center" toastOptions={{duration: 4000}} />
@@ -1250,34 +1268,41 @@ export default function EditorPage() {
       ) : (
         <div className={styles.shell}>
           <div className={styles.body}>
-            <aside className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}>
-              <div className={styles.sidebarScroll}>
-                {pending.length > 0 && (
-                  <div className={styles.pendingBox}>
-                    <div className={styles.pendingTitle}>待创建分类</div>
-                    {pending.map((p) => (
-                      <div key={p.path} className={styles.pendingItem}>
-                        <span>{p.label}</span>
-                        <button
-                          type="button"
-                          className={styles.linkBtn}
-                          onClick={() => createCategoryNow(p)}>
-                          立即创建
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                <FileTree tree={tree} active={draft ? null : selected} onSelect={selectFile} />
+            <aside
+              className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}
+              onTransitionEnd={handleSidebarTransitionEnd}>
+              <div
+                className={`${styles.sidebarInner} ${
+                  collapsedShown ? styles.sidebarInnerHidden : ''
+                }`}>
+                <div className={styles.sidebarScroll}>
+                  {pending.length > 0 && (
+                    <div className={styles.pendingBox}>
+                      <div className={styles.pendingTitle}>待创建分类</div>
+                      {pending.map((p) => (
+                        <div key={p.path} className={styles.pendingItem}>
+                          <span>{p.label}</span>
+                          <button
+                            type="button"
+                            className={styles.linkBtn}
+                            onClick={() => createCategoryNow(p)}>
+                            立即创建
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <FileTree tree={tree} active={draft ? null : selected} onSelect={selectFile} />
+                </div>
+                <button
+                  type="button"
+                  className={styles.collapseBtn}
+                  onClick={() => setCollapsed(true)}
+                  title="收起侧边栏">
+                  <IconChevronLeft />
+                  收起侧边栏
+                </button>
               </div>
-              <button
-                type="button"
-                className={styles.collapseBtn}
-                onClick={() => setCollapsed(true)}
-                title="收起侧边栏">
-                <IconChevronLeft />
-                收起侧边栏
-              </button>
             </aside>
 
             <div className={styles.contentCol}>
@@ -1347,7 +1372,7 @@ export default function EditorPage() {
               </main>
             </div>
           </div>
-          {collapsed && (
+          {collapsedShown && (
             <button
               type="button"
               className={styles.expandBtn}

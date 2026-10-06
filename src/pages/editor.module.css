@@ -242,7 +242,22 @@ button.pipeDotWrap {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  will-change: width;
   transition: width 0.2s ease;
+}
+
+/* 内层固定宽度：收起时外层只做裁切，内容不回流，避免文字被挤压 */
+.sidebarInner {
+  width: 280px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebarInnerHidden {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .sidebarScroll {
@@ -255,6 +270,12 @@ button.pipeDotWrap {
 .sidebarCollapsed {
   width: 0;
   border-right: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
 }
 
 .collapseBtn {
