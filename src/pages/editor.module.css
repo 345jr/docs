@@ -811,46 +811,70 @@ button.pipeDotWrap {
   grid-column: 2;
 }
 
-/* ── Base UI Combobox（标签）──────────────────────── */
+/* ── 标签输入 ─────────────────────────────────────── */
 
-.comboGroup {
+.tagsField {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tagInputRow {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+}
+
+.tagInputRow input {
+  flex: 1;
+}
+
+.tagAdd {
+  display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  width: 100%;
-  min-height: 2.4rem;
-  padding: 0.35rem 0.45rem;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2.5rem;
   border: 1px solid var(--ifm-color-emphasis-300);
   border-radius: 6px;
   background: var(--ifm-background-color);
-  cursor: text;
+  color: var(--ifm-color-emphasis-700);
+  cursor: pointer;
 }
 
-.comboGroup:focus-within {
+.tagAdd:hover:not(:disabled) {
   border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
 }
 
-.comboChips {
+.tagAdd:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.tagList {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.3rem;
-  width: 100%;
+  gap: 0.55rem 0.6rem;
+  padding-top: 0.15rem;
 }
 
-.comboChip {
+.tagPill {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.12rem 0.25rem 0.12rem 0.5rem;
-  border-radius: 999px;
-  background: var(--ifm-color-emphasis-200);
-  font-size: 0.8rem;
-  line-height: 1.4;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 6px;
+  background: var(--ifm-color-emphasis-100);
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
-.comboChipRemove {
+.tagRemove {
+  position: absolute;
+  top: -7px;
+  right: -7px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -859,67 +883,30 @@ button.pipeDotWrap {
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: transparent;
-  color: inherit;
+  background: var(--ifm-color-emphasis-600);
+  color: var(--ifm-background-color);
   cursor: pointer;
-}
-
-.comboChipRemove:hover {
-  background: var(--ifm-color-emphasis-300);
-}
-
-/* 提高优先级，覆盖 .metaGrid input 的基础样式 */
-.metaGrid .comboInput {
-  flex: 1;
-  min-width: 6rem;
-  padding: 0.15rem 0;
-  border: none;
-  border-radius: 0;
-  outline: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-}
-
-.comboPositioner {
-  z-index: 1100;
-}
-
-.comboPopup {
-  min-width: var(--anchor-width);
-  max-height: var(--available-height);
-  overflow-y: auto;
-  padding: 0.25rem;
-  background: var(--ifm-background-surface-color);
-  border: 1px solid var(--ifm-color-emphasis-200);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
-  transition: opacity 0.12s ease, transform 0.12s ease;
-}
-
-.comboPopup[data-starting-style],
-.comboPopup[data-ending-style] {
   opacity: 0;
-  transform: scale(0.98);
+  transition: opacity 0.12s ease;
 }
 
-.comboItem {
-  padding: 0.4rem 0.5rem;
-  border-radius: 6px;
-  font-size: 0.88rem;
-  cursor: pointer;
-  user-select: none;
-  outline: none;
+.tagPill:hover .tagRemove,
+.tagRemove:focus-visible {
+  opacity: 1;
 }
 
-.comboItem[data-highlighted] {
-  background: var(--ifm-color-emphasis-100);
+.tagRemove:hover {
+  background: var(--ifm-color-danger);
 }
 
-.comboEmpty {
-  padding: 0.4rem 0.5rem;
-  font-size: 0.85rem;
-  color: var(--ifm-color-emphasis-600);
+/* ── 元信息弹窗底部操作 ───────────────────────────── */
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.75rem 1.25rem 1.1rem;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
 }
 
 /* ── 编辑区 ───────────────────────────────────────── */
