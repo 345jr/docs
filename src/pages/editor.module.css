@@ -1103,3 +1103,238 @@ button.pipeDotWrap {
     max-width: 30vw;
   }
 }
+
+/* ── 排序管理模态框 ────────────────────────────────── */
+
+.sortModal {
+  width: min(640px, calc(100vw - 2rem));
+  max-height: 82vh;
+}
+
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.6rem 1.25rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+  background: var(--ifm-color-emphasis-100);
+  font-size: 0.8rem;
+}
+
+.stepItem {
+  display: flex;
+  align-items: center;
+}
+
+.stepDot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ifm-color-emphasis-400);
+  color: var(--ifm-color-white);
+}
+
+.stepDot svg {
+  width: 10px;
+  height: 10px;
+}
+
+.stepDone {
+  background: var(--ifm-color-success);
+  border-color: var(--ifm-color-success);
+}
+
+.stepActive {
+  background: var(--ifm-color-warning);
+  border-color: var(--ifm-color-warning);
+  animation: sortPulse 1.2s ease-in-out infinite;
+}
+
+.stepFail {
+  background: var(--ifm-color-danger);
+  border-color: var(--ifm-color-danger);
+}
+
+.stepPending {
+  background: transparent;
+}
+
+@keyframes sortPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.stepLabel {
+  margin-left: 0.35rem;
+  color: var(--ifm-color-emphasis-600);
+  white-space: nowrap;
+}
+
+.stepLabelActive {
+  color: var(--ifm-color-emphasis-800);
+  font-weight: 600;
+}
+
+.stepLine {
+  width: 22px;
+  height: 1px;
+  margin: 0 0.35rem;
+  background: var(--ifm-color-emphasis-300);
+}
+
+.stepLineDone {
+  background: var(--ifm-color-success);
+}
+
+.stepNote {
+  margin-left: auto;
+  color: var(--ifm-color-emphasis-600);
+  white-space: nowrap;
+}
+
+.sortBody {
+  flex: 1;
+  min-height: 220px;
+  max-height: 52vh;
+  overflow-y: auto;
+  padding: 0.6rem 0.75rem;
+  overscroll-behavior: contain;
+}
+
+.sortRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  cursor: grab;
+  user-select: none;
+}
+
+.sortRow:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.sortRowDragging {
+  opacity: 0.4;
+}
+
+.dropInside {
+  border-color: var(--ifm-color-primary);
+  background: var(--ifm-color-emphasis-100);
+}
+
+.dropBefore::before,
+.dropAfter::after {
+  content: '';
+  position: absolute;
+  left: 0.5rem;
+  right: 0.5rem;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ifm-color-primary);
+}
+
+.dropBefore::before {
+  top: -1px;
+}
+
+.dropAfter::after {
+  bottom: -1px;
+}
+
+.sortGrip {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ifm-color-emphasis-400);
+  flex-shrink: 0;
+}
+
+.sortToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--ifm-color-emphasis-500);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.sortToggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sortIcon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--ifm-color-emphasis-600);
+  flex-shrink: 0;
+}
+
+.sortLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.88rem;
+}
+
+.sortCatTag {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  background: var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-emphasis-700);
+}
+
+.sortRootDrop {
+  margin-top: 0.5rem;
+  padding: 0.7rem;
+  border: 1px dashed var(--ifm-color-emphasis-400);
+  border-radius: 6px;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-500);
+}
+
+.sortRootDropActive {
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+  background: var(--ifm-color-emphasis-100);
+}
+
+.sortFooter {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem 1rem;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.sortHint {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.78rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.sortFooter .formActions {
+  flex-shrink: 0;
+}

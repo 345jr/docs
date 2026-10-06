@@ -265,6 +265,32 @@ const IconPlus = () => (
   </Ic>
 );
 
+const IconSort = () => (
+  <Ic>
+    <path d="M7 4v16M7 4 3 8M7 4l4 4" />
+    <path d="M17 20V4M17 20l-4-4M17 20l4-4" />
+  </Ic>
+);
+
+const IconGrip = () => (
+  <Ic size={14}>
+    <path d="M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01" />
+  </Ic>
+);
+
+const IconFolderSmall = () => (
+  <Ic size={14}>
+    <path d="M3 7a2 2 0 0 1 2-2h3l2 2h7a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+  </Ic>
+);
+
+const IconFileSmall = () => (
+  <Ic size={14}>
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
+    <path d="M14 3v5h5" />
+  </Ic>
+);
+
 // ── 流水线状态 ────────────────────────────────────────
 
 function usePipeline(token) {
@@ -1257,6 +1283,443 @@ function NewCategory({categories, onCreate, onCancel}) {
   );
 }
 
+// ── 排序管理：树的克隆 / 展平 / 拖拽移动 ───────────
+
+function cloneTree(nodes) {
+  return (nodes || []).map((n) => ({
+    ...n,
+    children: n.is_dir ? cloneTree(n.children) : undefined,
+  }));
+}
+
+// 只保留分类目录与 .md/.mdx 文档；图片等 colocated 资源不入排序树，由后端随目录一起搬。
+function filterReorderNodes(nodes) {
+  const out = [];
+  for (const n of nodes || []) {
+    if (n.is_dir) {
+      out.push({...n, children: filterReorderNodes(n.children)});
+    } else if (/\.mdx?$/i.test(n.path)) {
+      out.push({...n, children: undefined});
+    }
+  }
+  return out;
+}
+
+function findNode(nodes, path) {
+  for (const n of nodes || []) {
+    if (n.path === path) return n;
+    if (n.is_dir) {
+      const hit = findNode(n.children, path);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+function detachNode(nodes, path) {
+  for (let i = 0; i < nodes.length; i++) {
+    if (nodes[i].path === path) return nodes.splice(i, 1)[0];
+    if (nodes[i].is_dir) {
+      const hit = detachNode(nodes[i].children || [], path);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+function findParentList(nodes, path) {
+  for (const n of nodes || []) {
+    if (n.path === path) return {list: nodes, index: nodes.indexOf(n)};
+    if (n.is_dir) {
+      const hit = findParentList(n.children || [], path);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+// path 是否位于 ancestor（含自身）之下。
+function isDescendantPath(ancestor, path) {
+  return path === ancestor || path.startsWith(`${ancestor}/`);
+}
+
+function baseName(p) {
+  const i = p.lastIndexOf('/');
+  return i < 0 ? p : p.slice(i + 1);
+}
+
+function flattenTree(nodes, collapsed, depth = 0, out = []) {
+  for (const n of nodes || []) {
+    out.push({node: n, depth});
+    if (n.is_dir && !collapsed.has(n.path)) {
+      flattenTree(n.children, collapsed, depth + 1, out);
+    }
+  }
+  return out;
+}
+
+// 只上报「结构 + 原路径」，position 由后端按展开顺序计算。
+function serializeReorderTree(nodes) {
+  return (nodes || []).map((n) =>
+    n.is_dir
+      ? {path: n.path, is_dir: true, children: serializeReorderTree(n.children)}
+      : {path: n.path, is_dir: false},
+  );
+}
+
+// 提交后轮询对应 commit 的 workflow，回调步骤：0 排队 / 1 构建 / 3 完成。
+async function pollReorderBuild(refresh, commit, onStep) {
+  const short = (commit || '').slice(0, 7);
+  const deadline = Date.now() + 8 * 60 * 1000;
+  while (Date.now() < deadline) {
+    const s = await refresh();
+    const run = (s?.runs || []).find((x) => (x.head_sha || '').startsWith(short));
+    if (run && run.status === 'completed') {
+      onStep(3);
+      return run.conclusion === 'success' ? 'success' : 'failure';
+    }
+    if (run && run.status === 'in_progress') onStep(1);
+    else if (run && run.status === 'queued') onStep(0);
+    else if (s?.busy) onStep(0);
+    await sleep(4000);
+  }
+  return 'timeout';
+}
+
+// 三步骤进度条：排队 → 构建 → 完成（参考 Steward 的构建状态条）。
+function BuildSteps({phase, activeStep}) {
+  if (phase === 'idle') return null;
+  const labels = ['排队', '构建', '完成'];
+  const stateOf = (i) => {
+    if (phase === 'success') return 'done';
+    if (phase === 'failure') return i === 1 ? 'fail' : i === 0 ? 'done' : 'pending';
+    if (phase === 'timeout') return i <= activeStep ? 'done' : 'pending';
+    if (i < activeStep) return 'done';
+    if (i === activeStep) return 'active';
+    return 'pending';
+  };
+  const cls = {
+    done: styles.stepDone,
+    active: styles.stepActive,
+    pending: styles.stepPending,
+    fail: styles.stepFail,
+  };
+  return (
+    <div className={styles.steps}>
+      {labels.map((label, i) => {
+        const st = stateOf(i);
+        return (
+          <div key={label} className={styles.stepItem}>
+            <span className={`${styles.stepDot} ${cls[st]}`}>
+              {st === 'done' && <IconCheck />}
+            </span>
+            <span className={`${styles.stepLabel} ${st === 'active' ? styles.stepLabelActive : ''}`}>
+              {label}
+            </span>
+            {i < labels.length - 1 && (
+              <span
+                className={`${styles.stepLine} ${
+                  phase === 'success' || i < activeStep ? styles.stepLineDone : ''
+                }`}
+              />
+            )}
+          </div>
+        );
+      })}
+      <span className={styles.stepNote}>
+        {phase === 'success'
+          ? '构建部署完成'
+          : phase === 'failure'
+            ? '构建或部署失败'
+            : phase === 'timeout'
+              ? '未在预期时间内检测到结束'
+              : '构建部署中…'}
+      </span>
+    </div>
+  );
+}
+
+// ── 排序管理模态框 ───────────────────────────────────
+
+function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
+  const [workTree, setWorkTree] = useState([]);
+  const [original, setOriginal] = useState([]);
+  const [collapsed, setCollapsed] = useState(() => new Set());
+  const [dragPath, setDragPath] = useState(null);
+  const [dropTarget, setDropTarget] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [phase, setPhase] = useState('idle');
+  const [activeStep, setActiveStep] = useState(0);
+
+  const treeRef = useRef(tree);
+  treeRef.current = tree;
+
+  // 每次打开都从最新目录树重新克隆，避免构建完成后被父级刷新打断。
+  useEffect(() => {
+    if (!open) return;
+    const clone = filterReorderNodes(treeRef.current);
+    setWorkTree(clone);
+    setOriginal(clone);
+    setCollapsed(new Set());
+    setDragPath(null);
+    setDropTarget(null);
+    setSaving(false);
+    setPhase('idle');
+    setActiveStep(0);
+  }, [open]);
+
+  const rows = useMemo(() => flattenTree(workTree, collapsed), [workTree, collapsed]);
+  const dirty = useMemo(
+    () => JSON.stringify(workTree) !== JSON.stringify(original),
+    [workTree, original],
+  );
+  const running = phase === 'running';
+
+  const toggleCollapse = (p) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(p)) next.delete(p);
+      else next.add(p);
+      return next;
+    });
+  };
+
+  const applyMove = (from, target) => {
+    if (!from || !target || from === target.path) return;
+    if (isDescendantPath(from, target.path)) return;
+    const next = cloneTree(workTree);
+    const moved = detachNode(next, from);
+    if (!moved) return;
+    const name = baseName(moved.path);
+    if (target.position === 'inside') {
+      const node = findNode(next, target.path);
+      if (!node || !node.is_dir) return;
+      node.children = node.children || [];
+      if (node.children.some((n) => baseName(n.path) === name)) {
+        toast.error('目标分类里已有同名条目，无法放入');
+        return;
+      }
+      node.children.push(moved);
+    } else {
+      const loc = findParentList(next, target.path);
+      if (!loc) return;
+      if (loc.list.some((n) => baseName(n.path) === name)) {
+        toast.error('该分类里已有同名条目，无法放入');
+        return;
+      }
+      loc.list.splice(target.position === 'after' ? loc.index + 1 : loc.index, 0, moved);
+    }
+    setWorkTree(next);
+  };
+
+  const appendRoot = (from) => {
+    if (!from) return;
+    const next = cloneTree(workTree);
+    const moved = detachNode(next, from);
+    if (!moved) return;
+    if (next.some((n) => baseName(n.path) === baseName(moved.path))) {
+      toast.error('根目录里已有同名条目，无法放入');
+      return;
+    }
+    next.push(moved);
+    setWorkTree(next);
+  };
+
+  const endDrag = () => {
+    setDragPath(null);
+    setDropTarget(null);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      if (!(await ensureIdle(pipeline.refresh))) {
+        setSaving(false);
+        return;
+      }
+      const res = await api('/reorder', {
+        method: 'POST',
+        token,
+        body: {tree: serializeReorderTree(workTree)},
+      });
+      if (!res.commit) {
+        toast('顺序没有变化');
+        setSaving(false);
+        return;
+      }
+      setPhase('running');
+      setActiveStep(0);
+      toast.success('已提交，等待构建部署');
+      const outcome = await pollReorderBuild(pipeline.refresh, res.commit, setActiveStep);
+      setSaving(false);
+      if (outcome === 'success') {
+        setPhase('success');
+        setActiveStep(3);
+        toast.success('构建部署完成 ✓');
+        onTreeChange?.();
+      } else if (outcome === 'failure') {
+        setPhase('failure');
+        toast.error('构建或部署失败，请查看 Steward');
+      } else {
+        setPhase('timeout');
+        toast('已提交，未在预期时间内检测到流水线结束', {icon: 'ℹ️'});
+      }
+    } catch (err) {
+      setSaving(false);
+      toast.error(err.message);
+    }
+  };
+
+  const handleOpenChange = (next) => {
+    if (next || running || saving) return;
+    onClose();
+  };
+
+  const renderRow = ({node, depth}) => {
+    const dragging = dragPath === node.path;
+    const isTarget = dropTarget?.path === node.path;
+    const dropCls = isTarget
+      ? dropTarget.position === 'before'
+        ? styles.dropBefore
+        : dropTarget.position === 'after'
+          ? styles.dropAfter
+          : styles.dropInside
+      : '';
+    return (
+      <div
+        key={node.path}
+        className={`${styles.sortRow} ${dragging ? styles.sortRowDragging : ''} ${dropCls}`}
+        style={{paddingLeft: `${0.5 + depth * 1.15}rem`}}
+        draggable={!running}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', node.path);
+          setDragPath(node.path);
+        }}
+        onDragEnd={endDrag}
+        onDragOver={(e) => {
+          if (!dragPath || dragPath === node.path || isDescendantPath(dragPath, node.path)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          const rect = e.currentTarget.getBoundingClientRect();
+          const y = e.clientY - rect.top;
+          let position = 'inside';
+          if (y < rect.height * 0.3) position = 'before';
+          else if (y > rect.height * 0.7) position = 'after';
+          else if (!node.is_dir) position = y < rect.height / 2 ? 'before' : 'after';
+          setDropTarget({path: node.path, position});
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (dropTarget && dropTarget.path !== dragPath) applyMove(dragPath, dropTarget);
+          endDrag();
+        }}>
+        <span className={styles.sortGrip} aria-hidden="true">
+          <IconGrip />
+        </span>
+        {node.is_dir ? (
+          <button
+            type="button"
+            className={styles.sortToggle}
+            onClick={() => toggleCollapse(node.path)}
+            title={collapsed.has(node.path) ? '展开' : '折叠'}>
+            {collapsed.has(node.path) ? <IconChevronRight /> : <IconChevronDown />}
+          </button>
+        ) : (
+          <span className={styles.sortToggle} />
+        )}
+        <span className={styles.sortIcon}>
+          {node.is_dir ? <IconFolderSmall /> : <IconFileSmall />}
+        </span>
+        <span className={styles.sortLabel}>{node.label || node.title || node.name}</span>
+        {node.is_dir && <span className={styles.sortCatTag}>分类</span>}
+      </div>
+    );
+  };
+
+  return (
+    <Dialog.Root open={open} onOpenChange={handleOpenChange} disablePointerDismissal={running}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className={styles.modalBackdrop} />
+        <Dialog.Popup className={`${styles.modal} ${styles.sortModal}`} aria-label="排序管理">
+          <div className={styles.modalHeader}>
+            <Dialog.Title className={styles.modalTitle} render={<h3 />}>
+              排序管理
+            </Dialog.Title>
+            <Dialog.Close className={styles.modalClose} title="关闭（Esc）" disabled={running}>
+              ×
+            </Dialog.Close>
+          </div>
+          <BuildSteps phase={phase} activeStep={activeStep} />
+          <div className={styles.sortBody}>
+            {rows.map(renderRow)}
+            <div
+              className={`${styles.sortRootDrop} ${
+                dropTarget?.path === '__root__' ? styles.sortRootDropActive : ''
+              }`}
+              onDragOver={(e) => {
+                if (!dragPath) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                setDropTarget({path: '__root__', position: 'inside'});
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                appendRoot(dragPath);
+                endDrag();
+              }}>
+              拖到这里移到根目录
+            </div>
+          </div>
+          <div className={styles.sortFooter}>
+            <span className={styles.sortHint}>
+              {phase === 'idle'
+                ? '拖动调整顺序；拖到分类上可移入，拖到根目录区可移出。保存后自动构建部署。'
+                : phase === 'running'
+                  ? '正在构建部署，完成后可关闭。'
+                  : phase === 'success'
+                    ? '构建部署完成，可以关闭了。'
+                    : phase === 'failure'
+                      ? '构建或部署失败，请到 Steward 查看日志。'
+                      : '已提交，等待流水线完成。'}
+            </span>
+            <div className={styles.formActions}>
+              {phase === 'idle' ? (
+                <>
+                  <button
+                    type="button"
+                    className={styles.btn}
+                    onClick={onClose}
+                    disabled={running || saving}>
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    onClick={save}
+                    disabled={!dirty || saving || running}>
+                    {saving ? '提交中…' : '保存排序'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.btnPrimary}
+                  onClick={onClose}
+                  disabled={running}>
+                  {running ? '构建中…' : '关闭'}
+                </button>
+              )}
+            </div>
+          </div>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
 // ── 主页面 ────────────────────────────────────────────
 
 export default function EditorPage() {
@@ -1270,6 +1733,7 @@ export default function EditorPage() {
   const [refresh, setRefresh] = useState(0);
   const [dirty, setDirty] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
   // 内层是否已隐藏并显示展开按钮：等宽度动画结束后再切换，避免动画中内容回流
   const [collapsedShown, setCollapsedShown] = useState(false);
 
@@ -1433,6 +1897,10 @@ export default function EditorPage() {
               <IconNewFolder />
               新建分类
             </button>
+            <button type="button" className={styles.barBtn} onClick={() => setSortOpen(true)}>
+              <IconSort />
+              排序管理
+            </button>
             <PipelineDot pipeline={pipeline} />
             <button type="button" className={styles.barBtn} onClick={exitEdit}>
               <IconLogout />
@@ -1494,6 +1962,14 @@ export default function EditorPage() {
               <IconChevronRight />
             </button>
           )}
+          <SortManager
+            open={sortOpen}
+            tree={tree}
+            token={token}
+            pipeline={pipeline}
+            onTreeChange={reload}
+            onClose={() => setSortOpen(false)}
+          />
         </div>
       )}
     </Layout>
