@@ -1,6 +1,6 @@
 ---
 title: 在线编辑模块
-sidebar_position: 4
+sidebar_position: 1
 description: 记录文档站在线编辑功能从需求、Tiptap 选型、前后端实现、流程打磨到上线的完整过程，以及踩过的坑与验证方法。
 tags: [站点建设, 运维, 前端]
 ---
