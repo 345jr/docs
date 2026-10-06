@@ -881,7 +881,6 @@ function ArticleEditor({
     const cat = pendingMeta
       ? {
           label: pendingMeta.label,
-          position: pendingMeta.position ?? null,
           description: pendingMeta.description || '',
         }
       : undefined;
@@ -1204,7 +1203,6 @@ function NewCategory({categories, onCreate, onCancel}) {
   const [parent, setParent] = useState('');
   const [name, setName] = useState('');
   const [label, setLabel] = useState('');
-  const [position, setPosition] = useState('');
   const [description, setDescription] = useState('');
 
   const submit = (e) => {
@@ -1213,7 +1211,6 @@ function NewCategory({categories, onCreate, onCancel}) {
     onCreate({
       path: `${parent ? `${parent}/` : ''}${dir}`,
       label: label.trim() || dir,
-      position: position === '' ? null : Number(position),
       description: description.trim(),
     });
   };
@@ -1243,10 +1240,6 @@ function NewCategory({categories, onCreate, onCancel}) {
       <label>
         <span>显示名称 label</span>
         <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="进阶" />
-      </label>
-      <label>
-        <span>排序 position</span>
-        <input type="number" value={position} onChange={(e) => setPosition(e.target.value)} />
       </label>
       <label>
         <span>分类页描述（可选）</span>
@@ -1357,7 +1350,6 @@ export default function EditorPage() {
         body: {
           path: cat.path,
           label: cat.label,
-          position: cat.position ?? null,
           description: cat.description || '',
           message: `docs: 新增分类 ${cat.label}`,
         },
