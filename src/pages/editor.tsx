@@ -136,27 +136,17 @@ function slugify(name) {
   );
 }
 
-function categoryOptions(tree, pending) {
+function categoryOptions(tree) {
   const byPath = new Map();
   const walk = (nodes, depth) => {
     for (const n of nodes || []) {
       if (n.is_dir) {
-        byPath.set(n.path, {path: n.path, label: n.label || n.name, depth, pending: false});
+        byPath.set(n.path, {path: n.path, label: n.label || n.name, depth});
         walk(n.children, depth + 1);
       }
     }
   };
   walk(tree, 0);
-  for (const p of pending || []) {
-    if (!byPath.has(p.path)) {
-      byPath.set(p.path, {
-        path: p.path,
-        label: p.label,
-        depth: Math.max(0, p.path.split('/').length - 1),
-        pending: true,
-      });
-    }
-  }
   return [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
 }
 
@@ -746,13 +736,11 @@ function ArticleEditor({
   path,
   draft,
   categories,
-  pendingCategories,
   pipeline,
   scrollRef,
   onSelect,
   onTreeChange,
   onDirtyChange,
-  onCategoryBundled,
   onDraftSaved,
 }) {
   const isNew = Boolean(draft);
@@ -779,7 +767,6 @@ function ArticleEditor({
 
   const targetPath = `${category ? `${category}/` : ''}${fileName}${ext}`;
   const isMdx = ext === '.mdx';
-  const pendingMeta = (pendingCategories || []).find((p) => p.path === category) || null;
   const toc = useMemo(() => parseToc(body), [body]);
 
   // 顶部栏插槽（portal 目标）
@@ -916,14 +903,8 @@ function ArticleEditor({
   const save = async () => {
     setSaving(true);
     const content = serializeFrontMatter(fm, body.replace(/\s+$/, ''));
-    const cat = pendingMeta
-      ? {
-          label: pendingMeta.label,
-          description: pendingMeta.description || '',
-        }
-      : undefined;
     const msg = message.trim() || undefined;
-    const payload = {content, category: cat, message: msg};
+    const payload = {content, message: msg};
     const res = await commitAndWait(pipeline.refresh, '提交中…', () =>
       !isNew && targetPath !== activePath
         ? api('/move', {method: 'POST', token, body: {path: activePath, new_path: targetPath, ...payload}})
@@ -931,7 +912,6 @@ function ArticleEditor({
     );
     setSaving(false);
     if (!res) return;
-    if (cat) onCategoryBundled?.(category);
     setDirty(false);
     onTreeChange();
     if (isNew) onDraftSaved(targetPath);
@@ -1069,52 +1049,11 @@ function ArticleEditor({
                 <div className={styles.locRow}>
                   <label>
                     <span>所属分类</span>
-                    <Select.Root
-                      value={meta.category || '__root__'}
-                      onValueChange={(v) => patchMeta({category: v === '__root__' ? '' : v})}>
-                      <Select.Trigger className={styles.selectTrigger}>
-                        <Select.Value>
-                          {(v) =>
-                            v === '__root__'
-                              ? '（根目录）'
-                              : categories.find((c) => c.path === v)?.label ?? v
-                          }
-                        </Select.Value>
-                        <Select.Icon className={styles.selectIcon}>
-                          <IconChevronDown />
-                        </Select.Icon>
-                      </Select.Trigger>
-                      <Select.Portal>
-                        <Select.Positioner
-                          className={styles.selectPositioner}
-                          sideOffset={4}
-                          alignItemWithTrigger={false}>
-                          <Select.Popup className={styles.selectPopup}>
-                            <Select.Item value="__root__" className={styles.selectItem}>
-                              <Select.ItemIndicator className={styles.selectItemIndicator}>
-                                <IconCheck />
-                              </Select.ItemIndicator>
-                              <Select.ItemText className={styles.selectItemText}>
-                                （根目录）
-                              </Select.ItemText>
-                            </Select.Item>
-                            {categories.map((c) => (
-                              <Select.Item key={c.path} value={c.path} className={styles.selectItem}>
-                                <Select.ItemIndicator className={styles.selectItemIndicator}>
-                                  <IconCheck />
-                                </Select.ItemIndicator>
-                                <Select.ItemText className={styles.selectItemText}>
-                                  <span style={{paddingLeft: c.depth * 12}}>
-                                    {c.label}
-                                    {c.pending ? '（待创建）' : ''}
-                                  </span>
-                                </Select.ItemText>
-                              </Select.Item>
-                            ))}
-                          </Select.Popup>
-                        </Select.Positioner>
-                      </Select.Portal>
-                    </Select.Root>
+                    <CategorySelect
+                      value={meta.category}
+                      onChange={(v) => patchMeta({category: v})}
+                      categories={categories}
+                    />
                   </label>
                   <label>
                     <span>文件名</span>
@@ -1181,6 +1120,46 @@ function ArticleEditor({
   );
 }
 
+// ── 分类下拉（Base UI）──────────────────────────────
+
+function CategorySelect({value, onChange, categories, rootLabel = '（根目录）'}) {
+  const ROOT = '__root__';
+  return (
+    <Select.Root value={value || ROOT} onValueChange={(v) => onChange(v === ROOT ? '' : v)}>
+      <Select.Trigger className={styles.selectTrigger}>
+        <Select.Value>
+          {(v) => (v === ROOT ? rootLabel : categories.find((c) => c.path === v)?.label ?? v)}
+        </Select.Value>
+        <Select.Icon className={styles.selectIcon}>
+          <IconChevronDown />
+        </Select.Icon>
+      </Select.Trigger>
+      <Select.Portal>
+        <Select.Positioner className={styles.selectPositioner} sideOffset={4} alignItemWithTrigger={false}>
+          <Select.Popup className={styles.selectPopup}>
+            <Select.Item value={ROOT} className={styles.selectItem}>
+              <Select.ItemIndicator className={styles.selectItemIndicator}>
+                <IconCheck />
+              </Select.ItemIndicator>
+              <Select.ItemText className={styles.selectItemText}>{rootLabel}</Select.ItemText>
+            </Select.Item>
+            {categories.map((c) => (
+              <Select.Item key={c.path} value={c.path} className={styles.selectItem}>
+                <Select.ItemIndicator className={styles.selectItemIndicator}>
+                  <IconCheck />
+                </Select.ItemIndicator>
+                <Select.ItemText className={styles.selectItemText}>
+                  <span style={{paddingLeft: c.depth * 12}}>{c.label}</span>
+                </Select.ItemText>
+              </Select.Item>
+            ))}
+          </Select.Popup>
+        </Select.Positioner>
+      </Select.Portal>
+    </Select.Root>
+  );
+}
+
 // ── 新建文章（只产生草稿，不提交）─────────────────────
 
 function NewArticle({categories, onCreate, onCancel}) {
@@ -1212,16 +1191,7 @@ function NewArticle({categories, onCreate, onCancel}) {
       </label>
       <label>
         <span>所属分类</span>
-        <select value={category} onChange={(e) => setCategory(e.target.value)}>
-          <option value="">（根目录）</option>
-          {categories.map((c) => (
-            <option key={c.path} value={c.path}>
-              {'\u00A0'.repeat(c.depth * 2)}
-              {c.label}
-              {c.pending ? '（待创建）' : ''}
-            </option>
-          ))}
-        </select>
+        <CategorySelect value={category} onChange={setCategory} categories={categories} />
       </label>
       <div className={styles.formActions}>
         <button type="submit" className={styles.btnPrimary}>
@@ -1235,41 +1205,36 @@ function NewArticle({categories, onCreate, onCancel}) {
   );
 }
 
-// ── 新建分类（先暂存，保存文章时创建）────────────────
+// ── 新建分类（直接创建并触发部署）────────────────────
 
 function NewCategory({categories, onCreate, onCancel}) {
   const [parent, setParent] = useState('');
   const [name, setName] = useState('');
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    if (saving || !name.trim()) return;
     const dir = slugify(name);
-    onCreate({
+    setSaving(true);
+    const ok = await onCreate({
       path: `${parent ? `${parent}/` : ''}${dir}`,
       label: label.trim() || dir,
       description: description.trim(),
     });
+    setSaving(false);
+    if (ok) onCancel();
   };
 
   return (
     <form className={styles.form} onSubmit={submit}>
       <h2>新建分类</h2>
-      <p className={styles.muted}>
-        分类先暂存，保存文章到该分类时会一并创建（同一个提交）；也可在左侧「待创建分类」里立即创建。
-      </p>
+      <p className={styles.muted}>保存后立即提交并触发构建部署。</p>
       <label>
         <span>上级分类</span>
-        <select value={parent} onChange={(e) => setParent(e.target.value)}>
-          <option value="">（顶层）</option>
-          {categories.map((c) => (
-            <option key={c.path} value={c.path}>
-              {'\u00A0'.repeat(c.depth * 2)}
-              {c.label}
-            </option>
-          ))}
-        </select>
+        <CategorySelect value={parent} onChange={setParent} categories={categories} rootLabel="（顶层）" />
       </label>
       <label>
         <span>目录名（英文小写加连字符）</span>
@@ -1284,10 +1249,10 @@ function NewCategory({categories, onCreate, onCancel}) {
         <textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
       </label>
       <div className={styles.formActions}>
-        <button type="submit" className={styles.btnPrimary} disabled={!name}>
-          暂存分类
+        <button type="submit" className={styles.btnPrimary} disabled={!name.trim() || saving}>
+          {saving ? '创建中…' : '保存并发布'}
         </button>
-        <button type="button" className={styles.btn} onClick={onCancel}>
+        <button type="button" className={styles.btn} onClick={onCancel} disabled={saving}>
           取消
         </button>
       </div>
@@ -1738,7 +1703,6 @@ export default function EditorPage() {
   const [mounted, setMounted] = useState(false);
   const [token, setToken] = useState(null);
   const [tree, setTree] = useState([]);
-  const [pending, setPending] = useState([]);
   const [selected, setSelected] = useState(null);
   const [draft, setDraft] = useState(null);
   const [mode, setMode] = useState('idle');
@@ -1796,7 +1760,7 @@ export default function EditorPage() {
     };
   }, [token, refresh]);
 
-  const categories = useMemo(() => categoryOptions(tree, pending), [tree, pending]);
+  const categories = useMemo(() => categoryOptions(tree), [tree]);
   const reload = useCallback(() => setRefresh((v) => v + 1), []);
   const handleDirty = useCallback((v) => setDirty(v), []);
 
@@ -1825,13 +1789,7 @@ export default function EditorPage() {
     setSelected(p);
   };
 
-  const addPending = (cat) => {
-    setPending((prev) => [...prev.filter((p) => p.path !== cat.path), cat]);
-    setMode('idle');
-    toast.success(`分类「${cat.label}」已暂存，保存文章时创建`);
-  };
-
-  const createCategoryNow = async (cat) => {
+  const createCategory = async (cat) => {
     const res = await commitAndWait(pipeline.refresh, '创建分类…', () =>
       api('/category', {
         method: 'POST',
@@ -1844,10 +1802,8 @@ export default function EditorPage() {
         },
       }),
     );
-    if (res) {
-      setPending((prev) => prev.filter((p) => p.path !== cat.path));
-      reload();
-    }
+    if (res) reload();
+    return Boolean(res);
   };
 
   const startNew = (m) => {
@@ -1878,22 +1834,6 @@ export default function EditorPage() {
                   collapsedShown ? styles.sidebarInnerHidden : ''
                 }`}>
                 <div className={styles.sidebarScroll}>
-                  {pending.length > 0 && (
-                    <div className={styles.pendingBox}>
-                      <div className={styles.pendingTitle}>待创建分类</div>
-                      {pending.map((p) => (
-                        <div key={p.path} className={styles.pendingItem}>
-                          <span>{p.label}</span>
-                          <button
-                            type="button"
-                            className={styles.linkBtn}
-                            onClick={() => createCategoryNow(p)}>
-                            立即创建
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                   <FileTree tree={tree} active={draft ? null : selected} onSelect={selectFile} />
                 </div>
                 <button
@@ -1947,7 +1887,7 @@ export default function EditorPage() {
               ) : mode === 'new-category' ? (
                 <NewCategory
                   categories={categories}
-                  onCreate={addPending}
+                  onCreate={createCategory}
                   onCancel={() => setMode('idle')}
                 />
               ) : draft || selected ? (
@@ -1957,7 +1897,6 @@ export default function EditorPage() {
                   path={draft ? undefined : selected}
                   draft={draft}
                   categories={categories}
-                  pendingCategories={pending}
                   pipeline={pipeline}
                   scrollRef={mainRef}
                   onSelect={(p) => {
@@ -1966,7 +1905,6 @@ export default function EditorPage() {
                   }}
                   onTreeChange={reload}
                   onDirtyChange={handleDirty}
-                  onCategoryBundled={(p) => setPending((prev) => prev.filter((x) => x.path !== p))}
                   onDraftSaved={(p) => {
                     setDraft(null);
                     setSelected(p);

@@ -348,16 +348,6 @@ button.pipeDotWrap {
   border-radius: 4px;
 }
 
-.linkBtn {
-  border: none;
-  background: transparent;
-  color: var(--ifm-color-primary);
-  cursor: pointer;
-  font: inherit;
-  padding: 0;
-  text-decoration: underline;
-}
-
 .dirtyBadge {
   padding: 0.1rem 0.4rem;
   font-size: 0.72rem;
@@ -365,30 +355,6 @@ button.pipeDotWrap {
   background: var(--ifm-color-warning);
   color: var(--ifm-color-black);
   white-space: nowrap;
-}
-
-/* ── 待创建分类 ───────────────────────────────────── */
-
-.pendingBox {
-  border: 1px dashed var(--ifm-color-emphasis-400);
-  border-radius: 6px;
-  padding: 0.5rem 0.6rem;
-  margin-bottom: 0.75rem;
-  font-size: 0.85rem;
-}
-
-.pendingTitle {
-  font-weight: 600;
-  margin-bottom: 0.3rem;
-  color: var(--ifm-color-emphasis-700);
-}
-
-.pendingItem {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.15rem 0;
 }
 
 .file {
