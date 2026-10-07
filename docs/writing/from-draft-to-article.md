@@ -1,4 +1,5 @@
 ---
+title: 从草稿到文章
 sidebar_position: 1
 description: 为什么初稿总是散、口水话、难读，以及从主旨、结构、故事化到刻意练习的系统改进方法。
 tags: [写作, 方法论]

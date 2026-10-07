@@ -1,4 +1,5 @@
 ---
+title: Hermes 使用回顾
 sidebar_position: 1
 description: Hermes（Nous Research 的代理框架）在这台服务器上的使用回顾：时间线、接入渠道、模型、实际干了什么，以及它留下的遗产。
 tags: [回顾, 服务器, 运维]

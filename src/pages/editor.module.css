@@ -194,7 +194,7 @@
 /* ── 侧边栏 ───────────────────────────────────────── */
 
 .sidebar {
-  width: 280px;
+  width: 300px; /* 与文档站 --doc-sidebar-width 一致 */
   flex-shrink: 0;
   border-right: 1px solid var(--ifm-color-emphasis-200);
   background: var(--ifm-background-surface-color);
@@ -207,7 +207,7 @@
 
 /* 内层固定宽度：收起时外层只做裁切，内容不回流，避免文字被挤压 */
 .sidebarInner {
-  width: 280px;
+  width: 300px;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -223,7 +223,20 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 1rem 0.75rem;
+  font-weight: var(--ifm-font-weight-semibold);
+}
+
+/* Infima 的 menu__link 面向 <a> 设计，用在 <button> 上需要补齐 */
+.sidebarScroll :global(button.menu__link) {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-weight: inherit;
+}
+
+.sidebarScroll :global(.menu__caret) {
+  flex-shrink: 0;
 }
 
 .sidebarCollapsed {
@@ -279,33 +292,7 @@
   background: var(--ifm-color-emphasis-300);
 }
 
-.tree {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  font-size: 0.92rem;
-}
-
-.dir > summary {
-  cursor: pointer;
-  padding: 0.3rem 0.4rem;
-  border-radius: 5px;
-  font-weight: 600;
-}
-
-.dir > summary:hover {
-  background: var(--ifm-color-emphasis-100);
-}
-
-.catTag {
-  margin-left: 0.4rem;
-  padding: 0 0.3rem;
-  font-size: 0.7rem;
-  font-weight: 400;
-  color: var(--ifm-color-emphasis-700);
-  border: 1px solid var(--ifm-color-emphasis-300);
-  border-radius: 4px;
-}
+/* 旧的树样式已移除：改为复用 Infima 菜单类（menu__list / menu__link / menu__caret） */
 
 .dirtyBadge {
   padding: 0.1rem 0.4rem;
@@ -316,27 +303,7 @@
   white-space: nowrap;
 }
 
-.file {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: none;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  padding: 0.3rem 0.4rem;
-  border-radius: 5px;
-  font: inherit;
-}
-
-.file:hover {
-  background: var(--ifm-color-emphasis-100);
-}
-
-.file.active {
-  background: var(--ifm-color-primary);
-  color: var(--ifm-color-white);
-}
+/* .file / .active 样式已移除，激活态由 Infima 的 menu__link--active 提供 */
 
 /* ── 主区域 ───────────────────────────────────────── */
 

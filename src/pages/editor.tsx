@@ -445,34 +445,65 @@ function Login({onLogin}) {
 
 // ── 文件树 ────────────────────────────────────────────
 
-function FileTree({tree, active, onSelect}) {
-  const renderNode = (node, depth) => {
-    const indent = {paddingLeft: `${0.75 + depth * 0.9}rem`};
-    if (node.is_dir) {
-      return (
-        <details key={node.path} className={styles.dir} open>
-          <summary style={indent}>
-            {node.label || node.name}
-            <span className={styles.catTag}>分类</span>
-          </summary>
-          {(node.children || []).map((c) => renderNode(c, depth + 1))}
-        </details>
-      );
-    }
-    return (
+// ── 侧边栏文件树（复用 Infima 菜单样式，与文档站侧边栏视觉一致）──
+
+function CategoryItem({node, active, onSelect}) {
+  const containsActive = !!active && active.startsWith(`${node.path}/`);
+  const [open, setOpen] = useState(true);
+  return (
+    <li className={`menu__list-item ${open ? '' : 'menu__list-item--collapsed'}`}>
+      <div className="menu__list-item-collapsible">
+        <button
+          type="button"
+          className={`clean-btn menu__link menu__link--sublist-caret ${
+            containsActive ? 'menu__link--active' : ''
+          }`}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}>
+          {node.label || node.name}
+        </button>
+        <button
+          type="button"
+          className="clean-btn menu__caret"
+          aria-expanded={open}
+          aria-label={open ? '折叠分类' : '展开分类'}
+          onClick={() => setOpen((v) => !v)}
+        />
+      </div>
+      <ul className="menu__list">
+        {(node.children || []).map((c) => (
+          <TreeItem key={c.path} node={c} active={active} onSelect={onSelect} />
+        ))}
+      </ul>
+    </li>
+  );
+}
+
+function TreeItem({node, active, onSelect}) {
+  if (node.is_dir) {
+    return <CategoryItem node={node} active={active} onSelect={onSelect} />;
+  }
+  return (
+    <li className="menu__list-item">
       <button
-        key={node.path}
         type="button"
-        style={indent}
-        className={`${styles.file} ${active === node.path ? styles.active : ''}`}
+        className={`clean-btn menu__link ${active === node.path ? 'menu__link--active' : ''}`}
         onClick={() => onSelect(node.path)}>
         {node.title || node.name}
       </button>
-    );
-  };
+    </li>
+  );
+}
 
+function FileTree({tree, active, onSelect}) {
   if (tree.length === 0) return <p className={styles.muted}>还没有文档</p>;
-  return <div className={styles.tree}>{tree.map((n) => renderNode(n, 0))}</div>;
+  return (
+    <ul className="menu__list">
+      {tree.map((n) => (
+        <TreeItem key={n.path} node={n} active={active} onSelect={onSelect} />
+      ))}
+    </ul>
+  );
 }
 
 // ── 富文本编辑器（Tiptap）─────────────────────────────

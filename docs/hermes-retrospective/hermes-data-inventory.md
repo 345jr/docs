@@ -1,4 +1,5 @@
 ---
+title: Hermes 数据与拆除清单
 sidebar_position: 2
 description: 删除 Hermes 前的数据存档清单：目录、数据库、会话、密钥、服务，以及删除后需要清理的残留（含 steward 运维面板里的两项）。
 tags: [清理, 服务器, 运维]
