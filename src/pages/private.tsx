@@ -54,9 +54,10 @@ function stripFrontMatter(raw) {
 // ── FileEntry 树 → Docusaurus sidebar items ─────────
 
 const stripExt = (p) => p.replace(/\.mdx?$/, '');
-const encodePath = (p) => p.split('/').map(encodeURIComponent).join('/');
 
-/** 文档树 → sidebar items：分类为 collapsible category，文档为 /private/<路径> 链接。 */
+/** 文档树 → sidebar items：分类为 collapsible category，文档为 /private/<路径> 链接。
+ *  href 保持原始 unicode（与 docs 插件一致，不做百分号编码），
+ *  这样 active 判定（isSamePath）与 react-router 的 pathname 才能对上。 */
 function toSidebarItems(nodes) {
   return (nodes || [])
     .filter((n) => n.is_dir || /\.mdx?$/i.test(n.name))
@@ -71,7 +72,7 @@ function toSidebarItems(nodes) {
           }
         : {
             type: 'link',
-            href: `/private/${encodePath(stripExt(n.path))}`,
+            href: `/private/${stripExt(n.path)}`,
             label: n.title || stripExt(n.name),
           },
     );
@@ -127,7 +128,13 @@ export default function PrivatePage() {
   const [doc, setDoc] = useState(null); // {path, title, content}
   const [loadingDoc, setLoadingDoc] = useState(false);
 
-  const slug = decodeURIComponent(location.pathname.replace(/^\/private\/?/, ''));
+  const slug = (() => {
+    try {
+      return decodeURIComponent(location.pathname.replace(/^\/private\/?/, ''));
+    } catch {
+      return location.pathname.replace(/^\/private\/?/, '');
+    }
+  })();
 
   useEffect(() => {
     setMounted(true);
