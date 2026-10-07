@@ -108,6 +108,11 @@ const config = {
         },
         items: [
           {
+            to: '/private',
+            position: 'left',
+            label: '私有文档',
+          },
+          {
             type: 'docSidebar',
             sidebarId: 'tutorialSidebar',
             position: 'left',
@@ -117,11 +122,6 @@ const config = {
             to: '/editor',
             position: 'left',
             label: '在线编辑',
-          },
-          {
-            to: '/private',
-            position: 'left',
-            label: '私有文档',
           },
           {
             type: 'custom-fontPicker',
