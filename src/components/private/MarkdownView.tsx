@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import {marked} from 'marked';
 import {Highlight, themes} from 'prism-react-renderer';
 import {ThemeClassNames, useColorMode} from '@docusaurus/theme-common';
+import Heading from '@theme/Heading';
 import styles from './MarkdownView.module.css';
 
 /**
@@ -97,10 +98,11 @@ function Blocks({tokens}) {
       {tokens.map((t, i) => {
         switch (t.type) {
           case 'heading':
-            return React.createElement(
-              `h${t.depth}`,
-              {key: i, id: slugifyHeading(t.text)},
-              <Inline tokens={t.tokens} />,
+            // 走 @theme/Heading，拿到与公开文档一致的 anchor 样式与悬浮 # 链接
+            return (
+              <Heading key={i} as={`h${t.depth}`} id={slugifyHeading(t.text)}>
+                <Inline tokens={t.tokens} />
+              </Heading>
             );
           case 'paragraph':
             return (
@@ -190,7 +192,7 @@ function Blocks({tokens}) {
   );
 }
 
-export default function MarkdownView({content}) {
+export default function MarkdownView({content, title}) {
   const tokens = useMemo(() => {
     try {
       return marked.lexer(content || '');
@@ -200,6 +202,12 @@ export default function MarkdownView({content}) {
   }, [content]);
   return (
     <div className={clsx(ThemeClassNames.docs.docMarkdown, 'markdown', styles.markdown)}>
+      {/* 标题与公开文档一致：放在 header 里，由 Infima 的 .markdown 规则定字号 */}
+      {title ? (
+        <header>
+          <h1>{title}</h1>
+        </header>
+      ) : null}
       <Blocks tokens={tokens} />
     </div>
   );

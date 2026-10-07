@@ -2,6 +2,7 @@ import React, {useEffect, useMemo, useState} from 'react';
 import {useLocation} from '@docusaurus/router';
 import clsx from 'clsx';
 import Layout from '@theme/Layout';
+import Link from '@docusaurus/Link';
 import {
   HtmlClassNameProvider,
   ThemeClassNames,
@@ -51,13 +52,24 @@ function stripFrontMatter(raw) {
   return m ? raw.slice(m[0].length) : raw;
 }
 
+/** 抽出正文开头的一级标题，渲染到 header 里（与公开文档的标题区一致）。 */
+function extractLeadingTitle(content) {
+  const m = /^#[ \t]+([^\n]*)\n?/.exec(content);
+  if (!m) return {body: content, title: null};
+  const title = m[1].replace(/\s+#+\s*$/, '').trim();
+  if (!title) return {body: content, title: null};
+  return {body: content.slice(m[0].length).replace(/^\n+/, ''), title};
+}
+
 // ── FileEntry 树 → Docusaurus sidebar items ─────────
 
 const stripExt = (p) => p.replace(/\.mdx?$/, '');
 
 /** 文档树 → sidebar items：分类为 collapsible category，文档为 /private/<路径> 链接。
  *  href 保持原始 unicode（与 docs 插件一致，不做百分号编码），
- *  这样 active 判定（isSamePath）与 react-router 的 pathname 才能对上。 */
+ *  这样 active 判定（isSamePath）与 react-router 的 pathname 才能对上。
+ *  分类也带 href（对齐公开文档 `_category_.json` 的 generated-index），
+ *  否则分类标题不是链接，只能展开/收起。 */
 function toSidebarItems(nodes) {
   return (nodes || [])
     .filter((n) => n.is_dir || /\.mdx?$/i.test(n.name))
@@ -68,6 +80,7 @@ function toSidebarItems(nodes) {
             label: n.label || n.name,
             collapsible: true,
             collapsed: false,
+            href: `/private/${n.path}`,
             items: toSidebarItems(n.children),
           }
         : {
@@ -87,6 +100,17 @@ function findDocBySlug(nodes, slug) {
       const hit = findDocBySlug(n.children, slug);
       if (hit) return hit;
     }
+  }
+  return null;
+}
+
+/** 按 URL slug（去掉扩展名的路径）在树里找分类（目录）节点。 */
+function findCategoryBySlug(nodes, slug) {
+  for (const n of nodes || []) {
+    if (!n.is_dir) continue;
+    if (n.path === slug) return n;
+    const hit = findCategoryBySlug(n.children, slug);
+    if (hit) return hit;
   }
   return null;
 }
@@ -117,6 +141,40 @@ function extractToc(content) {
 }
 
 // ── 主页面 ────────────────────────────────────────────
+
+/** 分类索引页：对应公开文档的 `_category_.json` generated-index。 */
+function CategoryIndex({node}) {
+  const items = (node.children || []).filter(
+    (n) => n.is_dir || /\.mdx?$/i.test(n.name),
+  );
+  return (
+    <div>
+      <header>
+        <h1 className={styles.indexTitle}>{node.label || node.name}</h1>
+      </header>
+      {items.length === 0 ? (
+        <p className={styles.placeholder}>这个分类下还没有文档。</p>
+      ) : (
+        <div className="row">
+          {items.map((n) => (
+            <div key={n.path} className={clsx('col col--6', styles.cardCol)}>
+              <Link
+                className={clsx('card padding--lg', styles.card)}
+                to={`/private/${n.is_dir ? n.path : stripExt(n.path)}`}>
+                <h2 className={styles.cardTitle}>
+                  <span className={styles.cardIcon}>{n.is_dir ? '🗃' : '📄️'}</span>
+                  {n.is_dir
+                    ? n.label || n.name
+                    : n.title || stripExt(n.name)}
+                </h2>
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function PrivatePage() {
   const location = useLocation();
@@ -172,8 +230,10 @@ export default function PrivatePage() {
   // 按 URL slug 加载文档
   useEffect(() => {
     if (!token || !tree) return undefined;
-    if (!slug) {
+    if (!slug || findCategoryBySlug(tree, slug)) {
+      // 分类页（/private/<分类>）不拉正文，由索引页渲染
       setDoc(null);
+      setLoadingDoc(false);
       return undefined;
     }
     const node = findDocBySlug(tree, slug);
@@ -187,7 +247,12 @@ export default function PrivatePage() {
     readDoc(node.path)
       .then((raw) => {
         if (cancelled) return;
-        setDoc({path: node.path, title: docLabel(node), content: stripFrontMatter(raw)});
+        const {body, title} = extractLeadingTitle(stripFrontMatter(raw));
+        setDoc({
+          path: node.path,
+          title: title || extractTitle(raw) || docLabel(node),
+          content: body,
+        });
         setLoadingDoc(false);
       })
       .catch((err) => {
@@ -202,13 +267,21 @@ export default function PrivatePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, tree, token]);
 
+  const sidebarItems = useMemo(() => toSidebarItems(tree), [tree]);
+  const category = useMemo(
+    () => (slug ? findCategoryBySlug(tree, slug) : null),
+    [slug, tree],
+  );
+  const toc = useMemo(() => extractToc(doc?.content), [doc]);
+
   // 文档标题同步到浏览器标签页（与文档站行为一致）
   useEffect(() => {
-    document.title = doc ? `${doc.title} | Lopop Docs` : '私有文档 | Lopop Docs';
-  }, [doc]);
-
-  const sidebarItems = useMemo(() => toSidebarItems(tree), [tree]);
-  const toc = useMemo(() => extractToc(doc?.content), [doc]);
+    document.title = doc
+      ? `${doc.title} | Lopop Docs`
+      : category
+        ? `${category.label || category.name} | Lopop Docs`
+        : '私有文档 | Lopop Docs';
+  }, [doc, category]);
 
   // 与 DocItem/Layout 一致：桌面右侧 TOC + 移动端折叠 TOC
   const tocDesktop =
@@ -226,7 +299,7 @@ export default function PrivatePage() {
         toc={toc}
         minHeadingLevel={2}
         maxHeadingLevel={3}
-        className={ThemeClassNames.docs.docTocMobile}
+        className={clsx(ThemeClassNames.docs.docTocMobile, styles.tocMobile)}
       />
     ) : undefined;
 
@@ -253,10 +326,12 @@ export default function PrivatePage() {
                   <div className={styles.docItemContainer}>
                     <article>
                       {tocMobile}
-                      {loadingDoc ? (
+                      {category ? (
+                        <CategoryIndex node={category} />
+                      ) : loadingDoc ? (
                         <p className={styles.placeholder}>加载中…</p>
                       ) : doc ? (
-                        <MarkdownView content={doc.content} />
+                        <MarkdownView content={doc.content} title={doc.title} />
                       ) : slug ? (
                         <p className={styles.placeholder}>没有找到这篇私有文档。</p>
                       ) : (

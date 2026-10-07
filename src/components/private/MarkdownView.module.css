@@ -1,26 +1,9 @@
-/* 私有文档正文渲染样式，排版基调与 Docusaurus markdown 一致 */
+/* 私有文档正文渲染样式。
+   注意：字号/行高/标题大小一律交给 Infima 的 `.markdown` 规则，
+   这里不要覆写 h1~h3，否则会和公开文档的排版不一致。 */
 
 .markdown {
-  font-size: 1.05rem;
-  line-height: 1.75;
   word-break: break-word;
-}
-
-.markdown h1 {
-  font-size: 2.2rem;
-  margin: 0 0 1.2rem;
-}
-
-.markdown h2 {
-  font-size: 1.6rem;
-  margin-top: 2.2rem;
-  padding-bottom: 0.3rem;
-  border-bottom: 1px solid var(--ifm-color-emphasis-200);
-}
-
-.markdown h3 {
-  font-size: 1.25rem;
-  margin-top: 1.8rem;
 }
 
 .markdown a {

@@ -11,6 +11,49 @@
   }
 }
 
+/* 与 theme-classic DocItem/TOC/Mobile 一致：桌面端隐藏移动端折叠 TOC */
+@media (min-width: 997px) {
+  .tocMobile {
+    display: none;
+  }
+}
+
+/* 分类索引页（对齐 DocCategoryGeneratedIndexPage / DocCard） */
+
+.indexTitle {
+  --ifm-h1-font-size: 3rem;
+  margin-bottom: calc(1.25 * var(--ifm-leading));
+}
+
+.cardCol {
+  margin-bottom: 2rem;
+}
+
+.card {
+  display: block;
+  height: 100%;
+  color: inherit !important;
+  text-decoration: none !important;
+  transition: border-color var(--ifm-transition-fast) ease;
+}
+
+.card:hover {
+  border-color: var(--ifm-color-primary);
+  text-decoration: none !important;
+}
+
+.cardTitle {
+  --ifm-h2-font-size: 1.25rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.cardIcon {
+  font-size: 1rem;
+}
+
 .placeholder {
   color: var(--ifm-color-emphasis-500);
   font-size: 0.95rem;
