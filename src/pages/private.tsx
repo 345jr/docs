@@ -1,7 +1,18 @@
-import React, {useCallback, useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
+import {useLocation} from '@docusaurus/router';
+import clsx from 'clsx';
 import Layout from '@theme/Layout';
-import toast, {Toaster} from 'react-hot-toast';
+import {
+  HtmlClassNameProvider,
+  ThemeClassNames,
+  useWindowSize,
+} from '@docusaurus/theme-common';
+import {DocsSidebarProvider} from '@docusaurus/plugin-content-docs/client';
+import DocRootLayout from '@theme/DocRoot/Layout';
+import TOC from '@theme/TOC';
+import TOCCollapsible from '@theme/TOCCollapsible';
 import {marked} from 'marked';
+import toast, {Toaster} from 'react-hot-toast';
 import MarkdownView from '@site/src/components/private/MarkdownView';
 import LoginForm from '@site/src/components/LoginForm';
 import {
@@ -11,12 +22,15 @@ import {
   UNAUTHORIZED_EVENT,
   unlock,
 } from '@site/src/utils/privateClient';
-import styles from './private.module.css';
+import styles from './private.styles.module.css';
 
 /**
- * 私有文档阅读页：登录用与在线编辑相同的密钥（同一个 token，编辑器登录过
- * 这里就直接进），侧边栏/正文/TOC 视觉对齐文档站。内容存在 Steward 本地，
- * 接口按 session 鉴权，保存即时生效。
+ * 私有文档阅读页：直接复用文档站的 DocRootLayout / DocSidebar / TOC 组件，
+ * 视觉与公开文档完全一致（含侧边栏收起、移动端遮罩、active 高亮）。
+ *
+ * 登录与在线编辑共用同一密钥与 token（编辑器登录过这里就直接进）。
+ * 每篇文档是真实路径 /private/<分类>/<文档>，因此侧边栏的 active 判定、
+ * 分享/收藏链接都和文档站行为一致。
  */
 
 // ── front matter（只取 title，正文整体交给 MarkdownView）──
@@ -37,66 +51,47 @@ function stripFrontMatter(raw) {
   return m ? raw.slice(m[0].length) : raw;
 }
 
-// ── 侧边栏（Infima menu 结构，与文档站侧边栏视觉一致）──
+// ── FileEntry 树 → Docusaurus sidebar items ─────────
 
-function SidebarTree({items, activePath, onSelect}) {
-  if (!items || items.length === 0) {
-    return (
-      <p
-        className="menu__list-item"
-        style={{padding: '0.5rem 0.75rem', fontSize: '0.85rem', color: 'var(--ifm-color-emphasis-600)'}}>
-        还没有私有文档。去「在线编辑」切到私有模式新建第一篇。
-      </p>
+const stripExt = (p) => p.replace(/\.mdx?$/, '');
+const encodePath = (p) => p.split('/').map(encodeURIComponent).join('/');
+
+/** 文档树 → sidebar items：分类为 collapsible category，文档为 /private/<路径> 链接。 */
+function toSidebarItems(nodes) {
+  return (nodes || [])
+    .filter((n) => n.is_dir || /\.mdx?$/i.test(n.name))
+    .map((n) =>
+      n.is_dir
+        ? {
+            type: 'category',
+            label: n.label || n.name,
+            collapsible: true,
+            collapsed: false,
+            items: toSidebarItems(n.children),
+          }
+        : {
+            type: 'link',
+            href: `/private/${encodePath(stripExt(n.path))}`,
+            label: n.title || stripExt(n.name),
+          },
     );
-  }
-  return (
-    <ul className="theme-doc-sidebar-menu menu__list">
-      {items.map((n) =>
-        n.is_dir ? (
-          <SidebarCategory key={n.path} node={n} activePath={activePath} onSelect={onSelect} />
-        ) : (
-          <li key={n.path} className="menu__list-item">
-            <button
-              type="button"
-              className={`clean-btn menu__link ${activePath === n.path ? 'menu__link--active' : ''}`}
-              onClick={() => onSelect(n.path)}>
-              {n.title || n.name}
-            </button>
-          </li>
-        ),
-      )}
-    </ul>
-  );
 }
 
-function SidebarCategory({node, activePath, onSelect}) {
-  const containsActive = !!activePath && activePath.startsWith(`${node.path}/`);
-  const [open, setOpen] = useState(true);
-  return (
-    <li className={`menu__list-item ${open ? '' : 'menu__list-item--collapsed'}`}>
-      <div className="menu__list-item-collapsible">
-        <button
-          type="button"
-          className={`clean-btn menu__link menu__link--sublist ${containsActive ? 'menu__link--active' : ''}`}
-          aria-expanded={open}
-          onClick={() => setOpen((v) => !v)}>
-          {node.label || node.name}
-        </button>
-        <button
-          type="button"
-          className={`clean-btn menu__caret ${styles.categoryCaret} ${open ? '' : styles.categoryCaretClosed}`}
-          aria-expanded={open}
-          aria-label={open ? '折叠' : '展开'}
-          onClick={() => setOpen((v) => !v)}
-        />
-      </div>
-      <div className={styles.collapsibleBody} aria-hidden={!open}>
-        <ul className="menu__list">
-          <SidebarTree items={node.children || []} activePath={activePath} onSelect={onSelect} />
-        </ul>
-      </div>
-    </li>
-  );
+/** 按 URL slug（去掉扩展名的路径）在树里找文档节点。 */
+function findDocBySlug(nodes, slug) {
+  for (const n of nodes || []) {
+    if (!n.is_dir) {
+      if (stripExt(n.path) === slug) return n;
+    } else {
+      const hit = findDocBySlug(n.children, slug);
+      if (hit) return hit;
+    }
+  }
+  return null;
+}
+
+function docLabel(node) {
+  return node.title || stripExt(node.name);
 }
 
 // ── TOC（从 markdown 提取 h2/h3，锚点 id 与 MarkdownView 一致）──
@@ -109,43 +104,30 @@ function slugifyHeading(text) {
     .replace(/\s+/g, '-');
 }
 
-function useToc(content) {
-  return useMemo(() => {
-    try {
-      return marked
-        .lexer(content || '')
-        .filter((t) => t.type === 'heading' && t.depth >= 2 && t.depth <= 3)
-        .map((h) => ({depth: h.depth, text: h.text, id: slugifyHeading(h.text)}));
-    } catch {
-      return [];
-    }
-  }, [content]);
-}
-
-function Toc({items}) {
-  if (items.length === 0) return null;
-  return (
-    <nav className={styles.toc} aria-label="本页导航">
-      <p className={styles.tocTitle}>本页</p>
-      <ul>
-        {items.map((h) => (
-          <li key={h.id} className={h.depth === 3 ? styles.tocH3 : undefined}>
-            <a href={`#${h.id}`}>{h.text}</a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  );
+function extractToc(content) {
+  try {
+    return marked
+      .lexer(content || '')
+      .filter((t) => t.type === 'heading' && t.depth >= 2 && t.depth <= 3)
+      .map((h) => ({id: slugifyHeading(h.text), value: h.text, level: h.depth}));
+  } catch {
+    return [];
+  }
 }
 
 // ── 主页面 ────────────────────────────────────────────
 
 export default function PrivatePage() {
+  const location = useLocation();
+  const windowSize = useWindowSize();
+
   const [mounted, setMounted] = useState(false);
   const [token, setToken] = useState(null);
   const [tree, setTree] = useState(null); // FileEntry[]
-  const [doc, setDoc] = useState(null); // {path, content}
+  const [doc, setDoc] = useState(null); // {path, title, content}
   const [loadingDoc, setLoadingDoc] = useState(false);
+
+  const slug = decodeURIComponent(location.pathname.replace(/^\/private\/?/, ''));
 
   useEffect(() => {
     setMounted(true);
@@ -163,29 +145,13 @@ export default function PrivatePage() {
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, []);
 
-  const openDoc = useCallback(async (path) => {
-    setLoadingDoc(true);
-    try {
-      const raw = await readDoc(path);
-      setDoc({path, content: stripFrontMatter(raw), title: extractTitle(raw)});
-      history.replaceState(null, '', `/private?doc=${encodeURIComponent(path)}`);
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoadingDoc(false);
-    }
-  }, []);
-
-  // 拉目录树；支持 ?doc=path 直达
+  // 登录后拉目录树
   useEffect(() => {
     if (!token) return undefined;
     let cancelled = false;
     fetchTree()
       .then((items) => {
-        if (cancelled) return;
-        setTree(items || []);
-        const slug = new URLSearchParams(window.location.search).get('doc');
-        if (slug) openDoc(slug);
+        if (!cancelled) setTree(items || []);
       })
       .catch((err) => {
         // 401 已由 privateClient 广播处理，这里只需安静退出
@@ -194,9 +160,68 @@ export default function PrivatePage() {
     return () => {
       cancelled = true;
     };
-  }, [token, openDoc]);
+  }, [token]);
 
-  const toc = useToc(doc?.content);
+  // 按 URL slug 加载文档
+  useEffect(() => {
+    if (!token || !tree) return undefined;
+    if (!slug) {
+      setDoc(null);
+      return undefined;
+    }
+    const node = findDocBySlug(tree, slug);
+    if (!node) {
+      setDoc(null);
+      return undefined;
+    }
+    if (doc?.path === node.path) return undefined;
+    let cancelled = false;
+    setLoadingDoc(true);
+    readDoc(node.path)
+      .then((raw) => {
+        if (cancelled) return;
+        setDoc({path: node.path, title: docLabel(node), content: stripFrontMatter(raw)});
+        setLoadingDoc(false);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          toast.error(err.message);
+          setLoadingDoc(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, tree, token]);
+
+  // 文档标题同步到浏览器标签页（与文档站行为一致）
+  useEffect(() => {
+    document.title = doc ? `${doc.title} | Lopop Docs` : '私有文档 | Lopop Docs';
+  }, [doc]);
+
+  const sidebarItems = useMemo(() => toSidebarItems(tree), [tree]);
+  const toc = useMemo(() => extractToc(doc?.content), [doc]);
+
+  // 与 DocItem/Layout 一致：桌面右侧 TOC + 移动端折叠 TOC
+  const tocDesktop =
+    toc.length > 0 && (windowSize === 'desktop' || windowSize === 'ssr') ? (
+      <TOC
+        toc={toc}
+        minHeadingLevel={2}
+        maxHeadingLevel={3}
+        className={ThemeClassNames.docs.docTocDesktop}
+      />
+    ) : undefined;
+  const tocMobile =
+    toc.length > 0 ? (
+      <TOCCollapsible
+        toc={toc}
+        minHeadingLevel={2}
+        maxHeadingLevel={3}
+        className={ThemeClassNames.docs.docTocMobile}
+      />
+    ) : undefined;
 
   return (
     <Layout title="私有文档" description="仅自己可见的私有文档">
@@ -212,39 +237,36 @@ export default function PrivatePage() {
           }}
         />
       ) : (
-        <main className={styles.page}>
-          <div className={styles.body}>
-            <aside className={styles.sidebar}>
-              <div className="sidebarViewport">
-                <nav aria-label="私有文档" className={`menu thin-scrollbar ${styles.sidebarMenu}`}>
-                  <ul className="theme-doc-sidebar-menu menu__list">
-                    <li className="menu__list-item">
-                      <span className={`menu__link ${styles.sidebarHeading}`}>🔒 私有文档</span>
-                    </li>
-                  </ul>
-                  <SidebarTree items={tree} activePath={doc?.path} onSelect={openDoc} />
-                </nav>
+        <HtmlClassNameProvider
+          className={clsx(ThemeClassNames.wrapper.docsPages, ThemeClassNames.page.docsDocPage)}>
+          <DocsSidebarProvider name="private" items={sidebarItems}>
+            <DocRootLayout>
+              <div className="row">
+                <div className={clsx('col', styles.docItemCol)}>
+                  <div className={styles.docItemContainer}>
+                    <article>
+                      {tocMobile}
+                      {loadingDoc ? (
+                        <p className={styles.placeholder}>加载中…</p>
+                      ) : doc ? (
+                        <MarkdownView content={doc.content} />
+                      ) : slug ? (
+                        <p className={styles.placeholder}>没有找到这篇私有文档。</p>
+                      ) : (
+                        <p className={styles.placeholder}>
+                          {tree && tree.length > 0
+                            ? '从左侧选择一篇文档。'
+                            : '还没有私有文档。在「在线编辑」中切到私有模式即可新建。'}
+                        </p>
+                      )}
+                    </article>
+                  </div>
+                </div>
+                {tocDesktop && <div className="col col--3">{tocDesktop}</div>}
               </div>
-            </aside>
-
-            <div className={styles.mainCol}>
-              <article className={styles.article}>
-                {loadingDoc ? (
-                  <p className={styles.muted}>加载中…</p>
-                ) : doc ? (
-                  <MarkdownView content={doc.content} />
-                ) : (
-                  <p className={styles.placeholder}>
-                    {tree && tree.length > 0
-                      ? '从左侧选择一篇私有文档。'
-                      : '还没有私有文档。在「在线编辑」中切到私有模式即可新建。'}
-                  </p>
-                )}
-              </article>
-              {doc && !loadingDoc && <Toc items={toc} />}
-            </div>
-          </div>
-        </main>
+            </DocRootLayout>
+          </DocsSidebarProvider>
+        </HtmlClassNameProvider>
       )}
     </Layout>
   );

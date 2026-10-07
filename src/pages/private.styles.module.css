@@ -1,0 +1,17 @@
+/* 与 theme-classic DocItem/Layout/styles.module.css 保持一致（那边未导出，此处复制） */
+
+.docItemContainer header + *,
+.docItemContainer article > *:first-child {
+  margin-top: 0;
+}
+
+@media (min-width: 997px) {
+  .docItemCol {
+    max-width: 75% !important;
+  }
+}
+
+.placeholder {
+  color: var(--ifm-color-emphasis-500);
+  font-size: 0.95rem;
+}

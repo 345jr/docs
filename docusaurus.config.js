@@ -5,6 +5,8 @@
 // See: https://docusaurus.io/docs/api/docusaurus-config
 
 import {themes as prismThemes} from 'prism-react-renderer';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -32,6 +34,28 @@ const config = {
 
   onBrokenLinks: 'throw',
 
+  // 私有文档阅读页：src/pages/private.tsx 只注册 /private，
+  // 这里的内联插件补上展开路由 /private/*（/private/<分类>/<文档>），
+  // 使侧边栏 active 判定与文档站行为一致。
+  plugins: [
+    function privateDocsRoutes() {
+      return {
+        name: 'private-docs-routes',
+        contentLoaded({actions}) {
+          actions.addRoute({
+            path: '/private/*',
+            component: '@site/src/pages/private.tsx',
+            exact: true,
+          });
+        },
+        postBuild({outDir}) {
+          // SSG 会为 splat 路由多生成一个字面量 build/private/*/index.html，删掉它
+          fs.rmSync(path.join(outDir, 'private', '*'), {recursive: true, force: true});
+        },
+      };
+    },
+  ],
+
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
   // may want to replace "en" with "zh-Hans".
@@ -52,6 +76,9 @@ const config = {
           editUrl: 'https://github.com/345jr/docs/tree/main/',
         },
         blog: false,
+        sitemap: {
+          ignorePatterns: ['/private', '/private/**'],
+        },
         theme: {
           customCss: './src/css/custom.css',
         },

@@ -1,7 +1,8 @@
 import React, {useMemo} from 'react';
+import clsx from 'clsx';
 import {marked} from 'marked';
 import {Highlight, themes} from 'prism-react-renderer';
-import {useColorMode} from '@docusaurus/theme-common';
+import {ThemeClassNames, useColorMode} from '@docusaurus/theme-common';
 import styles from './MarkdownView.module.css';
 
 /**
@@ -198,7 +199,7 @@ export default function MarkdownView({content}) {
     }
   }, [content]);
   return (
-    <div className={`markdown ${styles.markdown}`}>
+    <div className={clsx(ThemeClassNames.docs.docMarkdown, 'markdown', styles.markdown)}>
       <Blocks tokens={tokens} />
     </div>
   );
