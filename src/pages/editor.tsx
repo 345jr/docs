@@ -2117,9 +2117,6 @@ export default function EditorPage() {
                   collapsedShown ? styles.sidebarInnerHidden : ''
                 }`}>
                 <div className={styles.sidebarScroll}>
-                  {privateMode && (
-                    <p className={styles.pvHeading}>🔒 私有文档</p>
-                  )}
                   <FileTree
                     tree={privateMode ? pvTree : tree}
                     active={draft ? null : selected}

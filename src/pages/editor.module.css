@@ -355,14 +355,6 @@
   color: var(--ifm-color-primary);
 }
 
-.pvHeading {
-  margin: 0.4rem 0 0.2rem;
-  padding: 0 0.75rem;
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--ifm-font-color-base);
-}
-
 .spacer {
   flex: 1;
 }
