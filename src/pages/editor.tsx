@@ -207,14 +207,14 @@ function Ic({children, size = 16}) {
   );
 }
 
-const IconChevronLeft = () => (
-  <Ic>
+const IconChevronLeft = ({size}) => (
+  <Ic size={size}>
     <path d="m15 6-6 6 6 6" />
   </Ic>
 );
 
-const IconChevronRight = () => (
-  <Ic>
+const IconChevronRight = ({size}) => (
+  <Ic size={size}>
     <path d="m9 6 6 6-6 6" />
   </Ic>
 );
@@ -462,19 +462,15 @@ function CategoryItem({node, active, onSelect}) {
           onClick={() => setOpen((v) => !v)}>
           {node.label || node.name}
         </button>
-        <button
-          type="button"
-          className="clean-btn menu__caret"
-          aria-expanded={open}
-          aria-label={open ? '折叠分类' : '展开分类'}
-          onClick={() => setOpen((v) => !v)}
-        />
       </div>
-      <ul className="menu__list">
-        {(node.children || []).map((c) => (
-          <TreeItem key={c.path} node={c} active={active} onSelect={onSelect} />
-        ))}
-      </ul>
+      {/* 折叠动画：grid-template-rows 1fr → 0fr（对齐文档站 Collapsible 效果）*/}
+      <div className={styles.collapsibleBody} aria-hidden={!open}>
+        <ul className="menu__list">
+          {(node.children || []).map((c) => (
+            <TreeItem key={c.path} node={c} active={active} onSelect={onSelect} />
+          ))}
+        </ul>
+      </div>
     </li>
   );
 }
@@ -2028,11 +2024,11 @@ export default function EditorPage() {
                 </div>
                 <button
                   type="button"
-                  className={styles.collapseBtn}
+                  className={`button button--secondary button--outline ${styles.collapseBtn}`}
                   onClick={() => setCollapsed(true)}
-                  title="收起侧边栏">
-                  <IconChevronLeft />
-                  收起侧边栏
+                  title="收起侧边栏"
+                  aria-label="收起侧边栏">
+                  <IconChevronLeft size={18} />
                 </button>
               </div>
             </aside>

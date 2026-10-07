@@ -239,6 +239,33 @@
   flex-shrink: 0;
 }
 
+/* 折叠动画：对齐文档站 Collapsible 的高度过渡 */
+.collapsibleBody {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows var(--ifm-transition-fast) var(--ifm-transition-timing-default);
+}
+
+.sidebarScroll :global(.menu__list-item--collapsed) .collapsibleBody {
+  grid-template-rows: 0fr;
+}
+
+.collapsibleBody > :global(.menu__list) {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Infima 默认对折叠菜单 height:0 立即生效，会让动画失效，这里还原交给 grid 控制 */
+.sidebarScroll :global(.menu__list-item--collapsed .menu__list) {
+  height: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapsibleBody {
+    transition: none;
+  }
+}
+
 .sidebarCollapsed {
   width: 0;
   border-right: none;
@@ -250,25 +277,33 @@
   }
 }
 
+/* 对齐文档站 DocSidebar/Desktop/CollapseButton：底部通栏 + 箭头 icon */
 .collapseBtn {
+  height: 40px;
+  width: 100%;
+  padding: 0;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  width: 100%;
-  padding: 0.55rem 1rem;
+  justify-content: center;
   border: none;
-  border-top: 1px solid var(--ifm-color-emphasis-200);
-  background: transparent;
-  color: var(--ifm-color-emphasis-700);
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
-  flex-shrink: 0;
+  border-top: 1px solid var(--ifm-toc-border-color);
+  border-radius: 0;
+  color: var(--ifm-color-emphasis-600);
 }
 
-.collapseBtn:hover {
-  background: var(--ifm-color-emphasis-100);
-  color: inherit;
+.collapseBtn:hover,
+.collapseBtn:focus {
+  background-color: rgb(0 0 0 / 10%);
+}
+
+:global([data-theme='dark']) .collapseBtn {
+  background-color: rgb(255 255 255 / 5%);
+}
+
+:global([data-theme='dark']) .collapseBtn:hover,
+:global([data-theme='dark']) .collapseBtn:focus {
+  background-color: rgb(255 255 255 / 10%);
 }
 
 .expandBtn {
