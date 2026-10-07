@@ -1401,6 +1401,16 @@ function nodeBox(node) {
   return {w, h};
 }
 
+// React Flow 的 onNodeDrag/onNodeDragStop 第三个参数只含「当前被拖拽的节点」，
+// 因此这里把拖拽中的最新位置合并回全量节点列表，供落点计算与重排使用。
+function mergeDraggedNodes(list, node) {
+  const i = list.findIndex((n) => n.id === node.id);
+  if (i === -1) return list;
+  const next = list.slice();
+  next[i] = {...next[i], position: node.position, dragging: node.dragging};
+  return next;
+}
+
 function isAncestor(nodes, ancestorId, id) {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   let cur = byId.get(id);
@@ -1618,8 +1628,8 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
     setDragState({draggingId: node.id, dropTargetId: null});
   };
 
-  const onNodeDrag = (event, node, allNodes) => {
-    const {targetId} = resolveDrop(allNodes, node);
+  const onNodeDrag = (event, node) => {
+    const {targetId} = resolveDrop(mergeDraggedNodes(nodes, node), node);
     setDragState((prev) =>
       prev.draggingId === node.id && prev.dropTargetId === targetId
         ? prev
@@ -1628,8 +1638,9 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
   };
 
   // 拖拽结束：按落点决定新的父容器与插入位置，然后整体重新排布（容器自适应大小）。
-  const onNodeDragStop = (event, node, allNodes) => {
+  const onNodeDragStop = (event, node) => {
     setDragState({draggingId: null, dropTargetId: null});
+    const allNodes = mergeDraggedNodes(nodes, node);
     const {dragged, center, targetId} = resolveDrop(allNodes, node);
 
     const others = allNodes.filter((n) => n.id !== dragged.id);
