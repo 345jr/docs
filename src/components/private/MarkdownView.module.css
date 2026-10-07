@@ -1,0 +1,165 @@
+/* 私有文档正文渲染样式，排版基调与 Docusaurus markdown 一致 */
+
+.markdown {
+  font-size: 1.05rem;
+  line-height: 1.75;
+  word-break: break-word;
+}
+
+.markdown h1 {
+  font-size: 2.2rem;
+  margin: 0 0 1.2rem;
+}
+
+.markdown h2 {
+  font-size: 1.6rem;
+  margin-top: 2.2rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.markdown h3 {
+  font-size: 1.25rem;
+  margin-top: 1.8rem;
+}
+
+.markdown a {
+  color: var(--ifm-color-primary);
+}
+
+.markdown blockquote {
+  border-left: 4px solid var(--ifm-color-emphasis-300);
+  padding: 0.2rem 1rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.markdown img {
+  max-width: 100%;
+}
+
+.markdown hr {
+  border: none;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  margin: 2rem 0;
+}
+
+.markdown :is(ul, ol) {
+  padding-left: 1.5rem;
+}
+
+.markdown li {
+  margin: 0.3rem 0;
+}
+
+.markdown :is(ul, ol) :is(ul, ol) {
+  margin: 0.3rem 0;
+}
+
+.taskItem {
+  list-style: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+.taskItem > div {
+  flex: 1;
+}
+
+.taskItem input {
+  margin-top: 0.45rem;
+}
+
+/* 表格 */
+
+.tableWrap {
+  overflow-x: auto;
+  margin: 1.2rem 0;
+}
+
+.markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.95rem;
+}
+
+.markdown :is(th, td) {
+  border: 1px solid var(--ifm-color-emphasis-200);
+  padding: 0.45rem 0.7rem;
+  text-align: left;
+}
+
+.markdown th {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.markdown :is(h1, h2, h3, h4, h5, h6) code,
+.markdown li code,
+.markdown p code,
+.markdown td code {
+  background: var(--ifm-color-emphasis-100);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 4px;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.85em;
+  font-family: var(--ifm-font-family-monospace);
+}
+
+/* 代码块 */
+
+.codeBlock {
+  background: var(--ifm-code-block-background, #f6f7f8);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+[data-theme='dark'] .codeBlock {
+  background: #1a1b26;
+}
+
+/* admonition：结构对齐 Infima，颜色变量复用其主题 */
+
+.admonition {
+  --admonition-bg: var(--ifm-color-emphasis-100);
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  margin: 1.2rem 0;
+  border-left: 5px solid var(--ifm-color-emphasis-400);
+  background: var(--admonition-bg);
+}
+
+.admonition-heading h5 {
+  margin: 0 0 0.3rem;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.admonition-content :last-child {
+  margin-bottom: 0;
+}
+
+.admonition--tip,
+.admonition--info {
+  --admonition-bg: var(--ifm-color-info-contrast-background, rgba(0, 160, 209, 0.1));
+  border-left-color: var(--ifm-color-info, #00a0d1);
+}
+
+.admonition--note {
+  --admonition-bg: var(--ifm-color-emphasis-100);
+}
+
+.admonition--warning,
+.admonition--caution {
+  --admonition-bg: rgba(230, 126, 34, 0.1);
+  border-left-color: #e67e22;
+}
+
+.admonition--danger {
+  --admonition-bg: rgba(250, 56, 62, 0.1);
+  border-left-color: var(--ifm-color-danger, #fa383e);
+}

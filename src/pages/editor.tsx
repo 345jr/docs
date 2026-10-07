@@ -20,6 +20,15 @@ import toast, {Toaster} from 'react-hot-toast';
 import {Admonition} from '../theme/tiptap/admonition';
 import styles from './editor.module.css';
 import '../theme/tiptap/admonition.css';
+import LoginForm from '../components/LoginForm';
+import {
+  fetchTree as pvFetchTree,
+  readDoc as pvReadDoc,
+  saveDoc as pvSaveDoc,
+  moveDoc as pvMoveDoc,
+  deleteDoc as pvDeleteDoc,
+  saveCategory as pvSaveCategory,
+} from '../utils/privateClient';
 
 // ── API ──────────────────────────────────────────────
 
@@ -240,6 +249,13 @@ const IconLogout = () => (
   </Ic>
 );
 
+const IconLock = () => (
+  <Ic>
+    <rect x="4" y="11" width="16" height="10" rx="2" />
+    <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+  </Ic>
+);
+
 const IconSliders = () => (
   <Ic>
     <path d="M4 21v-7M4 10V3" />
@@ -415,52 +431,16 @@ function TopBuildStatus({pipeline}) {
 // ── 登录 ──────────────────────────────────────────────
 
 function Login({onLogin}) {
-  const [key, setKey] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const submit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const {token} = await api('/unlock', {method: 'POST', body: {key}});
-      sessionStorage.setItem('docs-editor-token', token);
-      onLogin(token);
-      toast.success('已进入');
-    } catch (err) {
-      toast.error(err.message);
-    } finally {
-      setLoading(false);
-      setKey('');
-    }
-  };
-
   return (
-    <div className={styles.loginWrap}>
-      <div className={styles.login}>
-        <h1 className={styles.loginTitle}>在线编辑</h1>
-        <form className={styles.loginForm} onSubmit={submit}>
-          <input
-            type="password"
-            value={key}
-            onChange={(e) => setKey(e.target.value)}
-            placeholder="密钥"
-            autoFocus
-          />
-          <button type="submit" className={styles.loginBtn} disabled={loading || !key}>
-            <span>{loading ? '进入中…' : '进入'}</span>
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path
-                d="M2 8h11M9 3.5 13.5 8 9 12.5"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-        </form>
-      </div>
-    </div>
+    <LoginForm
+      title="在线编辑"
+      onSubmit={async (key) => {
+        const {token} = await api('/unlock', {method: 'POST', body: {key}});
+        sessionStorage.setItem('docs-editor-token', token);
+        onLogin(token);
+        toast.success('已进入');
+      }}
+    />
   );
 }
 
@@ -778,9 +758,11 @@ function ArticleEditor({
   onTreeChange,
   onDirtyChange,
   onDraftSaved,
+  pv,
 }) {
   const isNew = Boolean(draft);
   const activePath = draft?.path || path;
+  // 私有模式：读写走加密外的私有接口（同一 token），保存即时生效、不等流水线
 
   const editorRef = useRef(null);
   const sourceRef = useRef(null);
@@ -831,8 +813,8 @@ function ArticleEditor({
     setSourceMode(false);
     setConfirmDelete(false);
     setDirty(false);
-    api(`/read?path=${encodeURIComponent(activePath)}`, {token})
-      .then(({content}) => {
+    (pv ? pvReadDoc(activePath) : api(`/read?path=${encodeURIComponent(activePath)}`, {token}).then(({content}) => content))
+      .then((content) => {
         if (cancelled) return;
         const {data, content: rest} = parseFrontMatter(content);
         const {dir, name, ext: e} = splitPath(activePath);
@@ -939,6 +921,26 @@ function ArticleEditor({
   const save = async () => {
     setSaving(true);
     const content = serializeFrontMatter(fm, body.replace(/\s+$/, ''));
+    if (pv) {
+      // 私有文档：即时保存，不进 git、不触发构建
+      try {
+        if (!isNew && targetPath !== activePath) {
+          await pvMoveDoc({path: activePath, newPath: targetPath, content});
+        } else {
+          await pvSaveDoc({path: targetPath, content});
+        }
+        setDirty(false);
+        onTreeChange();
+        toast.success('已保存');
+        if (isNew) onDraftSaved(targetPath);
+        else if (targetPath !== activePath) onSelect(targetPath);
+      } catch (err) {
+        toast.error(err.message);
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     const msg = message.trim() || undefined;
     const payload = {content, message: msg};
     const res = await commitAndWait(pipeline.refresh, '提交中…', () =>
@@ -955,6 +957,22 @@ function ArticleEditor({
   };
 
   const del = async () => {
+    if (pv) {
+      try {
+        setSaving(true);
+        await pvDeleteDoc(activePath);
+        setConfirmDelete(false);
+        setDirty(false);
+        onTreeChange();
+        onSelect(null);
+        toast.success('已删除');
+      } catch (err) {
+        toast.error(err.message);
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     const res = await commitAndWait(pipeline.refresh, '删除中…', () =>
       api('/delete', {method: 'POST', token, body: {path: activePath, message: `docs: 在线编辑删除 ${activePath}`}}),
     );
@@ -976,7 +994,11 @@ function ArticleEditor({
             <span className={styles.path} title={targetPath}>
               {targetPath}
             </span>
-            <span className={styles.badge}>{isMdx ? 'MDX' : sourceMode ? '源码' : '富文本'}</span>
+            {pv ? (
+              <span className={`${styles.badge} ${styles.pvBadge}`}>🔒 私有</span>
+            ) : (
+              <span className={styles.badge}>{isMdx ? 'MDX' : sourceMode ? '源码' : '富文本'}</span>
+            )}
             {dirty && <span className={styles.dirtyBadge}>未保存</span>}
           </>,
           slots.meta,
@@ -1005,7 +1027,7 @@ function ArticleEditor({
             )}
             <button type="button" className={styles.barBtn} onClick={save} disabled={saving}>
               <IconPublish />
-              {saving ? '处理中…' : isNew ? '创建并发布' : '保存并发布'}
+              {saving ? '处理中…' : isNew ? (pv ? '创建' : '创建并发布') : pv ? '保存' : '保存并发布'}
             </button>
           </>,
           slots.actions,
@@ -1013,7 +1035,10 @@ function ArticleEditor({
 
       {confirmDelete && (
         <div className={styles.confirm}>
-          <span>确认删除 {activePath}？此操作会立即推送并删除线上页面。</span>
+          <span>
+            确认删除 {activePath}？
+            {pv ? '此操作会删除这篇私有文档。' : '此操作会立即推送并删除线上页面。'}
+          </span>
           <button type="button" className={styles.btnDanger} onClick={del}>
             确认删除
           </button>
@@ -1134,14 +1159,16 @@ function ArticleEditor({
                   </label>
                 </div>
                 <MetaForm fm={meta.fm} setFm={editMetaFm} />
-                <label className={styles.msgField}>
-                  <span>提交信息（可选）</span>
-                  <input
-                    value={meta.message}
-                    onChange={(e) => patchMeta({message: e.target.value})}
-                    placeholder="默认：docs: 在线编辑更新 <路径>"
-                  />
-                </label>
+                {!pv && (
+                  <label className={styles.msgField}>
+                    <span>提交信息（可选）</span>
+                    <input
+                      value={meta.message}
+                      onChange={(e) => patchMeta({message: e.target.value})}
+                      placeholder="默认：docs: 在线编辑更新 <路径>"
+                    />
+                  </label>
+                )}
               </div>
               <div className={styles.modalFooter}>
                 <button type="button" className={styles.btn} onClick={cancelMeta}>
@@ -1201,7 +1228,7 @@ function CategorySelect({value, onChange, categories, rootLabel = '（根目录�
 
 // ── 新建文章（只产生草稿，不提交）─────────────────────
 
-function NewArticle({categories, onCreate, onCancel}) {
+function NewArticle({categories, onCreate, onCancel, isPrivate}) {
   const [title, setTitle] = useState('');
   const [fileName, setFileName] = useState('');
   const [category, setCategory] = useState('');
@@ -1218,8 +1245,10 @@ function NewArticle({categories, onCreate, onCancel}) {
 
   return (
     <form className={styles.form} onSubmit={submit}>
-      <h2>新建文章</h2>
-      <p className={styles.muted}>此步骤只在本地生成草稿，点「创建并发布」后才会提交。</p>
+      <h2>新建文章{isPrivate ? '（私有）' : ''}</h2>
+      <p className={styles.muted}>
+        此步骤只在本地生成草稿，{isPrivate ? '点「创建」后即时保存，不触发构建。' : '点「创建并发布」后才会提交。'}
+      </p>
       <label>
         <span>标题</span>
         <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
@@ -1246,7 +1275,7 @@ function NewArticle({categories, onCreate, onCancel}) {
 
 // ── 新建分类（直接创建并触发部署）────────────────────
 
-function NewCategory({categories, onCreate, onCancel}) {
+function NewCategory({categories, onCreate, onCancel, isPrivate}) {
   const [parent, setParent] = useState('');
   const [name, setName] = useState('');
   const [label, setLabel] = useState('');
@@ -1269,8 +1298,8 @@ function NewCategory({categories, onCreate, onCancel}) {
 
   return (
     <form className={styles.form} onSubmit={submit}>
-      <h2>新建分类</h2>
-      <p className={styles.muted}>保存后立即提交并触发构建部署。</p>
+      <h2>新建分类{isPrivate ? '（私有）' : ''}</h2>
+      <p className={styles.muted}>{isPrivate ? '保存后立即生效，不触发构建。' : '保存后立即提交并触发构建部署。'}</p>
       <label>
         <span>上级分类</span>
         <CategorySelect value={parent} onChange={setParent} categories={categories} rootLabel="（顶层）" />
@@ -1289,7 +1318,7 @@ function NewCategory({categories, onCreate, onCancel}) {
       </label>
       <div className={styles.formActions}>
         <button type="submit" className={styles.btnPrimary} disabled={!name.trim() || saving}>
-          {saving ? '创建中…' : '保存并发布'}
+          {saving ? '创建中…' : isPrivate ? '保存' : '保存并发布'}
         </button>
         <button type="button" className={styles.btn} onClick={onCancel} disabled={saving}>
           取消
@@ -1931,6 +1960,10 @@ export default function EditorPage() {
   const [sortOpen, setSortOpen] = useState(false);
   // 内层是否已隐藏并显示展开按钮：等宽度动画结束后再切换，避免动画中内容回流
   const [collapsedShown, setCollapsedShown] = useState(false);
+  // 私有模式：侧边栏切到私有文档树，读写走私有接口（同一 token，无二次认证）
+  const [privateMode, setPrivateMode] = useState(false);
+  const [pvTree, setPvTree] = useState([]);
+  const [pvRefresh, setPvRefresh] = useState(0);
 
   const mainRef = useRef(null);
   const pipeline = usePipeline(token);
@@ -1947,6 +1980,7 @@ export default function EditorPage() {
       setSelected(null);
       setDraft(null);
       setMode('idle');
+      setPrivateMode(false);
       toast.error('登录已失效，请重新登录');
     };
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
@@ -1974,13 +2008,20 @@ export default function EditorPage() {
       .catch((err) => {
         if (!cancelled) toast.error(err.message);
       });
+    pvFetchTree()
+      .then((data) => {
+        if (!cancelled) setPvTree(data || []);
+      })
+      .catch(() => {}); // 401 由事件统一处理，其余静默
     return () => {
       cancelled = true;
     };
-  }, [token, refresh]);
+  }, [token, refresh, pvRefresh]);
 
   const categories = useMemo(() => categoryOptions(tree), [tree]);
+  const pvCategories = useMemo(() => categoryOptions(pvTree), [pvTree]);
   const reload = useCallback(() => setRefresh((v) => v + 1), []);
+  const pvReload = useCallback(() => setPvRefresh((v) => v + 1), []);
   const handleDirty = useCallback((v) => setDirty(v), []);
 
   useEffect(() => {
@@ -1999,6 +2040,7 @@ export default function EditorPage() {
     setToken(null);
     setSelected(null);
     setDraft(null);
+    setPrivateMode(false);
   };
 
   const selectFile = (p) => {
@@ -2023,6 +2065,28 @@ export default function EditorPage() {
     );
     if (res) reload();
     return Boolean(res);
+  };
+
+  // 私有分类：即时创建，不进 git、不触发构建
+  const createPrivateCategory = async (cat) => {
+    try {
+      await pvSaveCategory({path: cat.path, label: cat.label, description: cat.description});
+      pvReload();
+      toast.success('已创建');
+      return true;
+    } catch (err) {
+      toast.error(err.message);
+      return false;
+    }
+  };
+
+  // 切换公开 / 私有模式：同一 token，无需重新认证
+  const togglePrivateMode = () => {
+    if (dirty && !window.confirm('有未保存的修改，确定要切换吗？')) return;
+    setDraft(null);
+    setSelected(null);
+    setMode('idle');
+    setPrivateMode((v) => !v);
   };
 
   const startNew = (m) => {
@@ -2053,8 +2117,24 @@ export default function EditorPage() {
                   collapsedShown ? styles.sidebarInnerHidden : ''
                 }`}>
                 <div className={styles.sidebarScroll}>
-                  <FileTree tree={tree} active={draft ? null : selected} onSelect={selectFile} />
+                  {privateMode && (
+                    <p className={styles.pvHeading}>🔒 私有文档</p>
+                  )}
+                  <FileTree
+                    tree={privateMode ? pvTree : tree}
+                    active={draft ? null : selected}
+                    onSelect={selectFile}
+                  />
                 </div>
+                <button
+                  type="button"
+                  className={`${styles.pvModeBtn} ${privateMode ? styles.pvModeBtnOn : ''}`}
+                  onClick={togglePrivateMode}
+                  title="切换私有模式（仅自己可见的私有文档，保存即时生效）"
+                  aria-label="切换私有模式">
+                  <IconLock />
+                  <span>私有模式</span>
+                </button>
                 <button
                   type="button"
                   className={`button button--secondary button--outline ${styles.collapseBtn}`}
@@ -2092,10 +2172,12 @@ export default function EditorPage() {
               <IconNewFolder />
               新建分类
             </button>
-            <button type="button" className={styles.barBtn} onClick={() => setSortOpen(true)}>
-              <IconSort />
-              排序管理
-            </button>
+            {!privateMode && (
+              <button type="button" className={styles.barBtn} onClick={() => setSortOpen(true)}>
+                <IconSort />
+                排序管理
+              </button>
+            )}
             <button type="button" className={styles.barBtn} onClick={exitEdit}>
               <IconLogout />
               退出
@@ -2105,7 +2187,8 @@ export default function EditorPage() {
               <main className={styles.main} ref={mainRef}>
               {mode === 'new-article' ? (
                 <NewArticle
-                  categories={categories}
+                  categories={privateMode ? pvCategories : categories}
+                  isPrivate={privateMode}
                   onCreate={(d) => {
                     setDraft(d);
                     setMode('idle');
@@ -2115,8 +2198,9 @@ export default function EditorPage() {
                 />
               ) : mode === 'new-category' ? (
                 <NewCategory
-                  categories={categories}
-                  onCreate={createCategory}
+                  categories={privateMode ? pvCategories : categories}
+                  isPrivate={privateMode}
+                  onCreate={privateMode ? createPrivateCategory : createCategory}
                   onCancel={() => setMode('idle')}
                 />
               ) : draft || selected ? (
@@ -2125,14 +2209,15 @@ export default function EditorPage() {
                   token={token}
                   path={draft ? undefined : selected}
                   draft={draft}
-                  categories={categories}
+                  categories={privateMode ? pvCategories : categories}
                   pipeline={pipeline}
                   scrollRef={mainRef}
+                  pv={privateMode}
                   onSelect={(p) => {
                     setDraft(null);
                     setSelected(p);
                   }}
-                  onTreeChange={reload}
+                  onTreeChange={privateMode ? pvReload : reload}
                   onDirtyChange={handleDirty}
                   onDraftSaved={(p) => {
                     setDraft(null);
@@ -2140,7 +2225,11 @@ export default function EditorPage() {
                   }}
                 />
               ) : (
-                <p className={styles.placeholder}>从左侧选择一篇文章开始编辑，或点击上方「新建文章」。</p>
+                <p className={styles.placeholder}>
+                  {privateMode
+                    ? '从左侧选择一篇私有文档开始编辑，或点击上方「新建文章」。'
+                    : '从左侧选择一篇文章开始编辑，或点击上方「新建文章」。'}
+                </p>
               )}
               </main>
             </div>

@@ -92,6 +92,11 @@ const config = {
             label: '在线编辑',
           },
           {
+            to: '/private',
+            position: 'left',
+            label: '私有文档',
+          },
+          {
             type: 'custom-fontPicker',
             position: 'right',
           },
