@@ -1138,19 +1138,143 @@
   flex: 1;
   min-height: 0;
   background: var(--ifm-background-color);
+  overflow: hidden;
+  /* 把 React Flow 默认主题变量对齐到 Docusaurus 主题色，控件/迷你地图自动跟随。 */
+  --xy-background-pattern-dots-color-default: var(--ifm-color-emphasis-300);
+  --xy-controls-button-background-color-default: var(--ifm-background-surface-color);
+  --xy-controls-button-background-color-hover-default: var(--ifm-color-emphasis-100);
+  --xy-controls-button-color-default: var(--ifm-color-emphasis-700);
+  --xy-controls-button-border-color-default: var(--ifm-color-emphasis-200);
+  --xy-controls-box-shadow-default: 0 1px 8px rgba(0, 0, 0, 0.12);
+  --xy-minimap-background-color-default: var(--ifm-background-surface-color);
+  --xy-minimap-node-background-color-default: var(--ifm-color-emphasis-300);
+  --xy-minimap-mask-background-color-default: rgba(120, 120, 130, 0.22);
+  --xy-selection-background-color-default: rgba(0, 120, 255, 0.08);
+  --xy-selection-border-default: 1px dashed var(--ifm-color-primary);
+}
+
+/* 松手重排后，节点位置与容器尺寸平滑过渡（拖拽中的节点不参与，避免跟手迟滞）。 */
+.flowWrap :global(.react-flow__node) {
+  transition:
+    transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    width 200ms ease,
+    height 200ms ease;
+}
+
+.flowWrap :global(.react-flow__node.dragging) {
+  transition: none;
+}
+
+.flowWrap :global(.react-flow__controls) {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.flowWrap :global(.react-flow__attribution) {
+  opacity: 0.4;
+  font-size: 9px;
+}
+
+.flowDragging :global(.react-flow__pane) {
+  cursor: grabbing;
+}
+
+/* 顶部拖拽提示胶囊：显示当前会落入的分类。 */
+.dragHint {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--ifm-color-primary) 35%, transparent);
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-color-emphasis-800);
+  font-size: 0.78rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+  pointer-events: none;
+  animation: dragHintIn 160ms ease;
+}
+
+.dragHint b {
+  color: var(--ifm-color-primary);
+}
+
+@keyframes dragHintIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
 }
 
 .catBox {
+  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--ifm-color-emphasis-300);
-  border-radius: 12px;
+  border: 1.5px solid var(--ifm-color-emphasis-300);
+  border-radius: 14px;
   background: var(--ifm-color-emphasis-100);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
   overflow: hidden;
   cursor: grab;
+  transition:
+    border-color 160ms ease,
+    box-shadow 200ms ease,
+    background-color 200ms ease,
+    transform 160ms ease;
+}
+
+.catBox:hover {
+  border-color: var(--ifm-color-emphasis-400);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+}
+
+.catBox:active {
+  cursor: grabbing;
+}
+
+.catBoxSelected {
+  border-color: var(--ifm-color-primary);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--ifm-color-primary) 28%, transparent),
+    0 6px 18px rgba(0, 0, 0, 0.1);
+}
+
+.catBoxDragging {
+  cursor: grabbing;
+  transform: scale(1.015);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--ifm-color-primary) 22%, transparent),
+    0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+/* 落点容器：虚线高亮 + 呼吸光晕，提示松手后归入该分类。 */
+.catBoxDrop {
+  border-color: var(--ifm-color-primary);
+  border-style: dashed;
+  background: color-mix(in srgb, var(--ifm-color-primary) 8%, var(--ifm-color-emphasis-100));
+  animation: catDropPulse 1.1s ease-in-out infinite;
+}
+
+@keyframes catDropPulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 3px color-mix(in srgb, var(--ifm-color-primary) 18%, transparent),
+      0 0 16px color-mix(in srgb, var(--ifm-color-primary) 26%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, var(--ifm-color-primary) 32%, transparent),
+      0 0 26px color-mix(in srgb, var(--ifm-color-primary) 42%, transparent);
+  }
 }
 
 .catHeader {
@@ -1165,11 +1289,40 @@
   font-weight: 700;
 }
 
+.catHeader > svg {
+  flex-shrink: 0;
+}
+
 .catHeaderLabel {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.dropBadge {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: var(--ifm-color-primary);
+  color: var(--ifm-color-white);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  animation: dropBadgeIn 160ms ease;
+}
+
+@keyframes dropBadgeIn {
+  from {
+    opacity: 0;
+    transform: translateX(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .docCard {
@@ -1180,24 +1333,81 @@
   height: 100%;
   padding: 0.4rem 0.65rem;
   border: 1px solid var(--ifm-color-emphasis-300);
-  border-radius: 8px;
+  border-radius: 9px;
   background: var(--ifm-background-surface-color);
   color: var(--ifm-color-emphasis-800);
   font-size: 0.8rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   cursor: grab;
+  transition:
+    border-color 140ms ease,
+    box-shadow 160ms ease,
+    transform 140ms ease,
+    background-color 160ms ease;
 }
 
-.docCard:active,
-.catBox:active {
+.docCard > svg {
+  flex-shrink: 0;
+}
+
+.docCard:hover {
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1px);
+}
+
+.docCard:active {
   cursor: grabbing;
 }
 
+.docCardSelected {
+  border-color: var(--ifm-color-primary);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--ifm-color-primary) 30%, transparent),
+    0 3px 10px rgba(0, 0, 0, 0.12);
+}
+
+.docCardDragging {
+  cursor: grabbing;
+  border-color: var(--ifm-color-primary);
+  transform: scale(1.04) rotate(-1deg);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--ifm-color-primary) 30%, transparent),
+    0 16px 32px rgba(0, 0, 0, 0.24);
+}
+
 .docCardLabel {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.docGrip {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--ifm-color-emphasis-400);
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.docCard:hover .docGrip,
+.docCardDragging .docGrip {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flowWrap :global(.react-flow__node),
+  .catBox,
+  .catBoxDrop,
+  .docCard,
+  .docGrip,
+  .dragHint,
+  .dropBadge {
+    transition: none;
+    animation: none;
+  }
 }
 
 .sortFooter {

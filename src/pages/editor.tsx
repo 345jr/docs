@@ -295,6 +295,17 @@ const IconFileSmall = () => (
   </Ic>
 );
 
+const IconGrip = () => (
+  <Ic size={12}>
+    <circle cx="9" cy="7" r="1" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="7" r="1" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="12" r="1" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="12" r="1" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="17" r="1" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="17" r="1" fill="currentColor" stroke="none" />
+  </Ic>
+);
+
 // ── 流水线状态 ────────────────────────────────────────
 
 function usePipeline(token) {
@@ -1425,24 +1436,49 @@ function deepestContainer(nodes, point, excludeId) {
   return best;
 }
 
+// 拖拽态上下文：让自定义节点读取「当前拖拽项 / 当前落点」，
+// 这样拖拽过程中不必逐帧重建节点 data，只重渲染消费该上下文的节点。
+const SortDragContext = React.createContext({draggingId: null, dropTargetId: null});
+
 // 分类容器节点。
-function CategoryNode({data}) {
+function CategoryNode({id, data, selected, dragging}) {
+  const {dropTargetId} = React.useContext(SortDragContext);
+  const isDropTarget = dropTargetId === id;
+  const cls = [
+    styles.catBox,
+    selected && styles.catBoxSelected,
+    dragging && styles.catBoxDragging,
+    isDropTarget && styles.catBoxDrop,
+  ]
+    .filter(Boolean)
+    .join(' ');
   return (
-    <div className={styles.catBox}>
+    <div className={cls}>
       <div className={styles.catHeader}>
         <IconFolderSmall />
         <span className={styles.catHeaderLabel}>{data.label}</span>
+        {isDropTarget && <span className={styles.dropBadge}>松手放入</span>}
       </div>
     </div>
   );
 }
 
 // 文档卡片节点。
-function DocNode({data}) {
+function DocNode({data, selected, dragging}) {
+  const cls = [
+    styles.docCard,
+    selected && styles.docCardSelected,
+    dragging && styles.docCardDragging,
+  ]
+    .filter(Boolean)
+    .join(' ');
   return (
-    <div className={styles.docCard}>
+    <div className={cls}>
       <IconFileSmall />
       <span className={styles.docCardLabel}>{data.label}</span>
+      <span className={styles.docGrip}>
+        <IconGrip />
+      </span>
     </div>
   );
 }
@@ -1530,6 +1566,7 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
   const originalRef = useRef([]);
   const flowRef = useRef(null);
   const [saving, setSaving] = useState(false);
+  const [dragState, setDragState] = useState({draggingId: null, dropTargetId: null});
   const [phase, setPhase] = useState('idle');
   const [activeStep, setActiveStep] = useState(0);
 
@@ -1543,6 +1580,7 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
     setNodes(treeToBoard(filtered));
     originalRef.current = serializeReorderTree(filtered);
     setSaving(false);
+    setDragState({draggingId: null, dropTargetId: null});
     setPhase('idle');
     setActiveStep(0);
     const timer = window.setTimeout(
@@ -1559,16 +1597,42 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
   );
   const running = phase === 'running';
 
-  // 拖拽结束：按落点决定新的父容器与插入位置，然后整体重新排布（容器自适应大小）。
-  const onNodeDragStop = (event, node) => {
-    const dragged = nodes.find((n) => n.id === node.id) || node;
-    const abs = nodeAbsPos(nodes, dragged);
+  // 当前落点容器名，用于顶部拖拽提示。
+  const dropTargetLabel = useMemo(() => {
+    if (!dragState.dropTargetId) return null;
+    return nodes.find((n) => n.id === dragState.dropTargetId)?.data?.label || null;
+  }, [dragState.dropTargetId, nodes]);
+
+  // 解析拖拽落点：返回被拖节点、其中心点、以及命中的最深分类容器 id。
+  const resolveDrop = (allNodes, node) => {
+    const dragged = allNodes.find((n) => n.id === node.id) || node;
+    const abs = nodeAbsPos(allNodes, dragged);
     const {w, h} = nodeBox(dragged);
     const center = {x: abs.x + w / 2, y: abs.y + h / 2};
-    const target = deepestContainer(nodes, center, dragged.id);
-    const targetId = target ? target.id : null;
+    const target = deepestContainer(allNodes, center, dragged.id);
+    return {dragged, center, targetId: target ? target.id : null};
+  };
 
-    const others = nodes.filter((n) => n.id !== dragged.id);
+  // 拖拽中实时高亮落点容器。
+  const onNodeDragStart = (event, node) => {
+    setDragState({draggingId: node.id, dropTargetId: null});
+  };
+
+  const onNodeDrag = (event, node, allNodes) => {
+    const {targetId} = resolveDrop(allNodes, node);
+    setDragState((prev) =>
+      prev.draggingId === node.id && prev.dropTargetId === targetId
+        ? prev
+        : {draggingId: node.id, dropTargetId: targetId},
+    );
+  };
+
+  // 拖拽结束：按落点决定新的父容器与插入位置，然后整体重新排布（容器自适应大小）。
+  const onNodeDragStop = (event, node, allNodes) => {
+    setDragState({draggingId: null, dropTargetId: null});
+    const {dragged, center, targetId} = resolveDrop(allNodes, node);
+
+    const others = allNodes.filter((n) => n.id !== dragged.id);
     const byParent = new Map();
     for (const n of others) {
       const p = n.parentId || '';
@@ -1698,25 +1762,44 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
             </Dialog.Close>
           </div>
           <BuildSteps phase={phase} activeStep={activeStep} />
-          <div className={styles.flowWrap}>
-            <ReactFlow
-              nodes={nodes}
-              nodeTypes={BOARD_NODE_TYPES}
-              onInit={(instance) => {
-                flowRef.current = instance;
-              }}
-              onNodesChange={onNodesChange}
-              onNodeDragStop={onNodeDragStop}
-              nodesDraggable={!running}
-              nodesConnectable={false}
-              fitView
-              fitViewOptions={{padding: 0.2}}
-              minZoom={0.2}
-              maxZoom={1.6}>
-              <Background variant="dots" gap={20} size={1} />
-              <Controls showInteractive={false} />
-              <MiniMap pannable zoomable />
-            </ReactFlow>
+          <div className={`${styles.flowWrap} ${dragState.draggingId ? styles.flowDragging : ''}`}>
+            {dragState.draggingId && (
+              <div className={styles.dragHint}>
+                {dropTargetLabel ? (
+                  <>
+                    放入「<b>{dropTargetLabel}</b>」
+                  </>
+                ) : (
+                  '松手放到顶层'
+                )}
+              </div>
+            )}
+            <SortDragContext.Provider value={dragState}>
+              <ReactFlow
+                nodes={nodes}
+                nodeTypes={BOARD_NODE_TYPES}
+                onInit={(instance) => {
+                  flowRef.current = instance;
+                }}
+                onNodesChange={onNodesChange}
+                onNodeDragStart={onNodeDragStart}
+                onNodeDrag={onNodeDrag}
+                onNodeDragStop={onNodeDragStop}
+                nodeDragThreshold={4}
+                nodesDraggable={!running}
+                nodesConnectable={false}
+                nodesFocusable={!running}
+                deleteKeyCode={null}
+                elevateNodesOnSelect
+                fitView
+                fitViewOptions={{padding: 0.2}}
+                minZoom={0.2}
+                maxZoom={1.6}>
+                <Background variant="dots" gap={20} size={1} />
+                <Controls showInteractive={false} />
+                <MiniMap pannable zoomable />
+              </ReactFlow>
+            </SortDragContext.Provider>
           </div>
           <div className={styles.sortFooter}>
             <span className={styles.sortHint}>{hint}</span>
