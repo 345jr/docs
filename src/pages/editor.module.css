@@ -196,13 +196,15 @@
 .sidebar {
   width: 300px; /* 与文档站 --doc-sidebar-width 一致 */
   flex-shrink: 0;
-  border-right: 1px solid var(--ifm-color-emphasis-200);
+  position: relative;
+  border-right: 1px solid var(--ifm-toc-border-color);
   background: var(--ifm-background-surface-color);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   will-change: width;
-  transition: width 0.2s ease;
+  clip-path: inset(0);
+  transition: width var(--ifm-transition-fast) ease;
 }
 
 /* 内层固定宽度：收起时外层只做裁切，内容不回流，避免文字被挤压 */
@@ -223,8 +225,16 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 1rem 0.75rem;
+  overflow-x: hidden;
+  padding: 0.5rem; /* 对齐文档站 .menu 的内边距 */
   font-weight: var(--ifm-font-weight-semibold);
+}
+
+@supports (scrollbar-gutter: stable) {
+  .sidebarScroll {
+    padding: 0.5rem 0 0.5rem 0.5rem;
+    scrollbar-gutter: stable;
+  }
 }
 
 /* Infima 的 menu__link 面向 <a> 设计，用在 <button> 上需要补齐 */
@@ -267,8 +277,7 @@
 }
 
 .sidebarCollapsed {
-  width: 0;
-  border-right: none;
+  width: 30px; /* 对齐文档站 --doc-sidebar-hidden-width */
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -277,7 +286,11 @@
   }
 }
 
-/* 对齐文档站 DocSidebar/Desktop/CollapseButton：底部通栏 + 箭头 icon */
+/* 对齐文档站 DocSidebar/Desktop/CollapseButton：底部通栏 + IconArrow 旋转 180° */
+.collapseBtnIcon {
+  transform: rotate(180deg);
+  margin-top: 4px;
+}
 .collapseBtn {
   height: 40px;
   width: 100%;
@@ -306,25 +319,38 @@
   background-color: rgb(255 255 255 / 10%);
 }
 
+/* 对齐文档站 ExpandButton：铺满收起后的 30px 竖条 */
 .expandBtn {
-  position: fixed;
-  left: 0;
-  bottom: 12px;
-  z-index: 20;
-  display: inline-flex;
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 28px;
   border: none;
-  border-radius: 0 8px 8px 0;
-  background: var(--ifm-color-emphasis-200);
-  color: inherit;
   cursor: pointer;
+  background-color: transparent;
+  transition: background-color var(--ifm-transition-fast) ease;
 }
 
-.expandBtn:hover {
-  background: var(--ifm-color-emphasis-300);
+.expandBtn:hover,
+.expandBtn:focus {
+  background-color: rgb(0 0 0 / 10%);
+}
+
+:global([data-theme='dark']) .expandBtn {
+  background-color: rgb(255 255 255 / 5%);
+}
+
+:global([data-theme='dark']) .expandBtn:hover,
+:global([data-theme='dark']) .expandBtn:focus {
+  background-color: rgb(255 255 255 / 10%);
+}
+
+.expandBtnIcon {
+  /* 箭头朝右，与文档站展开按钮一致 */
 }
 
 /* 旧的树样式已移除：改为复用 Infima 菜单类（menu__list / menu__link / menu__caret） */
