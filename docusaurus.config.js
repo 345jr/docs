@@ -108,15 +108,15 @@ const config = {
         },
         items: [
           {
-            to: '/private',
-            position: 'left',
-            label: '私有文档',
-          },
-          {
             type: 'docSidebar',
             sidebarId: 'tutorialSidebar',
             position: 'left',
             label: '文档',
+          },
+          {
+            to: '/private',
+            position: 'left',
+            label: '私有文档',
           },
           {
             to: '/editor',
