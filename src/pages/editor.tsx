@@ -249,6 +249,29 @@ const IconSliders = () => (
   </Ic>
 );
 
+const IconCode = () => (
+  <Ic>
+    <path d="m16 18 6-6-6-6" />
+    <path d="m8 6-6 6 6 6" />
+  </Ic>
+);
+
+const IconTrash = () => (
+  <Ic>
+    <path d="M3 6h18" />
+    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
+    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+  </Ic>
+);
+
+const IconPublish = () => (
+  <Ic>
+    <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+    <path d="m7 11 5-5 5 5" />
+    <path d="M12 4v12" />
+  </Ic>
+);
+
 const IconChevronDown = () => (
   <Ic>
     <path d="m6 9 6 6 6-6" />
@@ -961,24 +984,31 @@ function ArticleEditor({
       {slots.actions &&
         createPortal(
           <>
-            <button type="button" className={styles.btn} onClick={openMeta}>
+            <button type="button" className={styles.barBtn} onClick={openMeta}>
               <IconSliders />
               元信息
             </button>
             {!isNew && !isMdx && (
-              <button type="button" className={styles.btn} onClick={() => setSourceMode((v) => !v)}>
+              <button type="button" className={styles.barBtn} onClick={() => setSourceMode((v) => !v)}>
+                <IconCode />
                 {sourceMode ? '富文本' : '源码'}
               </button>
             )}
             {!isNew && (
               <button
                 type="button"
-                className={`${styles.btn} ${styles.btnDanger}`}
+                className={`${styles.barBtn} ${styles.barBtnDanger}`}
                 onClick={() => setConfirmDelete(true)}>
+                <IconTrash />
                 删除
               </button>
             )}
-            <button type="button" className={styles.btnPrimary} onClick={save} disabled={saving}>
+            <button
+              type="button"
+              className={`${styles.barBtn} ${styles.barBtnPrimary}`}
+              onClick={save}
+              disabled={saving}>
+              <IconPublish />
               {saving ? '处理中…' : isNew ? '创建并发布' : '保存并发布'}
             </button>
           </>,

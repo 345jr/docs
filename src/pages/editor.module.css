@@ -90,6 +90,27 @@
   color: var(--ifm-color-primary);
 }
 
+.barBtnDanger:hover {
+  color: var(--ifm-color-danger);
+}
+
+.barBtnPrimary {
+  background: var(--ifm-color-primary);
+  color: var(--ifm-color-white);
+  padding: 0.35rem 0.7rem;
+  border-radius: 6px;
+}
+
+.barBtnPrimary:hover {
+  background: var(--ifm-color-primary-dark);
+  color: var(--ifm-color-white);
+}
+
+.barBtnPrimary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* ── 顶栏构建状态 ─────────────────────────────────── */
 
 .noUpdate {
