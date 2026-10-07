@@ -1230,7 +1230,19 @@ function NewCategory({categories, onCreate, onCancel}) {
 
 // ── 排序管理：目录树 ⇄ 容器画布 ─────────────────────
 
-const BOARD = {CARD_W: 220, CARD_H: 44, MIN_W: 244, MIN_H: 120, HEADER: 42, PAD: 12, GAP: 8, COL_GAP: 36};
+// TOP/BOTTOM：分类容器内第一个/最后一个卡片相对容器内壁的留白。
+const BOARD = {
+  CARD_W: 220,
+  CARD_H: 44,
+  MIN_W: 244,
+  MIN_H: 120,
+  HEADER: 42,
+  PAD: 12,
+  TOP: 12,
+  BOTTOM: 12,
+  GAP: 8,
+  COL_GAP: 36,
+};
 
 // 只保留分类目录与 .md/.mdx 文档；图片等 colocated 资源不入画布，由后端随目录一起搬。
 function filterReorderNodes(nodes) {
@@ -1282,14 +1294,19 @@ function boardSizes(items) {
     if (!it.isDir) {
       s = {w: BOARD.CARD_W, h: BOARD.CARD_H};
     } else {
-      let y = BOARD.HEADER;
+      let y = BOARD.HEADER + BOARD.TOP;
+      let bottom = y;
       let w = 0;
       for (const k of kidsOf(it.id)) {
         const ks = calc(k);
         w = Math.max(w, ks.w);
         y += ks.h + BOARD.GAP;
+        bottom = y - BOARD.GAP;
       }
-      s = {w: Math.max(BOARD.MIN_W, w + 2 * BOARD.PAD), h: Math.max(BOARD.MIN_H, y + BOARD.PAD)};
+      s = {
+        w: Math.max(BOARD.MIN_W, w + 2 * BOARD.PAD),
+        h: Math.max(BOARD.MIN_H, bottom + BOARD.BOTTOM),
+      };
     }
     size.set(it.id, s);
     return s;
@@ -1313,7 +1330,7 @@ function itemsToNodes(items) {
       style: {width: s.w, height: s.h},
     });
     if (it.isDir) {
-      let y = BOARD.HEADER;
+      let y = BOARD.HEADER + BOARD.TOP;
       for (const k of kidsOf(it.id)) {
         emit(k, {x: BOARD.PAD, y}, it.id);
         y += size.get(k.id).h + BOARD.GAP;
