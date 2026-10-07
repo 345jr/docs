@@ -92,6 +92,10 @@ const config = {
             label: '在线编辑',
           },
           {
+            type: 'custom-fontPicker',
+            position: 'right',
+          },
+          {
             href: 'https://github.com/345jr/docs',
             label: 'GitHub',
             position: 'right',

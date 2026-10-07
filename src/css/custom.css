@@ -28,3 +28,22 @@
   --ifm-color-primary-lightest: #4fddbf;
   --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
 }
+
+/*
+ * 正文字体切换（配套 src/components/FontPicker）。
+ * FontPicker 把选中的 font-family 写到 <html> 的 --site-content-font
+ * 内联样式上；这里只把它应用到 main-wrapper 内的 <main>
+ * （文档正文 + 首页 main），侧边栏和导航栏不受影响。
+ * 代码块仍使用 --ifm-font-family-monospace，保持等宽。
+ */
+:root {
+  --site-content-font: var(--ifm-font-family-base);
+}
+
+.main-wrapper main {
+  font-family: var(--site-content-font);
+}
+
+.main-wrapper main :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--site-content-font);
+}
