@@ -11,6 +11,21 @@
   }
 }
 
+/* 与 theme-classic DocBreadcrumbs 保持一致（那边未导出，此处复制） */
+
+.breadcrumbsContainer {
+  --ifm-breadcrumb-size-multiplier: 0.8;
+  margin-bottom: 0.8rem;
+}
+
+.breadcrumbHomeIcon {
+  position: relative;
+  top: 1px;
+  vertical-align: top;
+  height: 1.1rem;
+  width: 1.1rem;
+}
+
 /* 与 theme-classic DocItem/TOC/Mobile 一致：桌面端隐藏移动端折叠 TOC */
 @media (min-width: 997px) {
   .tocMobile {

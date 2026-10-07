@@ -3,6 +3,7 @@ import {useLocation} from '@docusaurus/router';
 import clsx from 'clsx';
 import Layout from '@theme/Layout';
 import Link from '@docusaurus/Link';
+import IconHome from '@theme/Icon/Home';
 import {
   HtmlClassNameProvider,
   ThemeClassNames,
@@ -117,6 +118,70 @@ function findCategoryBySlug(nodes, slug) {
 
 function docLabel(node) {
   return node.title || stripExt(node.name);
+}
+
+// ── 面包屑（对齐 theme-classic DocBreadcrumbs）────────
+
+/** 按目录路径找分类节点。 */
+function findCategoryByPath(nodes, path) {
+  for (const n of nodes || []) {
+    if (!n.is_dir) continue;
+    if (n.path === path) return n;
+    const hit = findCategoryByPath(n.children, path);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** slug 的各级祖先分类 → 面包屑项；最后一项（当前页）href 传 null。 */
+function buildCrumbs(tree, slug, currentLabel) {
+  const parts = slug.split('/');
+  const dirParts = parts.slice(0, -1);
+  const items = [];
+  const acc = [];
+  for (const p of dirParts) {
+    acc.push(p);
+    const path = acc.join('/');
+    const node = findCategoryByPath(tree, path);
+    items.push({label: node ? node.label || node.name : p, href: `/private/${path}`});
+  }
+  items.push({label: currentLabel, href: null});
+  return items;
+}
+
+function PrivateBreadcrumbs({crumbs}) {
+  if (!crumbs || crumbs.length === 0) return null;
+  return (
+    <nav
+      className={clsx(ThemeClassNames.docs.docBreadcrumbs, styles.breadcrumbsContainer)}
+      aria-label="Breadcrumbs">
+      <ul className="breadcrumbs">
+        <li className="breadcrumbs__item">
+          <Link aria-label="首页" className="breadcrumbs__link" href="/">
+            <IconHome className={styles.breadcrumbHomeIcon} />
+          </Link>
+        </li>
+        {crumbs.map((c, i) => {
+          const isLast = i === crumbs.length - 1;
+          return (
+            <li
+              key={c.href || c.label}
+              className={clsx('breadcrumbs__item', {
+                'breadcrumbs__item--active': isLast,
+              })}>
+              {c.href ? (
+                <Link className="breadcrumbs__link" href={c.href}>
+                  <span>{c.label}</span>
+                </Link>
+              ) : (
+                <span className="breadcrumbs__link">{c.label}</span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
 }
 
 // ── TOC（从 markdown 提取 h2/h3，锚点 id 与 MarkdownView 一致）──
@@ -274,6 +339,16 @@ export default function PrivatePage() {
   );
   const toc = useMemo(() => extractToc(doc?.content), [doc]);
 
+  // 面包屑：首页 › 各级分类 › 当前页
+  const crumbs = useMemo(() => {
+    if (!slug || !tree) return [];
+    if (category) {
+      return buildCrumbs(tree, `${slug}/x`, category.label || category.name);
+    }
+    if (doc) return buildCrumbs(tree, slug, doc.title);
+    return [];
+  }, [slug, tree, category, doc]);
+
   // 文档标题同步到浏览器标签页（与文档站行为一致）
   useEffect(() => {
     document.title = doc
@@ -325,6 +400,7 @@ export default function PrivatePage() {
                 <div className={clsx('col', styles.docItemCol)}>
                   <div className={styles.docItemContainer}>
                     <article>
+                      <PrivateBreadcrumbs crumbs={crumbs} />
                       {tocMobile}
                       {category ? (
                         <CategoryIndex node={category} />
