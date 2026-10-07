@@ -1003,11 +1003,7 @@ function ArticleEditor({
                 删除
               </button>
             )}
-            <button
-              type="button"
-              className={`${styles.barBtn} ${styles.barBtnPrimary}`}
-              onClick={save}
-              disabled={saving}>
+            <button type="button" className={styles.barBtn} onClick={save} disabled={saving}>
               <IconPublish />
               {saving ? '处理中…' : isNew ? '创建并发布' : '保存并发布'}
             </button>
