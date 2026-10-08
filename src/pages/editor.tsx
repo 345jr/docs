@@ -30,6 +30,36 @@ import {
   saveCategory as pvSaveCategory,
 } from '../utils/privateClient';
 
+// ── 本地类型 ─────────────────────────────────────────
+
+/** 新建文章时的内存草稿：落盘前一直存在 draft state 里，保存后转为 selected */
+type NewDraft = {
+  path: string;
+  fm: {title?: string};
+  body: string;
+};
+
+/** categoryOptions 产出的分类下拉项 */
+type CategoryOption = {
+  path: string;
+  label: string;
+};
+
+/** 新建分类时提交的字段 */
+type NewCategoryInput = {
+  path: string;
+  label: string;
+  description?: string;
+};
+
+/** catch 到的 err 是 unknown，取出可读的错误消息 */
+function errMsg(e: unknown): string {
+  if (e && typeof e === 'object' && 'message' in e && typeof e.message === 'string') {
+    return e.message;
+  }
+  return String(e);
+}
+
 // ── API ──────────────────────────────────────────────
 
 const API = '/editor/api';
@@ -415,7 +445,7 @@ async function commitAndWait(refresh, loadingMsg, fn) {
     else toast('已提交，未在预期时间内检测到流水线结束', {id, icon: 'ℹ️'});
     return res;
   } catch (err) {
-    toast.error(err.message, {id});
+    toast.error(errMsg(err), {id});
     return null;
   }
 }
@@ -827,7 +857,7 @@ function ArticleEditor({
       })
       .catch((err) => {
         if (!cancelled) {
-          toast.error(err.message);
+          toast.error(errMsg(err));
           setLoading(false);
         }
       });
@@ -935,7 +965,7 @@ function ArticleEditor({
         if (isNew) onDraftSaved(targetPath);
         else if (targetPath !== activePath) onSelect(targetPath);
       } catch (err) {
-        toast.error(err.message);
+        toast.error(errMsg(err));
       } finally {
         setSaving(false);
       }
@@ -967,7 +997,7 @@ function ArticleEditor({
         onSelect(null);
         toast.success('已删除');
       } catch (err) {
-        toast.error(err.message);
+        toast.error(errMsg(err));
       } finally {
         setSaving(false);
       }
@@ -1228,7 +1258,17 @@ function CategorySelect({value, onChange, categories, rootLabel = '（根目录�
 
 // ── 新建文章（只产生草稿，不提交）─────────────────────
 
-function NewArticle({categories, onCreate, onCancel, isPrivate}) {
+function NewArticle({
+  categories,
+  onCreate,
+  onCancel,
+  isPrivate,
+}: {
+  categories: CategoryOption[];
+  isPrivate: boolean;
+  onCreate: (d: NewDraft) => void;
+  onCancel: () => void;
+}) {
   const [title, setTitle] = useState('');
   const [fileName, setFileName] = useState('');
   const [category, setCategory] = useState('');
@@ -1828,7 +1868,7 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
       }
     } catch (err) {
       setSaving(false);
-      toast.error(err.message);
+      toast.error(errMsg(err));
     }
   };
 
@@ -1949,10 +1989,10 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
 
 export default function EditorPage() {
   const [mounted, setMounted] = useState(false);
-  const [token, setToken] = useState(null);
+  const [token, setToken] = useState<string | null>(null);
   const [tree, setTree] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [draft, setDraft] = useState(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [draft, setDraft] = useState<NewDraft | null>(null);
   const [mode, setMode] = useState('idle');
   const [refresh, setRefresh] = useState(0);
   const [dirty, setDirty] = useState(false);
@@ -2006,7 +2046,7 @@ export default function EditorPage() {
         if (!cancelled) setTree(data);
       })
       .catch((err) => {
-        if (!cancelled) toast.error(err.message);
+        if (!cancelled) toast.error(errMsg(err));
       });
     pvFetchTree()
       .then((data) => {
@@ -2022,10 +2062,10 @@ export default function EditorPage() {
   const pvCategories = useMemo(() => categoryOptions(pvTree), [pvTree]);
   const reload = useCallback(() => setRefresh((v) => v + 1), []);
   const pvReload = useCallback(() => setPvRefresh((v) => v + 1), []);
-  const handleDirty = useCallback((v) => setDirty(v), []);
+  const handleDirty = useCallback((v: boolean) => setDirty(v), []);
 
   useEffect(() => {
-    const handler = (e) => {
+    const handler = (e: BeforeUnloadEvent) => {
       if (dirty) {
         e.preventDefault();
         e.returnValue = '';
@@ -2043,14 +2083,14 @@ export default function EditorPage() {
     setPrivateMode(false);
   };
 
-  const selectFile = (p) => {
+  const selectFile = (p: string) => {
     if (dirty && !window.confirm('有未保存的修改，确定要离开吗？')) return;
     setDraft(null);
     setMode('idle');
     setSelected(p);
   };
 
-  const createCategory = async (cat) => {
+  const createCategory = async (cat: NewCategoryInput) => {
     const res = await commitAndWait(pipeline.refresh, '创建分类…', () =>
       api('/category', {
         method: 'POST',
@@ -2068,14 +2108,14 @@ export default function EditorPage() {
   };
 
   // 私有分类：即时创建，不进 git、不触发构建
-  const createPrivateCategory = async (cat) => {
+  const createPrivateCategory = async (cat: NewCategoryInput) => {
     try {
       await pvSaveCategory({path: cat.path, label: cat.label, description: cat.description});
       pvReload();
       toast.success('已创建');
       return true;
     } catch (err) {
-      toast.error(err.message);
+      toast.error(errMsg(err));
       return false;
     }
   };
@@ -2089,7 +2129,7 @@ export default function EditorPage() {
     setPrivateMode((v) => !v);
   };
 
-  const startNew = (m) => {
+  const startNew = (m: string) => {
     if (dirty && !window.confirm('有未保存的修改，确定要离开吗？')) return;
     setDraft(null);
     setSelected(null);
@@ -2097,7 +2137,7 @@ export default function EditorPage() {
   };
 
   // 侧栏宽度动画结束后才隐藏内层、显示展开按钮（参考文档站 hideable sidebar）
-  const handleSidebarTransitionEnd = (e) => {
+  const handleSidebarTransitionEnd = (e: React.TransitionEvent<HTMLElement>) => {
     if (e.propertyName === 'width' && collapsed) setCollapsedShown(true);
   };
 
@@ -2210,13 +2250,13 @@ export default function EditorPage() {
                   pipeline={pipeline}
                   scrollRef={mainRef}
                   pv={privateMode}
-                  onSelect={(p) => {
+                  onSelect={(p: string | null) => {
                     setDraft(null);
                     setSelected(p);
                   }}
                   onTreeChange={privateMode ? pvReload : reload}
                   onDirtyChange={handleDirty}
-                  onDraftSaved={(p) => {
+                  onDraftSaved={(p: string) => {
                     setDraft(null);
                     setSelected(p);
                   }}
