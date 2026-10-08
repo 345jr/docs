@@ -14,6 +14,20 @@
 - `src/`：自定义组件与页面。
 - `docusaurus.config.js`：站点配置。已关闭 blog、移除 footer、开启侧边栏折叠（`docs.sidebar.hideable`）。
 - `sidebars.js`：侧边栏配置，当前按 `docs/` 目录自动生成。
+- `src/types/`：TypeScript 共享类型。`editorTypes.ts`（在线编辑页）、`privateTypes.ts`（私有文档页与 `utils/privateClient.ts`）。**别把类型文件放进 `src/pages/`**——那里每个文件都会被 Docusaurus 当成路由，会多出一个 `/xxxTypes` 页面并在 SSG 阶段构建失败。
+
+## 类型检查
+
+`tsconfig.json` 只做 `noEmit` + `@site/*` 路径别名，**不进构建**：GitHub Actions
+只跑 `npm run build`，类型错误不会阻断部署。全量检查（typescript 未列入依赖，需临时拉取）：
+
+```bash
+npx -p typescript@6.0.3 tsc -p tsconfig.json
+```
+
+TS 6.0 起 `noImplicitAny` 默认开启，`src/` 还剩少量历史遗留的隐式 any
+（集中在 `MarkdownView`、`FontPicker`、`theme/tiptap/admonition.ts`），
+新增代码请补类型注解。
 
 ## 约定
 
