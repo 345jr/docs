@@ -28,9 +28,8 @@ npx -p typescript@6.0.3 tsc --noEmit --jsx react-jsx --skipLibCheck \
   $(find src -name '*.ts' -o -name '*.tsx')
 ```
 
-TS 6.0 起 `noImplicitAny` 默认开启（与有无 tsconfig 无关），`src/` 还剩少量历史遗留
-的隐式 any（集中在 `MarkdownView`、`FontPicker`、`theme/tiptap/admonition.ts`），
-新增代码请补类型注解。类型检查不进构建：GitHub Actions 只跑 `npm run build`。
+TS 6.0 起 `noImplicitAny` 默认开启（与有无 tsconfig 无关），`src/` 目前**类型错误为 0**；
+新增代码请补类型注解，别让隐式 any 重新长回来。类型检查不进构建：GitHub Actions 只跑 `npm run build`。
 
 ## 约定
 
