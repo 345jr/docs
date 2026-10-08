@@ -115,34 +115,44 @@
   background: var(--admonition-bg);
 }
 
-.admonition-heading h5 {
+/* admonition：结构对齐 Infima，颜色变量复用其主题。
+   注意：JSX 里写的是字面类名（admonition--tip / admonition-heading …），
+   这里必须用 :global，否则 CSS Modules 加 hash 后变体样式永远匹配不上、
+   全是灰色底。配色对齐 Docusaurus 公开文档：tip 绿 / info 蓝 /
+   note 灰 / warning 橙 / danger 红。 */
+
+:global(.admonition-heading) h5 {
   margin: 0 0 0.3rem;
   font-size: 0.95rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
-.admonition-content :last-child {
+:global(.admonition-content) :last-child {
   margin-bottom: 0;
 }
 
-.admonition--tip,
-.admonition--info {
+:global(.admonition--tip) {
+  --admonition-bg: var(--ifm-color-success-contrast-background, rgba(0, 164, 0, 0.1));
+  border-left-color: var(--ifm-color-success, #00a400);
+}
+
+:global(.admonition--info) {
   --admonition-bg: var(--ifm-color-info-contrast-background, rgba(0, 160, 209, 0.1));
   border-left-color: var(--ifm-color-info, #00a0d1);
 }
 
-.admonition--note {
+:global(.admonition--note) {
   --admonition-bg: var(--ifm-color-emphasis-100);
 }
 
-.admonition--warning,
-.admonition--caution {
+:global(.admonition--warning),
+:global(.admonition--caution) {
   --admonition-bg: rgba(230, 126, 34, 0.1);
   border-left-color: #e67e22;
 }
 
-.admonition--danger {
+:global(.admonition--danger) {
   --admonition-bg: rgba(250, 56, 62, 0.1);
   border-left-color: var(--ifm-color-danger, #fa383e);
 }
