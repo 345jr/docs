@@ -29,28 +29,18 @@ import {
   deleteDoc as pvDeleteDoc,
   saveCategory as pvSaveCategory,
 } from '../utils/privateClient';
+import type {
+  ArticleEditorProps,
+  ArticleMeta,
+  CategoryOption,
+  FrontMatter,
+  NewCategoryInput,
+  NewDraft,
+  Pipeline,
+  PipelineStatus,
+} from '../types/editorTypes';
 
-// ── 本地类型 ─────────────────────────────────────────
-
-/** 新建文章时的内存草稿：落盘前一直存在 draft state 里，保存后转为 selected */
-type NewDraft = {
-  path: string;
-  fm: {title?: string};
-  body: string;
-};
-
-/** categoryOptions 产出的分类下拉项 */
-type CategoryOption = {
-  path: string;
-  label: string;
-};
-
-/** 新建分类时提交的字段 */
-type NewCategoryInput = {
-  path: string;
-  label: string;
-  description?: string;
-};
+// ── 错误消息 ────────────────────────────────────────
 
 /** catch 到的 err 是 unknown，取出可读的错误消息 */
 function errMsg(e: unknown): string {
@@ -375,8 +365,8 @@ const IconGrip = () => (
 
 // ── 流水线状态 ────────────────────────────────────────
 
-function usePipeline(token) {
-  const [status, setStatus] = useState(null);
+function usePipeline(token: string | null): Pipeline {
+  const [status, setStatus] = useState<PipelineStatus | null>(null);
   const refresh = useCallback(async () => {
     if (!token) return null;
     try {
@@ -771,7 +761,7 @@ function MetaForm({fm, setFm}) {
 
 // ── 文章编辑器 ────────────────────────────────────────
 
-const TOC_LEVEL_CLASS = {
+const TOC_LEVEL_CLASS: Record<number, string> = {
   1: '',
   2: styles.tocH2,
   3: styles.tocH3,
@@ -789,20 +779,20 @@ function ArticleEditor({
   onDirtyChange,
   onDraftSaved,
   pv,
-}) {
+}: ArticleEditorProps) {
   const isNew = Boolean(draft);
   const activePath = draft?.path || path;
   // 私有模式：读写走加密外的私有接口（同一 token），保存即时生效、不等流水线
 
-  const editorRef = useRef(null);
-  const sourceRef = useRef(null);
-  const [slots, setSlots] = useState({meta: null, actions: null});
+  const editorRef = useRef<{view: {dom: HTMLElement}} | null>(null);
+  const sourceRef = useRef<HTMLTextAreaElement | null>(null);
+  const [slots, setSlots] = useState<{meta: HTMLElement | null; actions: HTMLElement | null}>({meta: null, actions: null});
   const [activeHead, setActiveHead] = useState(-1);
   const [showMeta, setShowMeta] = useState(false);
-  const [meta, setMeta] = useState(null);
+  const [meta, setMeta] = useState<ArticleMeta | null>(null);
 
   const [loading, setLoading] = useState(!isNew);
-  const [fm, setFm] = useState(draft?.fm || {});
+  const [fm, setFm] = useState<FrontMatter>(draft?.fm || {});
   const [body, setBody] = useState(draft?.body || '');
   const [fileName, setFileName] = useState('');
   const [category, setCategory] = useState('');
@@ -827,7 +817,8 @@ function ArticleEditor({
 
   // 初始化 / 切换文件
   useEffect(() => {
-    if (isNew) {
+    // isNew 就是 Boolean(draft)，这里直接用 draft 好让 TS 收窄非空
+    if (draft) {
       const {dir, name, ext: e} = splitPath(draft.path);
       setCategory(dir);
       setFileName(name);
@@ -843,7 +834,7 @@ function ArticleEditor({
     setSourceMode(false);
     setConfirmDelete(false);
     setDirty(false);
-    (pv ? pvReadDoc(activePath) : api(`/read?path=${encodeURIComponent(activePath)}`, {token}).then(({content}) => content))
+    (pv ? pvReadDoc(activePath) : api(`/read?path=${encodeURIComponent(activePath ?? '')}`, {token}).then(({content}) => content))
       .then((content) => {
         if (cancelled) return;
         const {data, content: rest} = parseFrontMatter(content);
@@ -911,9 +902,9 @@ function ArticleEditor({
     setShowMeta(true);
   };
 
-  const patchMeta = (patch) => setMeta((prev) => (prev ? {...prev, ...patch} : prev));
+  const patchMeta = (patch: Partial<ArticleMeta>) => setMeta((prev) => (prev ? {...prev, ...patch} : prev));
 
-  const editMetaFm = (updater) => {
+  const editMetaFm = (updater: (fm: FrontMatter) => FrontMatter) => {
     setMeta((prev) => (prev ? {...prev, fm: updater(prev.fm)} : prev));
   };
 
@@ -930,7 +921,7 @@ function ArticleEditor({
 
   const cancelMeta = () => setShowMeta(false);
 
-  const jumpTo = (i) => {
+  const jumpTo = (i: number) => {
     const item = toc[i];
     if (!item) return;
     if (isMdx || sourceMode) {
@@ -1097,7 +1088,7 @@ function ArticleEditor({
                 key={activePath}
                 editorRef={editorRef}
                 initialMarkdown={body}
-                onChange={(v) => {
+                onChange={(v: string) => {
                   setDirty(true);
                   setBody(v);
                 }}
@@ -1145,7 +1136,7 @@ function ArticleEditor({
                     <span>所属分类</span>
                     <CategorySelect
                       value={meta.category}
-                      onChange={(v) => patchMeta({category: v})}
+                      onChange={(v: string) => patchMeta({category: v})}
                       categories={categories}
                     />
                   </label>
@@ -1159,7 +1150,7 @@ function ArticleEditor({
                   </label>
                   <label>
                     <span>格式</span>
-                    <Select.Root value={meta.ext} onValueChange={(v) => patchMeta({ext: v})}>
+                    <Select.Root value={meta.ext} onValueChange={(v) => patchMeta({ext: v ?? ''})}>
                       <Select.Trigger className={styles.selectTrigger}>
                         <Select.Value />
                         <Select.Icon className={styles.selectIcon}>
@@ -1218,10 +1209,21 @@ function ArticleEditor({
 
 // ── 分类下拉（Base UI）──────────────────────────────
 
-function CategorySelect({value, onChange, categories, rootLabel = '（根目录）'}) {
+function CategorySelect({
+  value,
+  onChange,
+  categories,
+  rootLabel = '（根目录）',
+}: {
+  value: string;
+  onChange: (path: string) => void;
+  categories: CategoryOption[];
+  rootLabel?: string;
+}) {
   const ROOT = '__root__';
   return (
-    <Select.Root value={value || ROOT} onValueChange={(v) => onChange(v === ROOT ? '' : v)}>
+    // Base UI 的 onValueChange 会给 string | null，统一收成空串（= 根目录）
+    <Select.Root value={value || ROOT} onValueChange={(v) => onChange(v === ROOT || v == null ? '' : v)}>
       <Select.Trigger className={styles.selectTrigger}>
         <Select.Value>
           {(v) => (v === ROOT ? rootLabel : categories.find((c) => c.path === v)?.label ?? v)}
@@ -2005,7 +2007,7 @@ export default function EditorPage() {
   const [pvTree, setPvTree] = useState([]);
   const [pvRefresh, setPvRefresh] = useState(0);
 
-  const mainRef = useRef(null);
+  const mainRef = useRef<HTMLElement | null>(null);
   const pipeline = usePipeline(token);
 
   useEffect(() => {
