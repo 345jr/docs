@@ -865,6 +865,20 @@
   padding: 0.5rem 0;
 }
 
+/* 富文本区定位上下文：假光标（SmoothCaret）相对它绝对定位 */
+.richWrap {
+  position: relative;
+}
+
+/* 假光标启用时才藏原生光标：触屏设备不用假光标，原生光标必须保留 */
+.richWrap[data-smooth-caret='on'] :global(.tiptap-content) {
+  caret-color: transparent;
+}
+
+:global(.tiptap-content ::selection) {
+  background: color-mix(in srgb, var(--ifm-color-primary) 22%, transparent);
+}
+
 .source {
   display: block;
   width: 100%;

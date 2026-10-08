@@ -1,0 +1,80 @@
+/* Monkeytype 式平滑假光标：外层只负责定位（transform 滑行），内层按样式画形状 */
+
+.caret {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: stretch;
+  pointer-events: none;
+  z-index: 3;
+  will-change: transform;
+  transition:
+    transform 100ms cubic-bezier(0.22, 1, 0.36, 1),
+    height 120ms ease-out;
+  /* 对标 Monkeytype 的 caretFlashSmooth：淡入淡出式闪烁 */
+  animation: smoothCaretBlink 1.1s ease-in-out infinite;
+}
+
+/* 打字时常亮：停手约 1 秒后由 JS 摘掉这个类、恢复闪烁 */
+.caretSolid {
+  animation: none;
+  opacity: 1;
+}
+
+/* 失焦 / 选中文字时隐藏：用 visibility 而不用 display，
+   避免重新挂载杀掉滑行 transition */
+.caretHidden {
+  visibility: hidden;
+}
+
+.shape {
+  display: block;
+  border-radius: 2px;
+}
+
+.shapeLine {
+  width: 2px;
+  height: 100%;
+  background: var(--ifm-color-primary);
+}
+
+.shapeBlock {
+  width: 0.55em;
+  height: 100%;
+  /* 半透明，CJK 全宽字符也能透出字形 */
+  background: color-mix(in srgb, var(--ifm-color-primary) 45%, transparent);
+}
+
+.shapeUnderline {
+  width: 0.55em;
+  height: 2px;
+  margin-top: auto;
+  background: var(--ifm-color-primary);
+}
+
+.shapeOutline {
+  width: 0.55em;
+  height: 100%;
+  box-sizing: border-box;
+  border: 1.5px solid var(--ifm-color-primary);
+  background: transparent;
+}
+
+@keyframes smoothCaretBlink {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .caret {
+    transition: none;
+    animation: none;
+    opacity: 1;
+  }
+}

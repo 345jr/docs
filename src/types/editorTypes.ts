@@ -173,6 +173,15 @@ export type SortManagerProps = {
   onClose: () => void;
 };
 
+/** 假光标样式（Monkeytype 式：竖线 / 方块 / 下划线 / 描边） */
+export type CaretStyle = 'line' | 'block' | 'underline' | 'outline';
+
+/** `SmoothCaret` 的 props：编辑器实例 + 当前光标样式 */
+export type SmoothCaretProps = {
+  editor: Editor | null;
+  caretStyle: CaretStyle;
+};
+
 // ── 侧边栏文件树 ─────────────────────────────────────
 
 export type TreeItemProps = {
@@ -207,6 +216,8 @@ export type TiptapBodyProps = {
   initialMarkdown: string;
   onChange: (md: string) => void;
   editorRef: RefObject<EditorHandle | null>;
+  /** 假光标样式：由编辑器页持有、走 localStorage 持久化 */
+  caretStyle: CaretStyle;
 };
 
 export type ToolbarProps = {editor: Editor};

@@ -28,6 +28,7 @@ import {Admonition} from '../theme/tiptap/admonition';
 import styles from './editor.module.css';
 import '../theme/tiptap/admonition.css';
 import LoginForm from '../components/LoginForm';
+import SmoothCaret from '../components/SmoothCaret';
 import {
   fetchTree as pvFetchTree,
   readDoc as pvReadDoc,
@@ -43,6 +44,7 @@ import type {
   BoardItem,
   BuildStepState,
   BuildStepsProps,
+  CaretStyle,
   CategoryItemProps,
   CategoryOption,
   CategorySelectProps,
@@ -379,6 +381,36 @@ const IconSort = () => (
   </Ic>
 );
 
+const IconCaret = () => (
+  <Ic>
+    <path d="M12 4v16" />
+  </Ic>
+);
+
+/** 假光标样式：点击顶栏按钮轮换，存 localStorage（纯前端偏好） */
+const CARET_STYLE_ORDER: CaretStyle[] = ['line', 'block', 'underline', 'outline'];
+
+const CARET_STYLE_LABEL: Record<CaretStyle, string> = {
+  line: '竖线',
+  block: '方块',
+  underline: '下划线',
+  outline: '描边',
+};
+
+const CARET_STYLE_KEY = 'docs-editor-caret-style';
+
+function readCaretStyle(): CaretStyle {
+  try {
+    const saved = window.localStorage.getItem(CARET_STYLE_KEY);
+    if (saved === 'line' || saved === 'block' || saved === 'underline' || saved === 'outline') {
+      return saved;
+    }
+  } catch {
+    // 隐私模式等 localStorage 不可用时直接用默认
+  }
+  return 'line';
+}
+
 const IconZen = () => (
   <Ic>
     <path d="M8 3H5a2 2 0 0 0-2 2v3" />
@@ -600,7 +632,7 @@ function FileTree({tree, active, onSelect}: FileTreeProps) {
 
 // ── 富文本编辑器（Tiptap）─────────────────────────────
 
-function TiptapBody({initialMarkdown, onChange, editorRef}: TiptapBodyProps) {
+function TiptapBody({initialMarkdown, onChange, editorRef, caretStyle}: TiptapBodyProps) {
   const editor = useEditor(
     {
       extensions: [
@@ -627,10 +659,11 @@ function TiptapBody({initialMarkdown, onChange, editorRef}: TiptapBodyProps) {
   }, [editor, editorRef]);
 
   return (
-    <>
+    <div className={styles.richWrap}>
       {editor && <Toolbar editor={editor} />}
       <EditorContent editor={editor} className={styles.tiptap} />
-    </>
+      <SmoothCaret editor={editor} caretStyle={caretStyle} />
+    </div>
   );
 }
 
@@ -870,6 +903,12 @@ function ArticleEditor({
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [dirty, setDirty] = useState(isNew);
+  // 假光标样式：纯前端偏好，localStorage 持久化
+  const [caretStyle, setCaretStyle] = useState<CaretStyle>('line');
+
+  useEffect(() => {
+    setCaretStyle(readCaretStyle());
+  }, []);
 
   const targetPath = `${category ? `${category}/` : ''}${fileName}${ext}`;
   const isMdx = ext === '.mdx';
@@ -1000,6 +1039,18 @@ function ArticleEditor({
   };
 
   const cancelMeta = () => setShowMeta(false);
+
+  const cycleCaretStyle = () => {
+    setCaretStyle((prev) => {
+      const next = CARET_STYLE_ORDER[(CARET_STYLE_ORDER.indexOf(prev) + 1) % CARET_STYLE_ORDER.length];
+      try {
+        window.localStorage.setItem(CARET_STYLE_KEY, next);
+      } catch {
+        // 存不下也照常用，只是下次恢复默认
+      }
+      return next;
+    });
+  };
 
   const jumpTo = (i: number) => {
     const item = toc[i];
@@ -1133,6 +1184,14 @@ function ArticleEditor({
             <button
               type="button"
               className={styles.barBtn}
+              onClick={cycleCaretStyle}
+              title="切换光标样式：竖线 / 方块 / 下划线 / 描边">
+              <IconCaret />
+              光标：{CARET_STYLE_LABEL[caretStyle]}
+            </button>
+            <button
+              type="button"
+              className={styles.barBtn}
               onClick={onToggleZen}
               title="进入禅模式，专注编辑这篇文章（Esc 退出）">
               <IconZen />
@@ -1171,6 +1230,14 @@ function ArticleEditor({
           <button type="button" className={styles.barBtn} onClick={save} disabled={saving}>
             <IconPublish />
             {saving ? '处理中…' : isNew ? (pv ? '创建' : '创建并发布') : pv ? '保存' : '保存并发布'}
+          </button>
+          <button
+            type="button"
+            className={styles.barBtn}
+            onClick={cycleCaretStyle}
+            title="切换光标样式：竖线 / 方块 / 下划线 / 描边">
+            <IconCaret />
+            光标：{CARET_STYLE_LABEL[caretStyle]}
           </button>
           <button
             type="button"
@@ -1217,6 +1284,7 @@ function ArticleEditor({
                 key={activePath}
                 editorRef={editorRef}
                 initialMarkdown={body}
+                caretStyle={caretStyle}
                 onChange={(v: string) => {
                   setDirty(true);
                   setBody(v);
