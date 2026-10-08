@@ -1411,3 +1411,84 @@
 .sortFooter .formActions {
   flex-shrink: 0;
 }
+
+/* ── 禅模式（纯前端专注编辑）────────────────────────── */
+
+/* 隐藏文档站导航栏：由页面在 <html> 上挂 editor-zen 类控制 */
+:global(html.editor-zen .navbar) {
+  display: none;
+}
+
+.zenShell {
+  --zen-bar-height: 53px;
+  height: 100vh;
+}
+
+.zenMain {
+  padding: 0 1.5rem 4rem;
+}
+
+/* 禅模式顶栏：路径 + 元信息/保存等操作 + 退出，吸顶常驻 */
+.zenBar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: var(--zen-bar-height);
+  margin: 0 -1.5rem;
+  padding: 0.4rem 1.5rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+  background: color-mix(in srgb, var(--ifm-background-color) 90%, transparent);
+  backdrop-filter: blur(8px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.zenBar::-webkit-scrollbar {
+  display: none;
+}
+
+/* 文章居中：与文档站正文宽度对齐 */
+.zenRow {
+  justify-content: center;
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.zenRow .editorMain {
+  width: 100%;
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+/* 富文本工具栏成为内容区的顶部栏：紧贴禅模式栏吸顶 */
+.zenMain .toolbar {
+  top: var(--zen-bar-height);
+  margin: 0 -1.5rem;
+  padding: 0.45rem 1.5rem;
+  background: color-mix(in srgb, var(--ifm-background-color) 90%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+@media (max-width: 768px) {
+  .zenMain {
+    padding: 0 1rem 3rem;
+  }
+
+  .zenBar,
+  .zenMain .toolbar {
+    margin: 0 -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zenBar,
+  .zenMain .toolbar {
+    backdrop-filter: none;
+  }
+}

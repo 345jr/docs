@@ -379,6 +379,24 @@ const IconSort = () => (
   </Ic>
 );
 
+const IconZen = () => (
+  <Ic>
+    <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+    <path d="M16 3h3a2 2 0 0 1 2 2v3" />
+    <path d="M8 21H5a2 2 0 0 1-2-2v-3" />
+    <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+  </Ic>
+);
+
+const IconZenExit = () => (
+  <Ic>
+    <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+    <path d="M16 3v3a2 2 0 0 0 2 2h3" />
+    <path d="M8 21v-3a2 2 0 0 1 2-2h3" />
+    <path d="M16 21v-3a2 2 0 0 0-2-2h-3" />
+  </Ic>
+);
+
 const IconFolderSmall = () => (
   <Ic size={14}>
     <path d="M3 7a2 2 0 0 1 2-2h3l2 2h7a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
@@ -827,6 +845,8 @@ function ArticleEditor({
   onDirtyChange,
   onDraftSaved,
   pv,
+  zen,
+  onToggleZen,
 }: ArticleEditorProps) {
   const isNew = Boolean(draft);
   const activePath = draft?.path || path;
@@ -855,13 +875,17 @@ function ArticleEditor({
   const isMdx = ext === '.mdx';
   const toc = useMemo(() => parseToc(body), [body]);
 
-  // 顶部栏插槽（portal 目标）
+  // 顶部栏插槽（portal 目标）：禅模式下顶栏隐藏，改走行内禅模式栏
   useEffect(() => {
+    if (zen) {
+      setSlots({meta: null, actions: null});
+      return;
+    }
     setSlots({
       meta: document.getElementById('editor-meta-slot'),
       actions: document.getElementById('editor-actions-slot'),
     });
-  }, []);
+  }, [zen]);
 
   // 初始化 / 切换文件
   useEffect(() => {
@@ -942,7 +966,15 @@ function ArticleEditor({
     ta.style.height = `${ta.scrollHeight + 2}px`;
   }, [body, sourceMode, isMdx, loading]);
 
-  // 元信息弹窗的 Esc 关闭由 Base UI Dialog 处理
+  // 禅模式下 Esc 退出（元信息弹窗/删除确认打开时让它们先消费 Esc）
+  useEffect(() => {
+    if (!zen) return undefined;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !showMeta && !confirmDelete) onToggleZen();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [zen, showMeta, confirmDelete, onToggleZen]);
 
   // 打开时基于当前状态生成草稿，仅“暂存”才写回
   const openMeta = () => {
@@ -1057,7 +1089,7 @@ function ArticleEditor({
 
   return (
     <>
-      {slots.meta &&
+      {!zen && slots.meta &&
         createPortal(
           <>
             <span className={styles.path} title={targetPath}>
@@ -1072,7 +1104,7 @@ function ArticleEditor({
           </>,
           slots.meta,
         )}
-      {slots.actions &&
+      {!zen && slots.actions &&
         createPortal(
           <>
             <button type="button" className={styles.barBtn} onClick={openMeta}>
@@ -1098,9 +1130,58 @@ function ArticleEditor({
               <IconPublish />
               {saving ? '处理中…' : isNew ? (pv ? '创建' : '创建并发布') : pv ? '保存' : '保存并发布'}
             </button>
+            <button
+              type="button"
+              className={styles.barBtn}
+              onClick={onToggleZen}
+              title="进入禅模式，专注编辑这篇文章（Esc 退出）">
+              <IconZen />
+              禅模式
+            </button>
           </>,
           slots.actions,
         )}
+
+      {zen && (
+        <div className={styles.zenBar}>
+          <span className={styles.path} title={targetPath}>
+            {targetPath}
+          </span>
+          {dirty && <span className={styles.dirtyBadge}>未保存</span>}
+          <div className={styles.spacer} />
+          <button type="button" className={styles.barBtn} onClick={openMeta}>
+            <IconSliders />
+            元信息
+          </button>
+          {!isNew && !isMdx && (
+            <button type="button" className={styles.barBtn} onClick={() => setSourceMode((v) => !v)}>
+              <IconCode />
+              {sourceMode ? '富文本' : '源码'}
+            </button>
+          )}
+          {!isNew && (
+            <button
+              type="button"
+              className={`${styles.barBtn} ${styles.barBtnDanger}`}
+              onClick={() => setConfirmDelete(true)}>
+              <IconTrash />
+              删除
+            </button>
+          )}
+          <button type="button" className={styles.barBtn} onClick={save} disabled={saving}>
+            <IconPublish />
+            {saving ? '处理中…' : isNew ? (pv ? '创建' : '创建并发布') : pv ? '保存' : '保存并发布'}
+          </button>
+          <button
+            type="button"
+            className={styles.barBtn}
+            onClick={onToggleZen}
+            title="退出禅模式（Esc）">
+            <IconZenExit />
+            退出
+          </button>
+        </div>
+      )}
 
       {confirmDelete && (
         <div className={styles.confirm}>
@@ -1117,7 +1198,7 @@ function ArticleEditor({
         </div>
       )}
 
-      <div className={styles.editorRow}>
+      <div className={`${styles.editorRow} ${zen ? styles.zenRow : ''}`}>
         <div className={styles.editorMain}>
           <div className={styles.editorArea}>
             {isMdx || sourceMode ? (
@@ -1145,7 +1226,7 @@ function ArticleEditor({
           </div>
         </div>
 
-        {toc.length > 0 && (
+        {!zen && toc.length > 0 && (
           <aside className={styles.tocPanel}>
             <div className={styles.tocTitle}>锚点</div>
             <nav className={styles.toc}>
@@ -2058,6 +2139,9 @@ export default function EditorPage() {
   const [privateMode, setPrivateMode] = useState(false);
   const [pvTree, setPvTree] = useState<FileEntry[]>([]);
   const [pvRefresh, setPvRefresh] = useState(0);
+  // 禅模式：纯前端的专注编辑态，隐藏导航/侧边栏/子顶栏、文章居中
+  const [zen, setZen] = useState(false);
+  const toggleZen = useCallback(() => setZen((v) => !v), []);
 
   const mainRef = useRef<HTMLElement | null>(null);
   const pipeline = usePipeline(token);
@@ -2118,6 +2202,18 @@ export default function EditorPage() {
   const pvReload = useCallback(() => setPvRefresh((v) => v + 1), []);
   const handleDirty = useCallback((v: boolean) => setDirty(v), []);
 
+  // 禅模式下隐藏文档站导航栏：挂到 <html> 上，退出时清理
+  useEffect(() => {
+    if (!zen) return undefined;
+    document.documentElement.classList.add('editor-zen');
+    return () => document.documentElement.classList.remove('editor-zen');
+  }, [zen]);
+
+  // 新建文章/分类表单与禅模式互斥：切到表单就退出禅模式
+  useEffect(() => {
+    if (mode !== 'idle') setZen(false);
+  }, [mode]);
+
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
       if (dirty) {
@@ -2135,6 +2231,7 @@ export default function EditorPage() {
     setSelected(null);
     setDraft(null);
     setPrivateMode(false);
+    setZen(false);
   };
 
   const selectFile = (p: string) => {
@@ -2180,6 +2277,7 @@ export default function EditorPage() {
     setDraft(null);
     setSelected(null);
     setMode('idle');
+    setZen(false);
     setPrivateMode((v) => !v);
   };
 
@@ -2201,8 +2299,9 @@ export default function EditorPage() {
       {!mounted ? null : !token ? (
         <Login onLogin={setToken} />
       ) : (
-        <div className={styles.shell}>
+        <div className={`${styles.shell} ${zen ? styles.zenShell : ''}`}>
           <div className={styles.body}>
+            {!zen && (
             <aside
               className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}
               onTransitionEnd={handleSidebarTransitionEnd}>
@@ -2246,8 +2345,10 @@ export default function EditorPage() {
                 </button>
               )}
             </aside>
+            )}
 
             <div className={styles.contentCol}>
+              {!zen && (
               <header className={styles.subbar}>
                 <span className={styles.brand}>在线编辑</span>
             <span id="editor-meta-slot" className={styles.metaSlot} />
@@ -2274,8 +2375,9 @@ export default function EditorPage() {
               退出
             </button>
               </header>
+              )}
 
-              <main className={styles.main} ref={mainRef}>
+              <main className={`${styles.main} ${zen ? styles.zenMain : ''}`} ref={mainRef}>
               {mode === 'new-article' ? (
                 <NewArticle
                   categories={privateMode ? pvCategories : categories}
@@ -2304,6 +2406,8 @@ export default function EditorPage() {
                   pipeline={pipeline}
                   scrollRef={mainRef}
                   pv={privateMode}
+                  zen={zen}
+                  onToggleZen={toggleZen}
                   onSelect={(p: string | null) => {
                     setDraft(null);
                     setSelected(p);

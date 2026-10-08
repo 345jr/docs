@@ -89,6 +89,10 @@ export type ArticleEditorProps = {
   onDraftSaved: (path: string) => void;
   /** 私有模式：读写走私有接口（同一 token） */
   pv: boolean;
+  /** 禅模式：纯前端状态，隐藏侧边栏/顶栏、居中专注编辑 */
+  zen: boolean;
+  /** 切换禅模式 */
+  onToggleZen: () => void;
 };
 
 // ── 目录树 / 排序画布 ───────────────────────────────
