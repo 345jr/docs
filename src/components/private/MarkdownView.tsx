@@ -16,14 +16,91 @@ import styles from './MarkdownView.module.css';
  * admonition（:::tip[标题]）、围栏代码块（prism 高亮，配色跟随明暗模式）。
  */
 
-// ── admonition 解析（与 Docusaurus 3 语法一致：:::type[标题]）──
+// ── admonition 预切分（与 Docusaurus 3 语法一致：:::type[标题] … :::）──
+//
+// marked 会把整块 admonition 拆散到多个 paragraph token 里
+//（opener 粘住第一段、closer 粘住最后一段），整块正则根本匹配不到，
+// 所以在 lexer 之前按行预切分：围栏代码块里的 ::: 不处理，
+// 没配对 closer 的 opener 当普通文本（与 Docusaurus 行为一致）。
 
-const ADMONITION_RE = /^:::(tip|note|warning|danger|info|caution)(?:\[([^\]]*)\])?\s*\n([\s\S]*?)\n:::/;
+type Segment =
+  | {kind: 'md'; text: string}
+  | {kind: 'adm'; admType: string; title: string; body: string};
 
-function extractAdmonition(text: string): {type: string; title: string; body: string} | null {
-  const m = ADMONITION_RE.exec(text);
-  if (!m) return null;
-  return {type: m[1], title: m[2] || m[1].toUpperCase(), body: m[3]};
+const ADMONITION_OPEN_RE =
+  /^:::(tip|note|warning|danger|info|caution)(?:\[([^\]]*)\])?[ \t]*$/;
+const ADMONITION_CLOSE_RE = /^:::[ \t]*$/;
+const FENCE_RE = /^\s*(```+|~~~+)/;
+
+function splitAdmonitions(src: string): Segment[] {
+  const lines = src.replace(/\r\n?/g, '\n').split('\n');
+  const segs: Segment[] = [];
+  const buf: string[] = [];
+  const flush = () => {
+    // 纯空白碎片（如两个 admonition 之间的空行）直接丢掉，lexer 出来也是 space
+    if (buf.length > 0 && buf.join('').trim() !== '') {
+      segs.push({kind: 'md', text: buf.join('\n')});
+    }
+    buf.length = 0;
+  };
+  let i = 0;
+  let inFence = false;
+  let fenceChar = '';
+  while (i < lines.length) {
+    const line = lines[i];
+    const fence = FENCE_RE.exec(line);
+    if (fence) {
+      const ch = fence[1][0];
+      if (!inFence) {
+        inFence = true;
+        fenceChar = ch;
+      } else if (ch === fenceChar) {
+        inFence = false;
+      }
+      buf.push(line);
+      i += 1;
+      continue;
+    }
+    const open = !inFence ? ADMONITION_OPEN_RE.exec(line) : null;
+    if (open) {
+      // 向后找配对的 :::（跳过围栏代码块里的）
+      let j = i + 1;
+      let innerFence = false;
+      let innerChar = '';
+      while (j < lines.length) {
+        const l = lines[j];
+        const f = FENCE_RE.exec(l);
+        if (f) {
+          const ch = f[1][0];
+          if (!innerFence) {
+            innerFence = true;
+            innerChar = ch;
+          } else if (ch === innerChar) {
+            innerFence = false;
+          }
+        } else if (!innerFence && ADMONITION_CLOSE_RE.test(l)) {
+          break;
+        }
+        j += 1;
+      }
+      if (j < lines.length) {
+        flush();
+        segs.push({
+          kind: 'adm',
+          admType: open[1],
+          title: open[2] || open[1].toUpperCase(),
+          body: lines.slice(i + 1, j).join('\n'),
+        });
+        i = j + 1;
+        continue;
+      }
+      // 没找到配对 closer：当普通文本处理
+    }
+    buf.push(line);
+    i += 1;
+  }
+  flush();
+  return segs;
 }
 
 // ── 代码高亮 ──
@@ -176,21 +253,7 @@ function Blocks({tokens = []}: {tokens?: Token[]}) {
             // 出于安全考虑不渲染原始 HTML；链接引用定义由 marked 内联展开
             return null;
           default: {
-            // 段落里的 admonition（:::tip[标题] ... :::）
-            const raw = t.raw || '';
-            const adm = raw.startsWith(':::') ? extractAdmonition(raw) : null;
-            if (adm) {
-              return (
-                <div key={i} className={`admonition admonition--${adm.type} ${styles.admonition}`}>
-                  <div className="admonition-heading">
-                    <h5>{adm.title}</h5>
-                  </div>
-                  <div className="admonition-content">
-                    <Blocks tokens={marked.lexer(adm.body)} />
-                  </div>
-                </div>
-              );
-            }
+            // 未知块级 token：按段落兜底（admonition 已在 lexer 前预切分，这里不再处理）
             return (
               <p key={i}>
                 <Inline tokens={(t as Tokens.Generic).tokens || []} />
@@ -203,12 +266,42 @@ function Blocks({tokens = []}: {tokens?: Token[]}) {
   );
 }
 
+function AdmonitionBlock({admType, title, body}: {admType: string; title: string; body: string}) {
+  // body 里允许再嵌套 admonition，递归切分
+  const inner = useMemo(() => splitAdmonitions(body), [body]);
+  return (
+    <div className={`admonition admonition--${admType} ${styles.admonition}`}>
+      <div className="admonition-heading">
+        <h5>{title}</h5>
+      </div>
+      <div className="admonition-content">
+        <Segments segments={inner} />
+      </div>
+    </div>
+  );
+}
+
+function Segments({segments}: {segments: Segment[]}) {
+  return (
+    <>
+      {segments.map((s, i) =>
+        s.kind === 'adm' ? (
+          <AdmonitionBlock key={i} admType={s.admType} title={s.title} body={s.body} />
+        ) : (
+          <Blocks key={i} tokens={marked.lexer(s.text)} />
+        ),
+      )}
+    </>
+  );
+}
+
 export default function MarkdownView({content, title}: MarkdownViewProps) {
-  const tokens = useMemo(() => {
+  const segments = useMemo(() => {
     try {
-      return marked.lexer(content || '');
+      return splitAdmonitions(content || '');
     } catch {
-      return [];
+      const fallback: Segment[] = [{kind: 'md', text: content || ''}];
+      return fallback;
     }
   }, [content]);
   return (
@@ -219,7 +312,7 @@ export default function MarkdownView({content, title}: MarkdownViewProps) {
           <h1>{title}</h1>
         </header>
       ) : null}
-      <Blocks tokens={tokens} />
+      <Segments segments={segments} />
     </div>
   );
 }
