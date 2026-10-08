@@ -126,7 +126,8 @@ export default function FontPicker(): React.ReactNode {
   // 清单路径来自构建期注入的 globalData（见 plugins/cjk-webfonts），
   // 已挂过的 <link> 跳过，避免重复插入。
   const hrefsOf = (choice: FontChoice): string[] => {
-    const meta = webfonts[choice];
+    // 'system' 没有 webfont 产物，globalData 里也没有对应条目
+    const meta = choice === 'system' ? undefined : webfonts[choice];
     if (!meta) {
       return [];
     }
@@ -137,7 +138,7 @@ export default function FontPicker(): React.ReactNode {
             `link[data-font-css="${choice}"][href$="${href}"]`,
           ),
       )
-      .map(withBaseUrl);
+      .map((href) => withBaseUrl(href));
   };
 
   // 恢复上次的字体选择
@@ -158,7 +159,9 @@ export default function FontPicker(): React.ReactNode {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleChange = (choice: FontChoice) => {
+  // Base UI 的 onValueChange 会带 null（本组件没有清空入口，实际不会发生）
+  const handleChange = (choice: FontChoice | null) => {
+    if (!choice) return;
     setValue(choice);
     localStorage.setItem(STORAGE_KEY, choice);
 

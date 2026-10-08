@@ -102,3 +102,12 @@ export type PrivateBreadcrumbsProps = {
 export type CategoryIndexProps = {
   node: FileEntry;
 };
+
+// ── 正文渲染器 ───────────────────────────────────────
+
+export type MarkdownViewProps = {
+  /** 原始 markdown（可缺省，缺省时只渲染空容器） */
+  content?: string;
+  /** 从正文里抽出来的一级标题，单独渲染到 header；没有则为空 */
+  title?: string | null;
+};

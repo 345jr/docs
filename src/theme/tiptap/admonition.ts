@@ -1,4 +1,5 @@
 import {Node, mergeAttributes} from '@tiptap/core';
+import type {MarkdownLexerConfiguration, MarkdownToken} from '@tiptap/core';
 import {ReactNodeViewRenderer} from '@tiptap/react';
 import AdmonitionView from './AdmonitionView';
 
@@ -49,7 +50,11 @@ export const Admonition = Node.create({
     name: 'admonition',
     level: 'block',
     start: (src: string) => src.indexOf(':::'),
-    tokenize: (src: string, _tokens: unknown, lexer: {blockTokens: (s: string) => unknown[]}) => {
+    tokenize: (
+    src: string,
+    _tokens: MarkdownToken[],
+    lexer: MarkdownLexerConfiguration,
+  ): MarkdownToken | undefined => {
       // :::type[标题] \n 内容 \n :::
       const match = /^:::(\w+)(?:\[([^\]]*)\])?\r?\n([\s\S]*?)\r?\n:::(?:\r?\n|$)/.exec(src);
       if (!match) return undefined;

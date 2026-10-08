@@ -1,9 +1,11 @@
 import React, {useMemo} from 'react';
 import clsx from 'clsx';
 import {marked} from 'marked';
+import type {Token, Tokens} from 'marked';
 import {Highlight, themes} from 'prism-react-renderer';
 import {ThemeClassNames, useColorMode} from '@docusaurus/theme-common';
 import Heading from '@theme/Heading';
+import type {MarkdownViewProps} from '../../types/privateTypes';
 import styles from './MarkdownView.module.css';
 
 /**
@@ -18,7 +20,7 @@ import styles from './MarkdownView.module.css';
 
 const ADMONITION_RE = /^:::(tip|note|warning|danger|info|caution)(?:\[([^\]]*)\])?\s*\n([\s\S]*?)\n:::/;
 
-function extractAdmonition(text) {
+function extractAdmonition(text: string): {type: string; title: string; body: string} | null {
   const m = ADMONITION_RE.exec(text);
   if (!m) return null;
   return {type: m[1], title: m[2] || m[1].toUpperCase(), body: m[3]};
@@ -26,7 +28,7 @@ function extractAdmonition(text) {
 
 // ── 代码高亮 ──
 
-function CodeBlock({code, lang}) {
+function CodeBlock({code, lang}: {code: string; lang?: string}) {
   const {colorMode} = useColorMode();
   return (
     <Highlight code={code} language={lang || 'text'} theme={colorMode === 'dark' ? themes.dracula : themes.github}>
@@ -47,7 +49,7 @@ function CodeBlock({code, lang}) {
 
 // ── 行内 token ──
 
-function Inline({tokens}) {
+function Inline({tokens = []}: {tokens?: Token[]}) {
   return (
     <>
       {tokens.map((t, i) => {
@@ -89,7 +91,7 @@ function headingTag(depth: number | string) {
   return `h${depth}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
 }
 
-function slugifyHeading(text) {
+function slugifyHeading(text: string) {
   return text
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s-]/gu, '')
@@ -97,7 +99,7 @@ function slugifyHeading(text) {
     .replace(/\s+/g, '-');
 }
 
-function Blocks({tokens}) {
+function Blocks({tokens = []}: {tokens?: Token[]}) {
   return (
     <>
       {tokens.map((t, i) => {
@@ -127,7 +129,7 @@ function Blocks({tokens}) {
             const Tag = t.ordered ? 'ol' : 'ul';
             return (
               <Tag key={i} start={t.start}>
-                {t.items.map((item, j) => (
+                {t.items.map((item: Tokens.ListItem, j: number) => (
                   <li key={j} className={item.task ? styles.taskItem : undefined}>
                     {item.task && (
                       <input type="checkbox" disabled checked={item.checked} readOnly />
@@ -144,7 +146,7 @@ function Blocks({tokens}) {
                 <table>
                   <thead>
                     <tr>
-                      {t.header.map((cell, j) => (
+                      {t.header.map((cell: Tokens.TableCell, j: number) => (
                         <th key={j}>
                           <Inline tokens={cell.tokens} />
                         </th>
@@ -152,9 +154,9 @@ function Blocks({tokens}) {
                     </tr>
                   </thead>
                   <tbody>
-                    {t.rows.map((row, j) => (
+                    {t.rows.map((row: Tokens.TableCell[], j: number) => (
                       <tr key={j}>
-                        {row.map((cell, k) => (
+                        {row.map((cell: Tokens.TableCell, k: number) => (
                           <td key={k}>
                             <Inline tokens={cell.tokens} />
                           </td>
@@ -189,7 +191,11 @@ function Blocks({tokens}) {
                 </div>
               );
             }
-            return <p key={i}><Inline tokens={t.tokens || []} /></p>;
+            return (
+              <p key={i}>
+                <Inline tokens={(t as Tokens.Generic).tokens || []} />
+              </p>
+            );
           }
         }
       })}
@@ -197,7 +203,7 @@ function Blocks({tokens}) {
   );
 }
 
-export default function MarkdownView({content, title}) {
+export default function MarkdownView({content, title}: MarkdownViewProps) {
   const tokens = useMemo(() => {
     try {
       return marked.lexer(content || '');
