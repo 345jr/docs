@@ -18,16 +18,19 @@
 
 ## 类型检查
 
-`tsconfig.json` 只做 `noEmit` + `@site/*` 路径别名，**不进构建**：GitHub Actions
-只跑 `npm run build`，类型错误不会阻断部署。全量检查（typescript 未列入依赖，需临时拉取）：
+仓库**没有** `tsconfig.json`，`src/` 下的 import 一律用相对路径，别写 `@site/` 别名
+（那个别名只有打包器认，tsc 会报 TS2307，并让下游参数退化成隐式 any）。全量检查
+（typescript 未列入依赖，需临时拉取）：
 
 ```bash
-npx -p typescript@6.0.3 tsc -p tsconfig.json
+npx -p typescript@6.0.3 tsc --noEmit --jsx react-jsx --skipLibCheck \
+  --moduleResolution bundler --module esnext --target es2022 \
+  $(find src -name '*.ts' -o -name '*.tsx')
 ```
 
-TS 6.0 起 `noImplicitAny` 默认开启，`src/` 还剩少量历史遗留的隐式 any
-（集中在 `MarkdownView`、`FontPicker`、`theme/tiptap/admonition.ts`），
-新增代码请补类型注解。
+TS 6.0 起 `noImplicitAny` 默认开启（与有无 tsconfig 无关），`src/` 还剩少量历史遗留
+的隐式 any（集中在 `MarkdownView`、`FontPicker`、`theme/tiptap/admonition.ts`），
+新增代码请补类型注解。类型检查不进构建：GitHub Actions 只跑 `npm run build`。
 
 ## 约定
 

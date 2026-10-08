@@ -16,15 +16,17 @@ import TOCCollapsible from '@theme/TOCCollapsible';
 import {marked} from 'marked';
 import type {Tokens} from 'marked';
 import toast, {Toaster} from 'react-hot-toast';
-import MarkdownView from '@site/src/components/private/MarkdownView';
-import LoginForm from '@site/src/components/LoginForm';
+// 这里刻意用相对路径而非 `@site/` 别名：站点没有 tsconfig，`@site/*` 只由打包器解析，
+// tsc 会报 TS2307（模块找不到），进而让下游参数全部退化成隐式 any。
+import MarkdownView from '../components/private/MarkdownView';
+import LoginForm from '../components/LoginForm';
 import {
   fetchTree,
   getToken,
   readDoc,
   UNAUTHORIZED_EVENT,
   unlock,
-} from '@site/src/utils/privateClient';
+} from '../utils/privateClient';
 import type {
   CategoryIndexProps,
   Crumb,
@@ -33,7 +35,7 @@ import type {
   PrivateBreadcrumbsProps,
   SidebarItem,
   TocItem,
-} from '@site/src/types/privateTypes';
+} from '../types/privateTypes';
 import styles from './private.styles.module.css';
 
 /**
