@@ -42,8 +42,14 @@ import type {
   BoardItem,
   BuildStepState,
   BuildStepsProps,
+  CategoryItemProps,
+  CategoryOption,
   CategorySelectProps,
+  EditorHandle,
+  FileTreeProps,
   FrontMatter,
+  LoginProps,
+  MetaFormProps,
   NewArticleProps,
   NewCategoryInput,
   NewCategoryProps,
@@ -54,6 +60,12 @@ import type {
   SortDragState,
   SortManagerProps,
   SortNode,
+  TagsFieldProps,
+  TiptapBodyProps,
+  ToolBtnProps,
+  ToolbarProps,
+  TopBuildStatusProps,
+  TreeItemProps,
   TreeNode,
 } from '../types/editorTypes';
 
@@ -73,7 +85,16 @@ const API = '/editor/api';
 // session 失效时广播，EditorPage 监听后清 token、回到登录页。
 const UNAUTHORIZED_EVENT = 'docs-editor:unauthorized';
 
-async function api(path, options = {}) {
+/** `api()` 的可选参数：只用到这四个，不接受任意字段 */
+type ApiOptions = {
+  method?: string;
+  token?: string | null;
+  headers?: Record<string, string>;
+  body?: unknown;
+};
+
+// 返回值形状由后端决定，这里不做逐字段约束（调用点都是解构几个字段）。
+async function api(path: string, options: ApiOptions = {}): Promise<any> {
   const headers = {...(options.headers || {})};
   if (options.token) headers.Authorization = `Bearer ${options.token}`;
   if (options.body) headers['Content-Type'] = 'application/json';
@@ -97,11 +118,11 @@ async function api(path, options = {}) {
   return data;
 }
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ── front matter（纯正则，避免引入 yaml 依赖）──────────
 
-function unquote(v) {
+function unquote(v: string): string {
   if (
     (v.startsWith('"') && v.endsWith('"')) ||
     (v.startsWith("'") && v.endsWith("'"))
@@ -111,7 +132,7 @@ function unquote(v) {
   return v;
 }
 
-function parseYamlValue(raw) {
+function parseYamlValue(raw: string) {
   const v = raw.trim();
   if (v.startsWith('[') && v.endsWith(']')) {
     const inner = v.slice(1, -1).trim();
@@ -128,10 +149,10 @@ function parseYamlValue(raw) {
   return unquote(v);
 }
 
-function parseFrontMatter(raw) {
+function parseFrontMatter(raw: string): {data: FrontMatter; content: string} {
   const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(raw);
   if (!m) return {data: {}, content: raw};
-  const data = {};
+  const data: FrontMatter = {};
   for (const line of m[1].split('\n')) {
     const s = line.trim();
     if (!s || s.startsWith('#')) continue;
@@ -144,7 +165,7 @@ function parseFrontMatter(raw) {
 
 const YAML_SPECIAL = /[:#[\]{},&*!|>'"%@`\n]/;
 
-function formatScalar(v) {
+function formatScalar(v: unknown): string {
   if (typeof v === 'number' || typeof v === 'boolean') return String(v);
   const s = String(v);
   if (s === '' || YAML_SPECIAL.test(s) || /^\s|\s$/.test(s)) {
@@ -153,13 +174,13 @@ function formatScalar(v) {
   return s;
 }
 
-function formatYamlValue(v) {
+function formatYamlValue(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(formatScalar).join(', ')}]`;
   if (v && typeof v === 'object') return JSON.stringify(v);
   return formatScalar(v);
 }
 
-function serializeFrontMatter(data, content) {
+function serializeFrontMatter(data: FrontMatter, content: string): string {
   const keys = Object.keys(data).filter((k) => data[k] !== '' && data[k] != null);
   if (keys.length === 0) return content;
   const lines = ['---'];
@@ -169,7 +190,7 @@ function serializeFrontMatter(data, content) {
 
 // ── 路径 / 分类工具 ───────────────────────────────────
 
-function splitPath(path) {
+function splitPath(path: string) {
   const seg = path.split('/');
   const file = seg.pop() || '';
   const dot = file.lastIndexOf('.');
@@ -180,7 +201,7 @@ function splitPath(path) {
   };
 }
 
-function slugify(name) {
+function slugify(name: string) {
   return (
     name
       .trim()
@@ -190,12 +211,13 @@ function slugify(name) {
   );
 }
 
-function categoryOptions(tree) {
-  const byPath = new Map();
-  const walk = (nodes, depth) => {
+function categoryOptions(tree?: TreeNode[]): CategoryOption[] {
+  const byPath = new Map<string, CategoryOption>();
+  const walk = (nodes: TreeNode[] | undefined, depth: number) => {
     for (const n of nodes || []) {
       if (n.is_dir) {
-        byPath.set(n.path, {path: n.path, label: n.label || n.name, depth});
+        // label/name 都缺时退回 path：与 flattenBoard 的链式回退保持一致
+        byPath.set(n.path, {path: n.path, label: n.label || n.name || n.path, depth});
         walk(n.children, depth + 1);
       }
     }
@@ -206,7 +228,7 @@ function categoryOptions(tree) {
 
 // ── 正文锚点（解析 H1-H3）────────────────────────────
 
-function stripInline(s) {
+function stripInline(s: string) {
   return s
     .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
@@ -217,7 +239,7 @@ function stripInline(s) {
     .trim();
 }
 
-function parseToc(md) {
+function parseToc(md: string) {
   const items = [];
   const lines = md.split('\n');
   let inFence = false;
@@ -236,7 +258,7 @@ function parseToc(md) {
 
 // ── 图标 ─────────────────────────────────────────────
 
-function Ic({children, size = 16}) {
+function Ic({children, size = 16}: {children: React.ReactNode; size?: number}) {
   return (
     <svg
       width={size}
@@ -253,7 +275,7 @@ function Ic({children, size = 16}) {
   );
 }
 
-const IconArrow = (props) => (
+const IconArrow = (props: React.SVGProps<SVGSVGElement>) => (
   /* 与文档站 @theme/Icon/Arrow 完全一致的双箭头图标 */
   <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true" {...props}>
     <g fill="#7a7a7a">
@@ -404,7 +426,7 @@ function usePipeline(token: string | null): Pipeline {
 }
 
 // 写操作前置检查：流水线运行中则阻止。
-async function ensureIdle(refresh) {
+async function ensureIdle(refresh: Pipeline['refresh']) {
   const s = await refresh();
   if (s?.busy) {
     toast.error('当前有 CI/CD 流水线正在运行，请等部署完成后再操作');
@@ -414,7 +436,11 @@ async function ensureIdle(refresh) {
 }
 
 // 提交后等待对应的 workflow run 结束。
-async function waitForPipeline(refresh, commit, onPhase) {
+async function waitForPipeline(
+  refresh: Pipeline['refresh'],
+  commit: string,
+  onPhase?: (phase: string) => void,
+): Promise<'success' | 'failure' | 'timeout'> {
   const short = (commit || '').slice(0, 7);
   const deadline = Date.now() + 8 * 60 * 1000;
   let phase = 'waiting';
@@ -438,7 +464,11 @@ async function waitForPipeline(refresh, commit, onPhase) {
 }
 
 // 统一的「提交 + 等待部署」流程。
-async function commitAndWait(refresh, loadingMsg, fn) {
+async function commitAndWait<T extends {commit: string}>(
+  refresh: Pipeline['refresh'],
+  loadingMsg: string,
+  fn: () => Promise<T>,
+): Promise<T | null> {
   if (!(await ensureIdle(refresh))) return null;
   const id = toast.loading(loadingMsg);
   try {
@@ -458,7 +488,7 @@ async function commitAndWait(refresh, loadingMsg, fn) {
 }
 
 // 顶部栏构建状态：有正在跑的流水线就显示三步骤，否则显示「当前暂无更新」。
-function TopBuildStatus({pipeline}) {
+function TopBuildStatus({pipeline}: TopBuildStatusProps) {
   const runs = pipeline.status?.runs || [];
   const active = runs.find((r) => r.status === 'queued' || r.status === 'in_progress');
   if (!active) return <span className={styles.noUpdate}>当前暂无更新</span>;
@@ -467,7 +497,7 @@ function TopBuildStatus({pipeline}) {
 
 // ── 登录 ──────────────────────────────────────────────
 
-function Login({onLogin}) {
+function Login({onLogin}: LoginProps) {
   return (
     <LoginForm
       title="在线编辑"
@@ -485,7 +515,7 @@ function Login({onLogin}) {
 
 // ── 侧边栏文件树（复用 Infima 菜单样式，与文档站侧边栏视觉一致）──
 
-function CategoryItem({node, active, onSelect}) {
+function CategoryItem({node, active, onSelect}: CategoryItemProps) {
   const containsActive = !!active && active.startsWith(`${node.path}/`);
   const [open, setOpen] = useState(true);
   const toggle = () => setOpen((v) => !v);
@@ -522,7 +552,7 @@ function CategoryItem({node, active, onSelect}) {
   );
 }
 
-function TreeItem({node, active, onSelect}) {
+function TreeItem({node, active, onSelect}: TreeItemProps) {
   if (node.is_dir) {
     return <CategoryItem node={node} active={active} onSelect={onSelect} />;
   }
@@ -538,7 +568,7 @@ function TreeItem({node, active, onSelect}) {
   );
 }
 
-function FileTree({tree, active, onSelect}) {
+function FileTree({tree, active, onSelect}: FileTreeProps) {
   if (tree.length === 0) return <p className={styles.muted}>还没有文档</p>;
   return (
     <ul className="menu__list">
@@ -551,7 +581,7 @@ function FileTree({tree, active, onSelect}) {
 
 // ── 富文本编辑器（Tiptap）─────────────────────────────
 
-function TiptapBody({initialMarkdown, onChange, editorRef}) {
+function TiptapBody({initialMarkdown, onChange, editorRef}: TiptapBodyProps) {
   const editor = useEditor(
     {
       extensions: [
@@ -585,7 +615,7 @@ function TiptapBody({initialMarkdown, onChange, editorRef}) {
   );
 }
 
-function Toolbar({editor}) {
+function Toolbar({editor}: ToolbarProps) {
   const state = useEditorState({
     editor,
     selector: ({editor: ed}) =>
@@ -610,7 +640,7 @@ function Toolbar({editor}) {
   if (!editor || !state) return null;
   const chain = () => editor.chain().focus();
 
-  const Btn = ({label, title, active, onClick}) => (
+  const Btn = ({label, title, active, onClick}: ToolBtnProps) => (
     <button
       type="button"
       title={title}
@@ -684,7 +714,7 @@ function Toolbar({editor}) {
 
 // ── 元信息表单 ────────────────────────────────────────
 
-function TagsField({value, onChange}) {
+function TagsField({value, onChange}: TagsFieldProps) {
   const tags = (Array.isArray(value) ? value : value ? [value] : []).map(String);
   const [text, setText] = useState('');
 
@@ -695,7 +725,7 @@ function TagsField({value, onChange}) {
     setText('');
   };
 
-  const remove = (t) => onChange(tags.filter((x) => x !== t));
+  const remove = (t: string) => onChange(tags.filter((x) => x !== t));
 
   return (
     <div className={styles.tagsField}>
@@ -742,10 +772,10 @@ function TagsField({value, onChange}) {
   );
 }
 
-function MetaForm({fm, setFm}) {
-  const setField = (key, value) => {
+function MetaForm({fm, setFm}: MetaFormProps) {
+  const setField = (key: string, value: unknown) => {
     setFm((prev) => {
-      const next = {...prev};
+      const next: FrontMatter = {...prev};
       if (value === '' || value == null) delete next[key];
       else next[key] = value;
       return next;
@@ -801,7 +831,7 @@ function ArticleEditor({
   const activePath = draft?.path || path;
   // 私有模式：读写走加密外的私有接口（同一 token），保存即时生效、不等流水线
 
-  const editorRef = useRef<{view: {dom: HTMLElement}} | null>(null);
+  const editorRef = useRef<EditorHandle | null>(null);
   const sourceRef = useRef<HTMLTextAreaElement | null>(null);
   const [slots, setSlots] = useState<{meta: HTMLElement | null; actions: HTMLElement | null}>({meta: null, actions: null});
   const [activeHead, setActiveHead] = useState(-1);
@@ -855,7 +885,7 @@ function ArticleEditor({
       .then((content) => {
         if (cancelled) return;
         const {data, content: rest} = parseFrontMatter(content);
-        const {dir, name, ext: e} = splitPath(activePath);
+        const {dir, name, ext: e} = splitPath(activePath ?? '');
         setFm(data);
         setBody(rest);
         setCategory(dir);

@@ -10,6 +10,7 @@
  */
 import type {RefObject} from 'react';
 import type {Node} from '@xyflow/react';
+import type {Editor} from '@tiptap/react';
 
 /** 新建文章时的内存草稿：落盘前一直存在 draft state 里，保存后转为 selected */
 export type NewDraft = {
@@ -166,4 +167,62 @@ export type SortManagerProps = {
   pipeline: Pipeline;
   onTreeChange?: () => void;
   onClose: () => void;
+};
+
+// ── 侧边栏文件树 ─────────────────────────────────────
+
+export type TreeItemProps = {
+  node: TreeNode;
+  active?: string | null;
+  onSelect: (path: string) => void;
+};
+
+export type CategoryItemProps = TreeItemProps;
+
+export type FileTreeProps = {
+  tree: TreeNode[];
+  active?: string | null;
+  onSelect: (path: string) => void;
+};
+
+// ── 登录 / 顶部构建状态 ──────────────────────────────
+
+export type LoginProps = {onLogin: (token: string) => void};
+
+export type TopBuildStatusProps = {pipeline: Pipeline};
+
+// ── Tiptap 编辑器 ────────────────────────────────────
+
+/**
+ * 仅依赖编辑器实例的 `view.dom`（滚动定位要用），
+ * 这样页面不必到处 import Tiptap 的 Editor 类型。
+ */
+export type EditorHandle = {view: {dom: HTMLElement}};
+
+export type TiptapBodyProps = {
+  initialMarkdown: string;
+  onChange: (md: string) => void;
+  editorRef: RefObject<EditorHandle | null>;
+};
+
+export type ToolbarProps = {editor: Editor};
+
+export type ToolBtnProps = {
+  label: string;
+  title: string;
+  active?: boolean;
+  onClick: () => void;
+};
+
+// ── 元信息表单 ───────────────────────────────────────
+
+export type TagsFieldProps = {
+  value?: string | string[];
+  onChange: (tags: string[]) => void;
+};
+
+export type MetaFormProps = {
+  fm: FrontMatter;
+  /** 只接收 updater（与页面里 editMetaFm 的实际签名一致） */
+  setFm: (updater: (prev: FrontMatter) => FrontMatter) => void;
 };
