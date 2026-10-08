@@ -9,11 +9,18 @@ import {Image} from '@tiptap/extension-image';
 import {Dialog} from '@base-ui/react/dialog';
 import {Select} from '@base-ui/react/select';
 import {
+  BackgroundVariant,
   ReactFlow,
   Background,
   Controls,
   MiniMap,
   useNodesState,
+} from '@xyflow/react';
+import type {
+  NodeProps,
+  NodeTypes,
+  OnNodeDrag,
+  ReactFlowInstance,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import toast, {Toaster} from 'react-hot-toast';
@@ -32,12 +39,22 @@ import {
 import type {
   ArticleEditorProps,
   ArticleMeta,
-  CategoryOption,
+  BoardItem,
+  BuildStepState,
+  BuildStepsProps,
+  CategorySelectProps,
   FrontMatter,
+  NewArticleProps,
   NewCategoryInput,
+  NewCategoryProps,
   NewDraft,
   Pipeline,
   PipelineStatus,
+  SerializedNode,
+  SortDragState,
+  SortManagerProps,
+  SortNode,
+  TreeNode,
 } from '../types/editorTypes';
 
 // ── 错误消息 ────────────────────────────────────────
@@ -752,7 +769,7 @@ function MetaForm({fm, setFm}) {
         <span>标签 tags（输入后回车创建）</span>
         <TagsField
           value={fm.tags}
-          onChange={(next) => setField('tags', next.length ? next : undefined)}
+          onChange={(next: string[]) => setField('tags', next.length ? next : undefined)}
         />
       </label>
     </div>
@@ -1214,12 +1231,7 @@ function CategorySelect({
   onChange,
   categories,
   rootLabel = '（根目录）',
-}: {
-  value: string;
-  onChange: (path: string) => void;
-  categories: CategoryOption[];
-  rootLabel?: string;
-}) {
+}: CategorySelectProps) {
   const ROOT = '__root__';
   return (
     // Base UI 的 onValueChange 会给 string | null，统一收成空串（= 根目录）
@@ -1265,17 +1277,12 @@ function NewArticle({
   onCreate,
   onCancel,
   isPrivate,
-}: {
-  categories: CategoryOption[];
-  isPrivate: boolean;
-  onCreate: (d: NewDraft) => void;
-  onCancel: () => void;
-}) {
+}: NewArticleProps) {
   const [title, setTitle] = useState('');
   const [fileName, setFileName] = useState('');
   const [category, setCategory] = useState('');
 
-  const submit = (e) => {
+  const submit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const name = slugify(fileName || title);
     const path = `${category ? `${category}/` : ''}${name}.md`;
@@ -1317,14 +1324,14 @@ function NewArticle({
 
 // ── 新建分类（直接创建并触发部署）────────────────────
 
-function NewCategory({categories, onCreate, onCancel, isPrivate}) {
+function NewCategory({categories, onCreate, onCancel, isPrivate}: NewCategoryProps) {
   const [parent, setParent] = useState('');
   const [name, setName] = useState('');
   const [label, setLabel] = useState('');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const submit = async (e) => {
+  const submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (saving || !name.trim()) return;
     const dir = slugify(name);
@@ -1387,8 +1394,8 @@ const BOARD = {
 };
 
 // 只保留分类目录与 .md/.mdx 文档；图片等 colocated 资源不入画布，由后端随目录一起搬。
-function filterReorderNodes(nodes) {
-  const out = [];
+function filterReorderNodes(nodes?: TreeNode[]): TreeNode[] {
+  const out: TreeNode[] = [];
   for (const n of nodes || []) {
     if (n.is_dir) {
       out.push({...n, children: filterReorderNodes(n.children)});
@@ -1400,8 +1407,8 @@ function filterReorderNodes(nodes) {
 }
 
 // 只上报「结构 + 原路径」，position 由后端按画布顺序计算。
-function serializeReorderTree(nodes) {
-  return (nodes || []).map((n) =>
+function serializeReorderTree(nodes?: TreeNode[]): SerializedNode[] {
+  return (nodes || []).map((n): SerializedNode =>
     n.is_dir
       ? {path: n.path, is_dir: true, children: serializeReorderTree(n.children)}
       : {path: n.path, is_dir: false},
@@ -1409,9 +1416,9 @@ function serializeReorderTree(nodes) {
 }
 
 // 目录树 → 扁平条目 {id,label,isDir,parentId}。
-function flattenBoard(tree) {
-  const items = [];
-  const walk = (list, parentId) => {
+function flattenBoard(tree?: TreeNode[]): BoardItem[] {
+  const items: BoardItem[] = [];
+  const walk = (list: TreeNode[] | undefined, parentId: string | null) => {
     for (const n of list || []) {
       items.push({
         id: n.path,
@@ -1427,12 +1434,13 @@ function flattenBoard(tree) {
 }
 
 // 自底向上算每个分类容器的最小尺寸。
-function boardSizes(items) {
-  const kidsOf = (pid) => items.filter((it) => it.parentId === pid);
-  const size = new Map();
-  const calc = (it) => {
-    if (size.has(it.id)) return size.get(it.id);
-    let s;
+function boardSizes(items: BoardItem[]) {
+  const kidsOf = (pid: string | null) => items.filter((it) => it.parentId === pid);
+  const size = new Map<string, {w: number; h: number}>();
+  const calc = (it: BoardItem): {w: number; h: number} => {
+    const cached = size.get(it.id);
+    if (cached) return cached;
+    let s: {w: number; h: number};
     if (!it.isDir) {
       s = {w: BOARD.CARD_W, h: BOARD.CARD_H};
     } else {
@@ -1458,11 +1466,12 @@ function boardSizes(items) {
 }
 
 // 条目列表 → React Flow 节点（分类作为父节点，子节点相对父节点定位）。
-function itemsToNodes(items) {
+function itemsToNodes(items: BoardItem[]): SortNode[] {
   const {kidsOf, size} = boardSizes(items);
-  const nodes = [];
-  const emit = (it, pos, parentId) => {
-    const s = size.get(it.id);
+  const nodes: SortNode[] = [];
+  const emit = (it: BoardItem, pos: {x: number; y: number}, parentId: string | null) => {
+    // boardSizes 已经给每个条目算过尺寸，这里取不到只可能是逻辑错误
+    const s = size.get(it.id)!;
     nodes.push({
       id: it.id,
       type: it.isDir ? 'category' : 'doc',
@@ -1475,31 +1484,31 @@ function itemsToNodes(items) {
       let y = BOARD.HEADER + BOARD.TOP;
       for (const k of kidsOf(it.id)) {
         emit(k, {x: BOARD.PAD, y}, it.id);
-        y += size.get(k.id).h + BOARD.GAP;
+        y += size.get(k.id)!.h + BOARD.GAP;
       }
     }
   };
   let x = 0;
   for (const it of kidsOf(null)) {
     emit(it, {x, y: 0}, null);
-    x += size.get(it.id).w + BOARD.COL_GAP;
+    x += size.get(it.id)!.w + BOARD.COL_GAP;
   }
   return nodes;
 }
 
-function treeToBoard(tree) {
+function treeToBoard(tree?: TreeNode[]): SortNode[] {
   return itemsToNodes(flattenBoard(tree));
 }
 
 // 画布节点 → 目录树（同级按从上到下、再从左到右）。
-function flowToTree(nodes) {
-  const byParent = new Map();
+function flowToTree(nodes: SortNode[]): SerializedNode[] {
+  const byParent = new Map<string, SortNode[]>();
   for (const n of nodes) {
     const p = n.parentId || '';
     if (!byParent.has(p)) byParent.set(p, []);
-    byParent.get(p).push(n);
+    byParent.get(p)!.push(n);
   }
-  const build = (pid) =>
+  const build = (pid: string): SerializedNode[] =>
     (byParent.get(pid) || [])
       .slice()
       .sort((a, b) => a.position.y - b.position.y || a.position.x - b.position.x)
@@ -1511,8 +1520,8 @@ function flowToTree(nodes) {
   return build('');
 }
 
-function nodeAbsPos(nodes, node) {
-  const byId = new Map(nodes.map((n) => [n.id, n]));
+function nodeAbsPos(nodes: SortNode[], node: SortNode) {
+  const byId = new Map<string, SortNode>(nodes.map((n) => [n.id, n]));
   let x = node.position.x;
   let y = node.position.y;
   let pid = node.parentId;
@@ -1526,15 +1535,16 @@ function nodeAbsPos(nodes, node) {
   return {x, y};
 }
 
-function nodeBox(node) {
-  const w = node.style?.width ?? node.measured?.width ?? BOARD.CARD_W;
-  const h = node.style?.height ?? node.measured?.height ?? BOARD.CARD_H;
+function nodeBox(node: SortNode) {
+  // style.width 是 React.CSSProperties，理论上可能是字符串；这里只会写入数字
+  const w = Number(node.style?.width ?? node.measured?.width ?? BOARD.CARD_W);
+  const h = Number(node.style?.height ?? node.measured?.height ?? BOARD.CARD_H);
   return {w, h};
 }
 
 // React Flow 的 onNodeDrag/onNodeDragStop 第三个参数只含「当前被拖拽的节点」，
 // 因此这里把拖拽中的最新位置合并回全量节点列表，供落点计算与重排使用。
-function mergeDraggedNodes(list, node) {
+function mergeDraggedNodes(list: SortNode[], node: SortNode): SortNode[] {
   const i = list.findIndex((n) => n.id === node.id);
   if (i === -1) return list;
   const next = list.slice();
@@ -1542,8 +1552,8 @@ function mergeDraggedNodes(list, node) {
   return next;
 }
 
-function isAncestor(nodes, ancestorId, id) {
-  const byId = new Map(nodes.map((n) => [n.id, n]));
+function isAncestor(nodes: SortNode[], ancestorId: string, id: string): boolean {
+  const byId = new Map<string, SortNode>(nodes.map((n) => [n.id, n]));
   let cur = byId.get(id);
   while (cur && cur.parentId) {
     if (cur.parentId === ancestorId) return true;
@@ -1553,9 +1563,13 @@ function isAncestor(nodes, ancestorId, id) {
 }
 
 // 找出包含某点、层级最深的分类容器（排除自身及其后代）。
-function deepestContainer(nodes, point, excludeId) {
-  const byId = new Map(nodes.map((n) => [n.id, n]));
-  let best = null;
+function deepestContainer(
+  nodes: SortNode[],
+  point: {x: number; y: number},
+  excludeId: string,
+): SortNode | null {
+  const byId = new Map<string, SortNode>(nodes.map((n) => [n.id, n]));
+  let best: SortNode | null = null;
   let bestDepth = -1;
   for (const n of nodes) {
     if (!n.data.isDir || n.id === excludeId) continue;
@@ -1579,10 +1593,10 @@ function deepestContainer(nodes, point, excludeId) {
 
 // 拖拽态上下文：让自定义节点读取「当前拖拽项 / 当前落点」，
 // 这样拖拽过程中不必逐帧重建节点 data，只重渲染消费该上下文的节点。
-const SortDragContext = React.createContext({draggingId: null, dropTargetId: null});
+const SortDragContext = React.createContext<SortDragState>({draggingId: null, dropTargetId: null});
 
 // 分类容器节点。
-function CategoryNode({id, data, selected, dragging}) {
+function CategoryNode({id, data, selected, dragging}: NodeProps<SortNode>) {
   const {dropTargetId} = React.useContext(SortDragContext);
   const isDropTarget = dropTargetId === id;
   const cls = [
@@ -1605,7 +1619,7 @@ function CategoryNode({id, data, selected, dragging}) {
 }
 
 // 文档卡片节点。
-function DocNode({data, selected, dragging}) {
+function DocNode({data, selected, dragging}: NodeProps<SortNode>) {
   const cls = [
     styles.docCard,
     selected && styles.docCardSelected,
@@ -1624,10 +1638,14 @@ function DocNode({data, selected, dragging}) {
   );
 }
 
-const BOARD_NODE_TYPES = {category: CategoryNode, doc: DocNode};
+const BOARD_NODE_TYPES: NodeTypes = {category: CategoryNode, doc: DocNode};
 
 // 提交后轮询对应 commit 的 workflow，回调步骤：0 排队 / 1 构建 / 3 完成。
-async function pollReorderBuild(refresh, commit, onStep) {
+async function pollReorderBuild(
+  refresh: Pipeline['refresh'],
+  commit: string,
+  onStep: (step: number) => void,
+): Promise<'success' | 'failure' | 'timeout'> {
   const short = (commit || '').slice(0, 7);
   const deadline = Date.now() + 8 * 60 * 1000;
   while (Date.now() < deadline) {
@@ -1646,10 +1664,10 @@ async function pollReorderBuild(refresh, commit, onStep) {
 }
 
 // 三步骤进度条：排队 → 构建 → 完成（参考 Steward 的构建状态条）。
-function BuildSteps({phase, activeStep, inline = false}) {
+function BuildSteps({phase, activeStep, inline = false}: BuildStepsProps) {
   if (phase === 'idle') return null;
   const labels = ['排队', '构建', '完成'];
-  const stateOf = (i) => {
+  const stateOf = (i: number): BuildStepState => {
     if (phase === 'success') return 'done';
     if (phase === 'failure') return i === 1 ? 'fail' : i === 0 ? 'done' : 'pending';
     if (phase === 'timeout') return i <= activeStep ? 'done' : 'pending';
@@ -1657,7 +1675,7 @@ function BuildSteps({phase, activeStep, inline = false}) {
     if (i === activeStep) return 'active';
     return 'pending';
   };
-  const cls = {
+  const cls: Record<BuildStepState, string> = {
     done: styles.stepDone,
     active: styles.stepActive,
     pending: styles.stepPending,
@@ -1702,12 +1720,12 @@ function BuildSteps({phase, activeStep, inline = false}) {
 
 // ── 排序管理模态框 ───────────────────────────────────
 
-function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const originalRef = useRef([]);
-  const flowRef = useRef(null);
+function SortManager({open, tree, token, pipeline, onTreeChange, onClose}: SortManagerProps) {
+  const [nodes, setNodes, onNodesChange] = useNodesState<SortNode>([]);
+  const originalRef = useRef<SerializedNode[]>([]);
+  const flowRef = useRef<ReactFlowInstance<SortNode> | null>(null);
   const [saving, setSaving] = useState(false);
-  const [dragState, setDragState] = useState({draggingId: null, dropTargetId: null});
+  const [dragState, setDragState] = useState<SortDragState>({draggingId: null, dropTargetId: null});
   const [phase, setPhase] = useState('idle');
   const [activeStep, setActiveStep] = useState(0);
 
@@ -1745,7 +1763,7 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
   }, [dragState.dropTargetId, nodes]);
 
   // 解析拖拽落点：返回被拖节点、其中心点、以及命中的最深分类容器 id。
-  const resolveDrop = (allNodes, node) => {
+  const resolveDrop = (allNodes: SortNode[], node: SortNode) => {
     const dragged = allNodes.find((n) => n.id === node.id) || node;
     const abs = nodeAbsPos(allNodes, dragged);
     const {w, h} = nodeBox(dragged);
@@ -1755,11 +1773,12 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
   };
 
   // 拖拽中实时高亮落点容器。
-  const onNodeDragStart = (event, node) => {
+  // React Flow 把 onNodeDragStart / onNodeDrag / onNodeDragStop 统一声明为 OnNodeDrag
+  const onNodeDragStart: OnNodeDrag<SortNode> = (event, node) => {
     setDragState({draggingId: node.id, dropTargetId: null});
   };
 
-  const onNodeDrag = (event, node) => {
+  const onNodeDrag: OnNodeDrag<SortNode> = (event, node) => {
     const {targetId} = resolveDrop(mergeDraggedNodes(nodes, node), node);
     setDragState((prev) =>
       prev.draggingId === node.id && prev.dropTargetId === targetId
@@ -1769,24 +1788,26 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
   };
 
   // 拖拽结束：按落点决定新的父容器与插入位置，然后整体重新排布（容器自适应大小）。
-  const onNodeDragStop = (event, node) => {
+  const onNodeDragStop: OnNodeDrag<SortNode> = (event, node) => {
     setDragState({draggingId: null, dropTargetId: null});
     const allNodes = mergeDraggedNodes(nodes, node);
     const {dragged, center, targetId} = resolveDrop(allNodes, node);
 
     const others = allNodes.filter((n) => n.id !== dragged.id);
-    const byParent = new Map();
+    const byParent = new Map<string, SortNode[]>();
     for (const n of others) {
       const p = n.parentId || '';
       if (!byParent.has(p)) byParent.set(p, []);
-      byParent.get(p).push(n);
+      byParent.get(p)!.push(n);
     }
-    const absCache = new Map(others.map((n) => [n.id, nodeAbsPos(others, n)]));
+    const absCache = new Map<string, {x: number; y: number}>(
+      others.map((n) => [n.id, nodeAbsPos(others, n)]),
+    );
     for (const list of byParent.values()) {
       list.sort(
         (a, b) =>
-          absCache.get(a.id).y - absCache.get(b.id).y ||
-          absCache.get(a.id).x - absCache.get(b.id).x,
+          absCache.get(a.id)!.y - absCache.get(b.id)!.y ||
+          absCache.get(a.id)!.x - absCache.get(b.id)!.x,
       );
     }
 
@@ -1794,7 +1815,7 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
     const useX = targetId === null;
     let index = list.length;
     for (let i = 0; i < list.length; i++) {
-      const sAbs = absCache.get(list[i].id);
+      const sAbs = absCache.get(list[i].id)!;
       const sBox = nodeBox(list[i]);
       const mid = useX ? sAbs.x + sBox.w / 2 : sAbs.y + sBox.h / 2;
       const at = useX ? center.x : center.y;
@@ -1806,7 +1827,7 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
     list.splice(index, 0, dragged);
     byParent.set(targetId || '', list);
 
-    const items = [];
+    const items: BoardItem[] = [];
     for (const l of byParent.values()) {
       for (const n of l) {
         items.push({
@@ -1874,7 +1895,7 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
     }
   };
 
-  const handleOpenChange = (next) => {
+  const handleOpenChange = (next: boolean) => {
     if (next || running || saving) return;
     onClose();
   };
@@ -1937,7 +1958,7 @@ function SortManager({open, tree, token, pipeline, onTreeChange, onClose}) {
                 fitViewOptions={{padding: 0.2}}
                 minZoom={0.2}
                 maxZoom={1.6}>
-                <Background variant="dots" gap={20} size={1} />
+                <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
                 <Controls showInteractive={false} />
                 <MiniMap pannable zoomable />
               </ReactFlow>

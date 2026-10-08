@@ -9,6 +9,7 @@
  * 「The page component at /editorTypes doesn't have a default export」构建失败。
  */
 import type {RefObject} from 'react';
+import type {Node} from '@xyflow/react';
 
 /** 新建文章时的内存草稿：落盘前一直存在 draft state 里，保存后转为 selected */
 export type NewDraft = {
@@ -87,4 +88,82 @@ export type ArticleEditorProps = {
   onDraftSaved: (path: string) => void;
   /** 私有模式：读写走私有接口（同一 token） */
   pv: boolean;
+};
+
+// ── 目录树 / 排序画布 ───────────────────────────────
+
+/** 目录树节点（`/tree` 与私有文档树返回的结构） */
+export type TreeNode = {
+  path: string;
+  is_dir: boolean;
+  label?: string;
+  title?: string;
+  name?: string;
+  children?: TreeNode[];
+};
+
+/**
+ * 排序管理器上报给后端的树：只报「结构 + 原路径」，
+ * position 由后端按画布顺序计算。
+ */
+export type SerializedNode =
+  | {path: string; is_dir: true; children?: SerializedNode[]}
+  | {path: string; is_dir: false};
+
+/** 目录树扁平化后的画布条目 */
+export type BoardItem = {
+  id: string;
+  label: string;
+  isDir: boolean;
+  parentId: string | null;
+};
+
+/** 画布节点携带的数据（分类与卡片共用） */
+export type SortNodeData = {label: string; isDir: boolean};
+
+/** React Flow 画布节点：分类是父节点，文档相对父节点定位 */
+export type SortNode = Node<SortNodeData>;
+
+/** 拖拽态上下文：自定义节点从中读「当前拖拽项 / 当前落点」 */
+export type SortDragState = {draggingId: string | null; dropTargetId: string | null};
+
+// ── 小型表单与展示组件的 props ──────────────────────
+
+export type CategorySelectProps = {
+  value: string;
+  onChange: (path: string) => void;
+  categories: CategoryOption[];
+  rootLabel?: string;
+};
+
+export type NewArticleProps = {
+  categories: CategoryOption[];
+  isPrivate: boolean;
+  onCreate: (draft: NewDraft) => void;
+  onCancel: () => void;
+};
+
+export type NewCategoryProps = {
+  categories: CategoryOption[];
+  isPrivate: boolean;
+  onCreate: (input: NewCategoryInput) => Promise<boolean> | boolean;
+  onCancel: () => void;
+};
+
+/** 三步骤进度条的单步状态 */
+export type BuildStepState = 'done' | 'active' | 'pending' | 'fail';
+
+export type BuildStepsProps = {
+  phase: string;
+  activeStep: number;
+  inline?: boolean;
+};
+
+export type SortManagerProps = {
+  open: boolean;
+  tree: TreeNode[];
+  token: string | null;
+  pipeline: Pipeline;
+  onTreeChange?: () => void;
+  onClose: () => void;
 };
