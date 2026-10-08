@@ -36,6 +36,7 @@ import {
   deleteDoc as pvDeleteDoc,
   saveCategory as pvSaveCategory,
 } from '../utils/privateClient';
+import type {FileEntry} from '../types/privateTypes';
 import type {
   ArticleEditorProps,
   ArticleMeta,
@@ -881,7 +882,7 @@ function ArticleEditor({
     setSourceMode(false);
     setConfirmDelete(false);
     setDirty(false);
-    (pv ? pvReadDoc(activePath) : api(`/read?path=${encodeURIComponent(activePath ?? '')}`, {token}).then(({content}) => content))
+    (pv ? pvReadDoc(activePath ?? '') : api(`/read?path=${encodeURIComponent(activePath ?? '')}`, {token}).then(({content}) => content))
       .then((content) => {
         if (cancelled) return;
         const {data, content: rest} = parseFrontMatter(content);
@@ -993,7 +994,7 @@ function ArticleEditor({
       // 私有文档：即时保存，不进 git、不触发构建
       try {
         if (!isNew && targetPath !== activePath) {
-          await pvMoveDoc({path: activePath, newPath: targetPath, content});
+          await pvMoveDoc({path: activePath ?? '', newPath: targetPath, content});
         } else {
           await pvSaveDoc({path: targetPath, content});
         }
@@ -1028,7 +1029,7 @@ function ArticleEditor({
     if (pv) {
       try {
         setSaving(true);
-        await pvDeleteDoc(activePath);
+        await pvDeleteDoc(activePath ?? '');
         setConfirmDelete(false);
         setDirty(false);
         onTreeChange();
@@ -2055,7 +2056,7 @@ export default function EditorPage() {
   const [collapsedShown, setCollapsedShown] = useState(false);
   // 私有模式：侧边栏切到私有文档树，读写走私有接口（同一 token，无二次认证）
   const [privateMode, setPrivateMode] = useState(false);
-  const [pvTree, setPvTree] = useState([]);
+  const [pvTree, setPvTree] = useState<FileEntry[]>([]);
   const [pvRefresh, setPvRefresh] = useState(0);
 
   const mainRef = useRef<HTMLElement | null>(null);

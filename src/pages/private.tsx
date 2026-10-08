@@ -14,6 +14,7 @@ import DocRootLayout from '@theme/DocRoot/Layout';
 import TOC from '@theme/TOC';
 import TOCCollapsible from '@theme/TOCCollapsible';
 import {marked} from 'marked';
+import type {Tokens} from 'marked';
 import toast, {Toaster} from 'react-hot-toast';
 import MarkdownView from '@site/src/components/private/MarkdownView';
 import LoginForm from '@site/src/components/LoginForm';
@@ -24,6 +25,15 @@ import {
   UNAUTHORIZED_EVENT,
   unlock,
 } from '@site/src/utils/privateClient';
+import type {
+  CategoryIndexProps,
+  Crumb,
+  DocEntry,
+  FileEntry,
+  PrivateBreadcrumbsProps,
+  SidebarItem,
+  TocItem,
+} from '@site/src/types/privateTypes';
 import styles from './private.styles.module.css';
 
 /**
@@ -37,7 +47,7 @@ import styles from './private.styles.module.css';
 
 // ── front matter（只取 title，正文整体交给 MarkdownView）──
 
-function extractTitle(raw) {
+function extractTitle(raw: string): string | null {
   const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(raw);
   if (!m) return null;
   const line = m[1].split('\n').find((l) => /^title\s*:/.test(l.trim()));
@@ -48,13 +58,13 @@ function extractTitle(raw) {
     : v;
 }
 
-function stripFrontMatter(raw) {
+function stripFrontMatter(raw: string): string {
   const m = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/.exec(raw);
   return m ? raw.slice(m[0].length) : raw;
 }
 
 /** 抽出正文开头的一级标题，渲染到 header 里（与公开文档的标题区一致）。 */
-function extractLeadingTitle(content) {
+function extractLeadingTitle(content: string): {body: string; title: string | null} {
   const m = /^#[ \t]+([^\n]*)\n?/.exec(content);
   if (!m) return {body: content, title: null};
   const title = m[1].replace(/\s+#+\s*$/, '').trim();
@@ -64,14 +74,14 @@ function extractLeadingTitle(content) {
 
 // ── FileEntry 树 → Docusaurus sidebar items ─────────
 
-const stripExt = (p) => p.replace(/\.mdx?$/, '');
+const stripExt = (p: string) => p.replace(/\.mdx?$/, '');
 
 /** 文档树 → sidebar items：分类为 collapsible category，文档为 /private/<路径> 链接。
  *  href 保持原始 unicode（与 docs 插件一致，不做百分号编码），
  *  这样 active 判定（isSamePath）与 react-router 的 pathname 才能对上。
  *  分类也带 href（对齐公开文档 `_category_.json` 的 generated-index），
  *  否则分类标题不是链接，只能展开/收起。 */
-function toSidebarItems(nodes) {
+function toSidebarItems(nodes: FileEntry[] | null | undefined): SidebarItem[] {
   return (nodes || [])
     .filter((n) => n.is_dir || /\.mdx?$/i.test(n.name))
     .map((n) =>
@@ -93,12 +103,15 @@ function toSidebarItems(nodes) {
 }
 
 /** 按 URL slug（去掉扩展名的路径）在树里找文档节点。 */
-function findDocBySlug(nodes, slug) {
+function findDocBySlug(
+  nodes: FileEntry[] | null | undefined,
+  slug: string,
+): FileEntry | null {
   for (const n of nodes || []) {
     if (!n.is_dir) {
       if (stripExt(n.path) === slug) return n;
     } else {
-      const hit = findDocBySlug(n.children, slug);
+      const hit: FileEntry | null = findDocBySlug(n.children, slug);
       if (hit) return hit;
     }
   }
@@ -106,39 +119,45 @@ function findDocBySlug(nodes, slug) {
 }
 
 /** 按 URL slug（去掉扩展名的路径）在树里找分类（目录）节点。 */
-function findCategoryBySlug(nodes, slug) {
+function findCategoryBySlug(
+  nodes: FileEntry[] | null | undefined,
+  slug: string,
+): FileEntry | null {
   for (const n of nodes || []) {
     if (!n.is_dir) continue;
     if (n.path === slug) return n;
-    const hit = findCategoryBySlug(n.children, slug);
+    const hit: FileEntry | null = findCategoryBySlug(n.children, slug);
     if (hit) return hit;
   }
   return null;
 }
 
-function docLabel(node) {
+function docLabel(node: FileEntry): string {
   return node.title || stripExt(node.name);
 }
 
 // ── 面包屑（对齐 theme-classic DocBreadcrumbs）────────
 
 /** 按目录路径找分类节点。 */
-function findCategoryByPath(nodes, path) {
+function findCategoryByPath(
+  nodes: FileEntry[] | null | undefined,
+  path: string,
+): FileEntry | null {
   for (const n of nodes || []) {
     if (!n.is_dir) continue;
     if (n.path === path) return n;
-    const hit = findCategoryByPath(n.children, path);
+    const hit: FileEntry | null = findCategoryByPath(n.children, path);
     if (hit) return hit;
   }
   return null;
 }
 
 /** slug 的各级祖先分类 → 面包屑项；最后一项（当前页）href 传 null。 */
-function buildCrumbs(tree, slug, currentLabel) {
+function buildCrumbs(tree: FileEntry[], slug: string, currentLabel: string): Crumb[] {
   const parts = slug.split('/');
   const dirParts = parts.slice(0, -1);
-  const items = [];
-  const acc = [];
+  const items: Crumb[] = [];
+  const acc: string[] = [];
   for (const p of dirParts) {
     acc.push(p);
     const path = acc.join('/');
@@ -149,7 +168,7 @@ function buildCrumbs(tree, slug, currentLabel) {
   return items;
 }
 
-function PrivateBreadcrumbs({crumbs}) {
+function PrivateBreadcrumbs({crumbs}: PrivateBreadcrumbsProps) {
   if (!crumbs || crumbs.length === 0) return null;
   return (
     <nav
@@ -186,7 +205,7 @@ function PrivateBreadcrumbs({crumbs}) {
 
 // ── TOC（从 markdown 提取 h2/h3，锚点 id 与 MarkdownView 一致）──
 
-function slugifyHeading(text) {
+function slugifyHeading(text: string) {
   return text
     .toLowerCase()
     .replace(/[^\p{L}\p{N}\s-]/gu, '')
@@ -194,11 +213,12 @@ function slugifyHeading(text) {
     .replace(/\s+/g, '-');
 }
 
-function extractToc(content) {
+function extractToc(content?: string): TocItem[] {
   try {
     return marked
       .lexer(content || '')
-      .filter((t) => t.type === 'heading' && t.depth >= 2 && t.depth <= 3)
+      .filter((t): t is Tokens.Heading => t.type === 'heading')
+      .filter((h) => h.depth >= 2 && h.depth <= 3)
       .map((h) => ({id: slugifyHeading(h.text), value: h.text, level: h.depth}));
   } catch {
     return [];
@@ -208,7 +228,7 @@ function extractToc(content) {
 // ── 主页面 ────────────────────────────────────────────
 
 /** 分类索引页：对应公开文档的 `_category_.json` generated-index。 */
-function CategoryIndex({node}) {
+function CategoryIndex({node}: CategoryIndexProps) {
   const items = (node.children || []).filter(
     (n) => n.is_dir || /\.mdx?$/i.test(n.name),
   );
@@ -246,9 +266,9 @@ export default function PrivatePage() {
   const windowSize = useWindowSize();
 
   const [mounted, setMounted] = useState(false);
-  const [token, setToken] = useState(null);
-  const [tree, setTree] = useState(null); // FileEntry[]
-  const [doc, setDoc] = useState(null); // {path, title, content}
+  const [token, setToken] = useState<string | null>(null);
+  const [tree, setTree] = useState<FileEntry[] | null>(null); // FileEntry[]
+  const [doc, setDoc] = useState<DocEntry | null>(null); // {path, title, content}
   const [loadingDoc, setLoadingDoc] = useState(false);
 
   const slug = (() => {
@@ -283,7 +303,7 @@ export default function PrivatePage() {
       .then((items) => {
         if (!cancelled) setTree(items || []);
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         // 401 已由 privateClient 广播处理，这里只需安静退出
         if (!cancelled && getToken()) toast.error(err.message);
       });
@@ -320,7 +340,7 @@ export default function PrivatePage() {
         });
         setLoadingDoc(false);
       })
-      .catch((err) => {
+      .catch((err: Error) => {
         if (!cancelled) {
           toast.error(err.message);
           setLoadingDoc(false);
