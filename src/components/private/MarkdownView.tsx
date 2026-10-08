@@ -84,6 +84,11 @@ function Inline({tokens}) {
 
 // ── 块级 token ──
 
+// marked 的 heading depth（1-6）→ @theme/Heading 的 HeadingType（'h1'~'h6'）
+function headingTag(depth: number | string) {
+  return `h${depth}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+}
+
 function slugifyHeading(text) {
   return text
     .toLowerCase()
@@ -100,7 +105,7 @@ function Blocks({tokens}) {
           case 'heading':
             // 走 @theme/Heading，拿到与公开文档一致的 anchor 样式与悬浮 # 链接
             return (
-              <Heading key={i} as={`h${t.depth}`} id={slugifyHeading(t.text)}>
+              <Heading key={i} as={headingTag(t.depth)} id={slugifyHeading(t.text)}>
                 <Inline tokens={t.tokens} />
               </Heading>
             );
