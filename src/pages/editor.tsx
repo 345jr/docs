@@ -692,36 +692,155 @@ function Toolbar({editor}: ToolbarProps) {
   if (!editor || !state) return null;
   const chain = () => editor.chain().focus();
 
-  const Btn = ({label, title, active, onClick}: ToolBtnProps) => (
+  const Btn = ({icon, title, active, onClick}: ToolBtnProps) => (
     <button
       type="button"
       title={title}
+      aria-label={title}
       className={`${styles.toolBtn} ${active ? styles.toolBtnActive : ''}`}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}>
-      {label}
+      {icon}
     </button>
+  );
+
+  // 工具栏图标：Lucide 描边图标，与 Ic 的 24 网格/圆头圆角风格一致
+  const H1 = (
+    <Ic size={16}>
+      <path d="M4 12h8" />
+      <path d="M4 18V6" />
+      <path d="M12 18V6" />
+      <path d="m17 12 3-2v8" />
+    </Ic>
+  );
+  const H2 = (
+    <Ic size={16}>
+      <path d="M4 12h8" />
+      <path d="M4 18V6" />
+      <path d="M12 18V6" />
+      <path d="M21 18h-4c0-4 4-3 4-6 0-1.5-2-2.5-4-1" />
+    </Ic>
+  );
+  const H3 = (
+    <Ic size={16}>
+      <path d="M4 12h8" />
+      <path d="M4 18V6" />
+      <path d="M12 18V6" />
+      <path d="M17.5 10.5c1.7-1 3.5 0 3.5 1.5a2 2 0 0 1-2 2" />
+      <path d="M17 17.5c2 1.5 4 .3 4-1.5a2 2 0 0 0-2-2" />
+    </Ic>
+  );
+  const IBold = (
+    <Ic size={16}>
+      <path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8" />
+    </Ic>
+  );
+  const IItalic = (
+    <Ic size={16}>
+      <line x1="19" x2="10" y1="4" y2="4" />
+      <line x1="14" x2="5" y1="20" y2="20" />
+      <line x1="15" x2="9" y1="4" y2="20" />
+    </Ic>
+  );
+  const IStrike = (
+    <Ic size={16}>
+      <path d="M16 4H9a3 3 0 0 0-2.83 4" />
+      <path d="M14 12a4 4 0 0 1 0 8H6" />
+      <line x1="4" x2="20" y1="12" y2="12" />
+    </Ic>
+  );
+  const ICode = (
+    <Ic size={16}>
+      <path d="m16 18 6-6-6-6" />
+      <path d="m8 6-6 6 6 6" />
+    </Ic>
+  );
+  const IList = (
+    <Ic size={16}>
+      <path d="M3 5h.01" />
+      <path d="M3 12h.01" />
+      <path d="M3 19h.01" />
+      <path d="M8 5h13" />
+      <path d="M8 12h13" />
+      <path d="M8 19h13" />
+    </Ic>
+  );
+  const IListOrdered = (
+    <Ic size={16}>
+      <path d="M11 5h10" />
+      <path d="M11 12h10" />
+      <path d="M11 19h10" />
+      <path d="M4 4h1v5" />
+      <path d="M4 9h2" />
+      <path d="M6.5 20H3.4c0-1 2.6-1.925 2.6-3.5a1.5 1.5 0 0 0-2.6-1.02" />
+    </Ic>
+  );
+  const IQuote = (
+    <Ic size={16}>
+      <path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
+      <path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z" />
+    </Ic>
+  );
+  const ICodeBlock = (
+    <Ic size={16}>
+      <path d="m10 9-3 3 3 3" />
+      <path d="m14 15 3-3-3-3" />
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+    </Ic>
+  );
+  const IRule = (
+    <Ic size={16}>
+      <path d="M5 12h14" />
+    </Ic>
+  );
+  const ILink = (
+    <Ic size={16}>
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </Ic>
+  );
+  const IImage = (
+    <Ic size={16}>
+      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+      <circle cx="9" cy="9" r="2" />
+      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+    </Ic>
+  );
+  const ITable = (
+    <Ic size={16}>
+      <path d="M12 3v18" />
+      <rect width="18" height="18" x="3" y="3" rx="2" />
+      <path d="M3 9h18" />
+      <path d="M3 15h18" />
+    </Ic>
+  );
+  const ITip = (
+    <Ic size={16}>
+      <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+      <path d="M9 18h6" />
+      <path d="M10 22h4" />
+    </Ic>
   );
 
   return (
     <div className={styles.toolbar}>
-      <Btn label="H1" title="一级标题" active={state.h1} onClick={() => chain().toggleHeading({level: 1}).run()} />
-      <Btn label="H2" title="二级标题" active={state.h2} onClick={() => chain().toggleHeading({level: 2}).run()} />
-      <Btn label="H3" title="三级标题" active={state.h3} onClick={() => chain().toggleHeading({level: 3}).run()} />
+      <Btn icon={H1} title="一级标题" active={state.h1} onClick={() => chain().toggleHeading({level: 1}).run()} />
+      <Btn icon={H2} title="二级标题" active={state.h2} onClick={() => chain().toggleHeading({level: 2}).run()} />
+      <Btn icon={H3} title="三级标题" active={state.h3} onClick={() => chain().toggleHeading({level: 3}).run()} />
       <span className={styles.toolSep} />
-      <Btn label="B" title="加粗" active={state.bold} onClick={() => chain().toggleBold().run()} />
-      <Btn label="I" title="斜体" active={state.italic} onClick={() => chain().toggleItalic().run()} />
-      <Btn label="S" title="删除线" active={state.strike} onClick={() => chain().toggleStrike().run()} />
-      <Btn label="‹›" title="行内代码" active={state.code} onClick={() => chain().toggleCode().run()} />
+      <Btn icon={IBold} title="加粗" active={state.bold} onClick={() => chain().toggleBold().run()} />
+      <Btn icon={IItalic} title="斜体" active={state.italic} onClick={() => chain().toggleItalic().run()} />
+      <Btn icon={IStrike} title="删除线" active={state.strike} onClick={() => chain().toggleStrike().run()} />
+      <Btn icon={ICode} title="行内代码" active={state.code} onClick={() => chain().toggleCode().run()} />
       <span className={styles.toolSep} />
-      <Btn label="•" title="无序列表" active={state.bullet} onClick={() => chain().toggleBulletList().run()} />
-      <Btn label="1." title="有序列表" active={state.ordered} onClick={() => chain().toggleOrderedList().run()} />
-      <Btn label="❝" title="引用" active={state.quote} onClick={() => chain().toggleBlockquote().run()} />
-      <Btn label="{}" title="代码块" active={state.codeBlock} onClick={() => chain().toggleCodeBlock().run()} />
-      <Btn label="—" title="分割线" onClick={() => chain().setHorizontalRule().run()} />
+      <Btn icon={IList} title="无序列表" active={state.bullet} onClick={() => chain().toggleBulletList().run()} />
+      <Btn icon={IListOrdered} title="有序列表" active={state.ordered} onClick={() => chain().toggleOrderedList().run()} />
+      <Btn icon={IQuote} title="引用" active={state.quote} onClick={() => chain().toggleBlockquote().run()} />
+      <Btn icon={ICodeBlock} title="代码块" active={state.codeBlock} onClick={() => chain().toggleCodeBlock().run()} />
+      <Btn icon={IRule} title="分割线" onClick={() => chain().setHorizontalRule().run()} />
       <span className={styles.toolSep} />
       <Btn
-        label="链接"
+        icon={ILink}
         title="插入/编辑链接"
         active={state.link}
         onClick={() => {
@@ -733,7 +852,7 @@ function Toolbar({editor}: ToolbarProps) {
         }}
       />
       <Btn
-        label="图片"
+        icon={IImage}
         title="插入图片"
         onClick={() => {
           const src = window.prompt('图片地址（如 /img/logo.svg）');
@@ -743,12 +862,12 @@ function Toolbar({editor}: ToolbarProps) {
         }}
       />
       <Btn
-        label="表格"
+        icon={ITable}
         title="插入表格"
         onClick={() => chain().insertTable({rows: 3, cols: 3, withHeaderRow: true}).run()}
       />
       <Btn
-        label="提示框"
+        icon={ITip}
         title="插入提示框"
         onClick={() =>
           chain()

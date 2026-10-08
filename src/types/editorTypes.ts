@@ -8,7 +8,7 @@
  * 放进去会多出一个 `/editorTypes` 页面，并在 SSG 阶段报
  * 「The page component at /editorTypes doesn't have a default export」构建失败。
  */
-import type {RefObject} from 'react';
+import type {RefObject, ReactNode} from 'react';
 import type {Node} from '@xyflow/react';
 import type {Editor} from '@tiptap/react';
 
@@ -223,7 +223,7 @@ export type TiptapBodyProps = {
 export type ToolbarProps = {editor: Editor};
 
 export type ToolBtnProps = {
-  label: string;
+  icon: ReactNode;
   title: string;
   active?: boolean;
   onClick: () => void;

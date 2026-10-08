@@ -833,6 +833,9 @@
 }
 
 .toolBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 2rem;
   height: 1.9rem;
   padding: 0 0.4rem;
