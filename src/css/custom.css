@@ -31,19 +31,43 @@
 
 /*
  * 正文字体切换（配套 src/components/FontPicker）。
- * FontPicker 把选中的 font-family 写到 <html> 的 --site-content-font
- * 内联样式上；这里只把它应用到 main-wrapper 内的 <main>
- * （文档正文 + 首页 main），侧边栏和导航栏不受影响。
- * 代码块仍使用 --ifm-font-family-monospace，保持等宽。
+ * FontPicker 把选中的字体写到 <html> 的内联样式上：
+ *
+ *   --site-content-font   正文（文档正文 + 首页 main），侧边栏/导航栏不受影响
+ *   --site-emphasis-font  强调区（各级标题、行内 <strong>/<b>、表头 <th>）
+ *   --site-heading-weight 标题字重
+ *
+ * 三个变量都有「跟随正文」的默认值，FontPicker 不设置时即为系统字体。
+ * 代码块始终使用 --ifm-font-family-monospace，保持等宽。
  */
 :root {
   --site-content-font: var(--ifm-font-family-base);
+  --site-emphasis-font: var(--site-content-font);
+  --site-heading-weight: var(--ifm-heading-font-weight);
 }
 
 .main-wrapper main {
   font-family: var(--site-content-font);
 }
 
+/*
+ * 强调区用 --site-emphasis-font 而不是 --site-content-font：
+ * 霞鹜文楷只有一个 Regular 字重，若让标题/加粗去匹配 700，浏览器会
+ * 合成「伪粗体」，楷体描边糊成一团。霞鹜文楷自带的 Medium 是真字重，
+ * FontPicker 会把这里的 family 换成 'LXGW WenKai Medium'、weight 换成 500，
+ * 从而彻底避免字体合成。其余字体保持各自原本的加粗表现。
+ */
+.main-wrapper main :is(h1, h2, h3, h4, h5, h6),
+.main-wrapper main :is(strong, b),
+.main-wrapper main th {
+  font-family: var(--site-emphasis-font);
+}
+
 .main-wrapper main :is(h1, h2, h3, h4, h5, h6) {
-  font-family: var(--site-content-font);
+  font-weight: var(--site-heading-weight);
+}
+
+/* 等宽兜底：代码块里的 <strong>/<b> 不应被正文字体覆盖。 */
+.main-wrapper main :is(code, pre, pre *) {
+  font-family: var(--ifm-font-family-monospace);
 }
