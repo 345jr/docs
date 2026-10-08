@@ -23,23 +23,38 @@
 
 ## 正文字体切换
 
-`src/components/FontPicker` 提供系统默认 / 霞鹜文楷 / 方正宋三三个选项，结果存
+`src/components/FontPicker` 提供系统默认 / 霞鹜文楷 / 思源宋体三个选项，结果存
 localStorage。CSS 变量定义在 `src/css/custom.css`：
 
 - `--site-content-font`：正文（仅 `.main-wrapper main`，侧边栏与导航栏不受影响）
 - `--site-emphasis-font`：标题、`<strong>/<b>`、表头 `<th>`
 - `--site-heading-weight`：标题字重
 
-霞鹜文楷来自 `@callmebill/lxgw-wenkai-web`（版本号跟随官方 release，字体本体是
-`lxgw/LxgwWenkai`）。两个注意事项：
+三个变量都有「跟随正文」的默认值，FontPicker 不设置时即为系统字体。代码块始终用
+`--ifm-font-family-monospace`，custom.css 里有一条同优先级的兜底规则防止被覆盖。
 
-1. **只能有 400 一个字重时不要让标题去匹配 700**，浏览器会合成很难看的伪粗体。
-   所以标题/加粗走同一字体包的 `LXGW WenKai Medium`（真字重，family 名与 Regular 不同，
-   见 FontPicker 的 `emphasis` 字段）。方正宋三同样只有 400，暂未处理。
-2. **字体 CSS 不进全局样式表**。448 条 `@font-face`（~130KB gzip）由
-   `plugins/lxgw-webfont` 拷到 `assets/fonts/lxgw-wenkai/<版本>/`，FontPicker 在用户
-   真正选中时才注入 `<link>`。若改回 `import '.../result.css'`，会因 `future.v4`
-   默认启用 rspack 而被合进全局 `styles.css`，让所有访客都替字体买单。
+字体来源：
 
-升级字体只需改 `package.json` 里的 `@callmebill/lxgw-wenkai-web` 版本号，产物路径
-会随包内 `VERSION` 自动变化。
+| 选项 | 包 | 字体版本 | 授权 |
+| --- | --- | --- | --- |
+| 霞鹜文楷 | `@callmebill/lxgw-wenkai-web` | v1.522（官方 `lxgw/LxgwWenKai`） | OFL 1.1 |
+| 思源宋体 | `noto-serif-sc` | v2.002（官方 `adobe-fonts/source-han-serif`） | OFL 1.1 |
+
+不要引入方正系列字体：需通过字加客户端购买授权，且随仓库分发有合规风险。
+
+三个需要记住的点：
+
+1. **霞鹜文楷只有 Regular 一个字重**，标题直接匹配 700 会被浏览器合成伪粗体。所以
+   它的标题/加粗走同包的 `LXGW WenKai Medium`（真字重，500）。注意 Medium 的 family
+   名是 `LXGW WenKai Medium`，与 Regular 是两个独立 family，必须靠
+   `--site-emphasis-font` 显式切过去。
+2. **思源宋体的 Regular 与 Bold 同属 `Noto Serif SC`**，标题吃 `font-weight: 700`
+   就是真 Bold，不需要额外变量，FontPicker 里不用配 `emphasis`。
+3. **字体 CSS 不进全局样式表**。上百条 `@font-face` 由 `plugins/cjk-webfonts` 拷到
+   `assets/fonts/<字体>/<版本>/<字重>/`，FontPicker 在用户真正选中时才注入 `<link>`。
+   若改回 `import '.../result.css'`，会因 `future.v4` 默认启用 rspack 而被合进全局
+   `styles.css`，让所有访客都替字体买单。
+
+新增字体只需在 `plugins/cjk-webfonts/index.js` 的 `FONTS` 里登记一行（包名 + 要拷的
+字重目录 + 各字重的 CSS 文件名），产物路径与前端 `<link>` 会自动跟上；再在 FontPicker
+的 `FONTS` 数组里加一个选项即可。升级字体只改 `package.json` 版本号。

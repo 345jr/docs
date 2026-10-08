@@ -38,7 +38,7 @@ const config = {
   // 这里的内联插件补上展开路由 /private/*（/private/<分类>/<文档>），
   // 使侧边栏 active 判定与文档站行为一致。
   plugins: [
-    require.resolve('./plugins/lxgw-webfont'),
+    require.resolve('./plugins/cjk-webfonts'),
     function privateDocsRoutes() {
       return {
         name: 'private-docs-routes',
