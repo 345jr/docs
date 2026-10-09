@@ -125,6 +125,10 @@ const config = {
             label: '在线编辑',
           },
           {
+            type: 'custom-themePicker',
+            position: 'right',
+          },
+          {
             type: 'custom-fontPicker',
             position: 'right',
           },
