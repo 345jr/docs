@@ -311,8 +311,8 @@ const IconLogout = () => (
   </Ic>
 );
 
-const IconLock = () => (
-  <Ic>
+const IconLock = ({size = 16}: {size?: number}) => (
+  <Ic size={size}>
     <rect x="4" y="11" width="16" height="10" rx="2" />
     <path d="M8 11V7a4 4 0 0 1 8 0v4" />
   </Ic>
@@ -1266,7 +1266,10 @@ function ArticleEditor({
               {targetPath}
             </span>
             {pv ? (
-              <span className={`${styles.badge} ${styles.pvBadge}`}>🔒 私有</span>
+              <span className={`${styles.badge} ${styles.pvBadge}`}>
+                <IconLock size={13} />
+                私有
+              </span>
             ) : (
               <span className={styles.badge}>{isMdx ? 'MDX' : sourceMode ? '源码' : '富文本'}</span>
             )}
