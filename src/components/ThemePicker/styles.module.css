@@ -38,7 +38,9 @@
   padding: 20px 22px;
   border: 1px solid var(--ifm-color-emphasis-200);
   border-radius: 14px;
-  background: var(--ifm-background-color);
+  /* 注意：日间模式 --ifm-background-color 是 transparent（Infima 只把它
+     当 body 兜底），日间真正的底色在 surface 上；夜间模式两者都是实色。 */
+  background: var(--ifm-background-surface-color);
   box-shadow: var(--ifm-global-shadow-lg);
   z-index: calc(var(--ifm-z-index-fixed) + 11);
   outline: none;
