@@ -310,22 +310,14 @@
   white-space: nowrap;
 }
 
-.badge {
-  padding: 0.1rem 0.4rem;
-  font-size: 0.72rem;
-  border: 1px solid var(--ifm-color-emphasis-300);
-  border-radius: 999px;
-  color: var(--ifm-color-emphasis-700);
-  white-space: nowrap;
-}
-
-/* 私有标记：不用胶囊边框，改成小圆角色块 + 线性锁图标 */
+/* 私有标记：小圆角色块 + 线性锁图标（不用胶囊边框） */
 .pvBadge {
   display: inline-flex;
   align-items: center;
   gap: 0.22rem;
   padding: 0.05rem 0.35rem;
-  border: none;
+  font-size: 0.72rem;
+  white-space: nowrap;
   border-radius: 4px;
   background: color-mix(in srgb, var(--ifm-color-primary) 12%, transparent);
   color: var(--ifm-color-primary);

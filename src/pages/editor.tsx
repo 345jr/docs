@@ -1265,13 +1265,11 @@ function ArticleEditor({
             <span className={styles.path} title={targetPath}>
               {targetPath}
             </span>
-            {pv ? (
-              <span className={`${styles.badge} ${styles.pvBadge}`}>
+            {pv && (
+              <span className={styles.pvBadge}>
                 <IconLock size={13} />
                 私有
               </span>
-            ) : (
-              <span className={styles.badge}>{isMdx ? 'MDX' : sourceMode ? '源码' : '富文本'}</span>
             )}
             {dirty && <span className={styles.dirtyBadge}>未保存</span>}
           </>,
