@@ -210,18 +210,23 @@ export default function ThemePicker(): React.ReactNode {
         className={styles.trigger}
         aria-label="配置主题色"
         title="配置主题色">
-        <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="7.5" cy="8.5" r="3.2" fill="#f03e3e" />
-          <circle cx="15" cy="6.5" r="3.2" fill="#f59f00" />
-          <circle cx="19" cy="13.5" r="3.2" fill="#37b24d" />
-          <circle cx="13.5" cy="17.5" r="3.2" fill="#4263eb" />
-          <path
-            d="M12 21.5c-5.2 0-9.5-4.2-9.5-9.5S6.8 2.5 12 2.5 21.5 6.8 21.5 12c0 1.9-1.2 3-3 3h-2.2c-1.1 0-1.9.9-1.9 2 0 .6.2 1 .5 1.5.3.4.5.9.5 1.4 0 .9-.8 1.6-2.4 1.6z"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinejoin="round"
-          />
+        {/* Lucide「palette」图标（ISC License，
+            https://github.com/lucide-icons/lucide），单色描边、跟随导航栏文字色 */}
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true">
+          <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" />
+          <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
+          <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
+          <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
+          <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
         </svg>
       </Dialog.Trigger>
       <Dialog.Portal>
