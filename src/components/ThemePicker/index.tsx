@@ -156,6 +156,21 @@ function readStored(): ThemeChoice | null {
   }
 }
 
+/** 把主题样式写入 <head>（幂等）；choice 为 null 时移除节点 */
+function injectTheme(choice: ThemeChoice | null): void {
+  if (choice) {
+    let style = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
+    if (!style) {
+      style = document.createElement('style');
+      style.id = STYLE_ID;
+      document.head.appendChild(style);
+    }
+    style.textContent = themeCss(choice);
+  } else {
+    document.getElementById(STYLE_ID)?.remove();
+  }
+}
+
 export default function ThemePicker(): React.ReactNode {
   const [open, setOpen] = useState(false);
   const [choice, setChoice] = useState<ThemeChoice | null>(null);
@@ -164,7 +179,10 @@ export default function ThemePicker(): React.ReactNode {
   const [systemDark, setSystemDark] = useState(false);
 
   useEffect(() => {
-    setChoice(readStored());
+    const stored = readStored();
+    setChoice(stored);
+    // 刷新/重开标签页后 <style> 节点已不在 DOM 里，存量配置要重新注入
+    injectTheme(stored);
     const query = window.matchMedia('(prefers-color-scheme: dark)');
     const sync = () => setSystemDark(document.documentElement.dataset.theme === 'dark');
     sync();
@@ -180,18 +198,11 @@ export default function ThemePicker(): React.ReactNode {
 
   const apply = (next: ThemeChoice | null) => {
     setChoice(next);
+    injectTheme(next);
     if (next) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      let style = document.getElementById(STYLE_ID) as HTMLStyleElement | null;
-      if (!style) {
-        style = document.createElement('style');
-        style.id = STYLE_ID;
-        document.head.appendChild(style);
-      }
-      style.textContent = themeCss(next);
     } else {
       localStorage.removeItem(STORAGE_KEY);
-      document.getElementById(STYLE_ID)?.remove();
     }
   };
 
