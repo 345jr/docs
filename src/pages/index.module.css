@@ -1,23 +1,442 @@
-/**
- * CSS files with the .module.css suffix will be treated as CSS modules
- * and scoped locally.
- */
+/* 幸运四叶草 · 草地自然风首页 */
 
-.heroBanner {
-  padding: 4rem 0;
-  text-align: center;
+.page {
+  /* 内容区顶部底色（同时也是草地波浪的填充色） */
+  --home-top-bg: #eef7e8;
+  overflow-x: clip;
+}
+
+/* ================= Hero ================= */
+
+.hero {
   position: relative;
-  overflow: hidden;
-}
-
-@media screen and (max-width: 996px) {
-  .heroBanner {
-    padding: 2rem;
-  }
-}
-
-.buttons {
+  min-height: clamp(560px, 82vh, 860px);
   display: flex;
   align-items: center;
   justify-content: center;
+  background-size: cover;
+  background-position: center 30%;
+  isolation: isolate;
+}
+
+/* 柔光蒙版：中心压暗衬出文字，上下再叠一层渐变 */
+.heroShade {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 58% 52% at 50% 47%, rgba(14, 48, 26, 0.52), transparent 72%),
+    linear-gradient(180deg, rgba(18, 60, 32, 0.42) 0%, rgba(18, 60, 32, 0.16) 34%, rgba(18, 60, 32, 0.14) 68%, rgba(16, 48, 27, 0.5) 100%);
+}
+
+.heroContent {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  padding: 4.5rem 1.5rem 7rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.42rem 1.05rem;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #eafff0;
+  background: rgba(16, 64, 35, 0.38);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 24px rgba(10, 40, 20, 0.25);
+}
+
+.badgeClover {
+  width: 1.05em;
+  height: 1.05em;
+  color: #8dffab;
+}
+
+.title {
+  margin: 1.4rem 0 0;
+  font-size: clamp(2.9rem, 7.2vw, 5.4rem);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: 0.015em;
+  color: transparent;
+  background: linear-gradient(115deg, #ffffff 18%, #e4ffcd 48%, #a4f2b6 82%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  filter: drop-shadow(0 4px 22px rgba(12, 52, 28, 0.55));
+  text-wrap: balance;
+}
+
+.subtitle {
+  margin: 1.3rem auto 0;
+  max-width: 620px;
+  font-size: clamp(1.02rem, 1.7vw, 1.22rem);
+  line-height: 1.9;
+  color: rgba(244, 255, 240, 0.97);
+  text-shadow: 0 2px 18px rgba(8, 36, 18, 0.85), 0 1px 4px rgba(8, 36, 18, 0.7);
+}
+
+/* ------- 按钮 ------- */
+
+.buttons {
+  margin-top: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.85rem 2rem;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0e3d21;
+  background: linear-gradient(135deg, #f6ffe9, #baf5a5);
+  box-shadow: 0 10px 30px rgba(20, 90, 45, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.btnPrimary:hover {
+  transform: translateY(-3px) scale(1.02);
+  color: #0e3d21;
+  text-decoration: none;
+  box-shadow: 0 16px 40px rgba(30, 120, 60, 0.55), 0 0 0 6px rgba(190, 255, 170, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.btnArrow {
+  transition: transform 0.25s ease;
+}
+
+.btnPrimary:hover .btnArrow {
+  transform: translateX(4px);
+}
+
+.btnGhost {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.85rem 1.8rem;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #f2ffee;
+  border: 1.5px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+
+.btnGhost:hover {
+  transform: translateY(-3px);
+  color: #ffffff;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* ------- 漂浮四叶草 ------- */
+
+.cloverFloat {
+  position: absolute;
+  z-index: 0;
+  color: rgba(235, 255, 225, 0.9);
+  filter: drop-shadow(0 3px 10px rgba(15, 60, 30, 0.35));
+  animation: cloverDrift 10s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.cloverSvg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+@keyframes cloverDrift {
+  0%, 100% {
+    transform: translateY(0) rotate(-7deg);
+  }
+  50% {
+    transform: translateY(-22px) rotate(9deg);
+  }
+}
+
+/* ------- 草地波浪 ------- */
+
+.wave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  width: 100%;
+  height: clamp(56px, 9vw, 120px);
+  z-index: 1;
+  display: block;
+}
+
+.waveBack {
+  fill: var(--home-top-bg);
+  opacity: 0.45;
+}
+
+.waveFront {
+  fill: var(--home-top-bg);
+}
+
+/* ------- 入场动画 ------- */
+
+.fadeUp {
+  opacity: 0;
+  animation: fadeUp 0.85s cubic-bezier(0.22, 0.8, 0.32, 1) forwards;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ================= 特性卡片 ================= */
+
+.features {
+  background: linear-gradient(180deg, var(--home-top-bg) 0%, #ffffff 68%);
+  padding: 3.5rem 0 5rem;
+}
+
+.sectionTitle {
+  text-align: center;
+  font-size: clamp(1.7rem, 3.4vw, 2.4rem);
+  font-weight: 800;
+  color: #17492a;
+}
+
+.sectionSubtitle {
+  text-align: center;
+  margin: 0.7rem auto 3rem;
+  max-width: 560px;
+  color: #4c7a5c;
+  font-size: 1.02rem;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.8rem;
+}
+
+.card {
+  position: relative;
+  text-align: center;
+  padding: 2.4rem 1.7rem 2.2rem;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(70, 140, 90, 0.16);
+  box-shadow: 0 8px 30px rgba(35, 90, 50, 0.08);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-8px);
+  border-color: rgba(80, 170, 100, 0.4);
+  box-shadow: 0 20px 46px rgba(35, 110, 55, 0.18), 0 0 0 5px rgba(150, 230, 160, 0.18);
+}
+
+.cardIconWrap {
+  width: 128px;
+  height: 128px;
+  margin: 0 auto 1.4rem;
+  border-radius: 34px;
+  overflow: hidden;
+  background: linear-gradient(160deg, #f3fbec, #e2f4d9);
+  box-shadow: inset 0 0 0 1px rgba(90, 160, 105, 0.14), 0 10px 24px rgba(45, 110, 60, 0.14);
+  transition: transform 0.35s ease;
+}
+
+.card:hover .cardIconWrap {
+  transform: rotate(-4deg) scale(1.05);
+}
+
+.cardIcon {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* 原图主体四周留白较多，放大裁掉边缘让图标更饱满 */
+  transform: scale(1.32);
+}
+
+.cardTitle {
+  font-size: 1.28rem;
+  font-weight: 700;
+  color: #17492a;
+  margin-bottom: 0.6rem;
+}
+
+.cardText {
+  margin: 0;
+  color: #43684f;
+  line-height: 1.85;
+  font-size: 0.98rem;
+}
+
+/* ================= 底部 CTA ================= */
+
+.cta {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 60% 90% at 18% 110%, rgba(140, 230, 150, 0.35), transparent 60%),
+    radial-gradient(ellipse 55% 80% at 88% -10%, rgba(190, 245, 170, 0.28), transparent 55%),
+    linear-gradient(140deg, #175c31 0%, #227a41 52%, #2e8555 100%);
+  padding: 5rem 0 5.5rem;
+}
+
+.ctaInner {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.ctaTitle {
+  font-size: clamp(1.7rem, 3.6vw, 2.5rem);
+  font-weight: 800;
+  color: #f4ffee;
+  text-shadow: 0 3px 18px rgba(10, 45, 22, 0.4);
+  text-wrap: balance;
+}
+
+.ctaText {
+  margin: 0.9rem 0 2.2rem;
+  color: rgba(230, 255, 225, 0.88);
+  font-size: 1.05rem;
+}
+
+.ctaButton {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.85rem 2.2rem;
+  border-radius: 999px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #14522c;
+  background: linear-gradient(135deg, #ffffff, #d9f7c4);
+  box-shadow: 0 12px 32px rgba(8, 40, 20, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.ctaButton:hover {
+  transform: translateY(-3px) scale(1.02);
+  color: #14522c;
+  text-decoration: none;
+  box-shadow: 0 18px 44px rgba(8, 40, 20, 0.5), 0 0 0 6px rgba(200, 255, 190, 0.22);
+}
+
+.ctaClover {
+  position: absolute;
+  z-index: 0;
+  width: 220px;
+  color: rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+
+.ctaCloverLeft {
+  left: -56px;
+  bottom: -64px;
+  transform: rotate(-18deg);
+}
+
+.ctaCloverRight {
+  right: -48px;
+  top: -70px;
+  transform: rotate(22deg) scaleX(-1);
+}
+
+/* ================= 暗色模式 ================= */
+
+:global([data-theme='dark']) .page {
+  --home-top-bg: #0e1a10;
+}
+
+:global([data-theme='dark']) .features {
+  background: linear-gradient(180deg, var(--home-top-bg) 0%, #10150f 68%);
+}
+
+:global([data-theme='dark']) .sectionTitle {
+  color: #c9ecc2;
+}
+
+:global([data-theme='dark']) .sectionSubtitle {
+  color: #86ab8d;
+}
+
+:global([data-theme='dark']) .card {
+  background: rgba(24, 38, 25, 0.72);
+  border-color: rgba(120, 200, 130, 0.16);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+:global([data-theme='dark']) .card:hover {
+  border-color: rgba(130, 220, 140, 0.42);
+  box-shadow: 0 20px 46px rgba(0, 0, 0, 0.5), 0 0 0 5px rgba(110, 210, 125, 0.14);
+}
+
+:global([data-theme='dark']) .cardTitle {
+  color: #d5f2c8;
+}
+
+:global([data-theme='dark']) .cardText {
+  color: #9dc2a1;
+}
+
+:global([data-theme='dark']) .cardIconWrap {
+  background: linear-gradient(160deg, #223324, #18251a);
+  box-shadow: inset 0 0 0 1px rgba(130, 210, 140, 0.2), 0 10px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ================= 响应式 ================= */
+
+@media screen and (max-width: 996px) {
+  .cardGrid {
+    grid-template-columns: 1fr;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  .heroContent {
+    padding: 3.5rem 1.25rem 6rem;
+  }
+}
+
+/* ================= 减少动态偏好 ================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .fadeUp,
+  .cloverFloat {
+    animation: none;
+    opacity: 1;
+  }
+
+  .btnPrimary,
+  .btnGhost,
+  .card,
+  .cardIconWrap,
+  .ctaButton {
+    transition: none;
+  }
 }
