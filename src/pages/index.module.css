@@ -43,6 +43,20 @@
   min-width: 0;
 }
 
+.wordmark {
+  display: block;
+  width: min(100%, 560px);
+  height: auto;
+  margin: 0 auto clamp(1rem, 2vh, 1.6rem);
+  filter: drop-shadow(0 6px 20px rgba(25, 90, 45, 0.18));
+  pointer-events: none;
+  user-select: none;
+}
+
+:global([data-theme='dark']) .wordmark {
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.45)) brightness(1.08);
+}
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -88,8 +102,9 @@
 
 /* ------- 按钮 ------- */
 
+/* 按钮区里现在只放「开始阅读」一个按钮，单独留出顶部呼吸空间 */
 .buttons {
-  margin-top: 1.6rem;
+  margin-top: 1.4rem;
   display: flex;
   align-items: center;
   gap: 0.9rem;
@@ -510,6 +525,10 @@
 
   .intro {
     text-align: center;
+  }
+
+  .wordmark {
+    width: min(100%, 420px);
   }
 
   .buttons {

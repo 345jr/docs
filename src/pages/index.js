@@ -9,6 +9,8 @@ import styles from './index.module.css';
 
 const heroBg =
   require('@site/static/img/home/hero-meadow-20261013-111741-0.jpg').default;
+const heroWordmark =
+  require('@site/static/img/home/hero-wordmark.png').default;
 const mascotLucky =
   require('@site/static/img/home/mascot-lucky-20261013-114830-0.jpg').default;
 const iconWrite =
@@ -171,30 +173,20 @@ export default function Home() {
         <div className={styles.stage}>
           {/* 左栏：文案 + 扇形特性卡片 */}
           <section className={styles.intro}>
-            <span className={clsx(styles.badge, styles.fadeUp)} style={{animationDelay: '0.05s'}}>
-              <Clover className={styles.badgeClover} />
-              幸运四叶草 · 个人知识库
-            </span>
-            <Heading as="h1" className={clsx(styles.title, styles.fadeUp)} style={{animationDelay: '0.15s'}}>
-              {siteConfig.title}
-            </Heading>
-            <p className={clsx(styles.subtitle, styles.fadeUp)} style={{animationDelay: '0.25s'}}>
+            <p className={clsx(styles.subtitle, styles.fadeUp)} style={{animationDelay: '0.15s'}}>
               在清晨的草地上，种下每一份笔记，
               <br />
               让知识像四叶草一样，悄悄生长、久久幸运。
             </p>
-            <div className={clsx(styles.buttons, styles.fadeUp)} style={{animationDelay: '0.35s'}}>
+            <div className={clsx(styles.buttons, styles.fadeUp)} style={{animationDelay: '0.25s'}}>
               <Link className={styles.btnPrimary} to="/docs/writing/create-a-document">
                 开始阅读
                 <span className={styles.btnArrow}>→</span>
               </Link>
-              <Link className={styles.btnGhost} to="https://github.com/345jr/docs">
-                GitHub
-              </Link>
             </div>
 
             {/* 扇形排布的三张便签卡：错落旋转，悬停回正浮起 */}
-            <div className={clsx(styles.fan, styles.fadeUp)} style={{animationDelay: '0.5s'}}>
+            <div className={clsx(styles.fan, styles.fadeUp)} style={{animationDelay: '0.4s'}}>
               {FEATURES.map((f) => (
                 <article
                   key={f.title}
@@ -213,7 +205,12 @@ export default function Home() {
           </section>
 
           {/* 右栏：幸运小龙吉祥物 */}
-          <section className={clsx(styles.mascotPane, styles.fadeUp)} style={{animationDelay: '0.4s'}}>
+          <section className={clsx(styles.mascotPane, styles.fadeUp)} style={{animationDelay: '0.3s'}}>
+            <img
+              src={heroWordmark}
+              alt="Lopop Docs 幸运四叶草 · 个人知识库"
+              className={styles.wordmark}
+            />
             <MascotCard />
           </section>
         </div>
