@@ -1,3 +1,4 @@
+import {useRef} from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
@@ -8,6 +9,8 @@ import styles from './index.module.css';
 
 const heroBg =
   require('@site/static/img/home/hero-meadow-20261013-111741-0.jpg').default;
+const mascotLucky =
+  require('@site/static/img/home/mascot-lucky-20261013-114830-0.jpg').default;
 const iconWrite =
   require('@site/static/img/home/icon-write-20261013-111820-0.jpg').default;
 const iconBook =
@@ -38,146 +41,98 @@ function Clover({className}) {
   );
 }
 
-/** Hero 区域漂浮的四叶草粒子（位置 / 大小 / 动画节奏均为固定编排） */
-const FLOATING_CLOVERS = [
-  {left: '7%', top: '20%', size: 42, delay: '0s', duration: '11s', opacity: 0.55},
-  {left: '16%', top: '62%', size: 26, delay: '1.4s', duration: '9s', opacity: 0.4},
-  {left: '27%', top: '12%', size: 20, delay: '3s', duration: '12s', opacity: 0.35},
-  {left: '72%', top: '16%', size: 30, delay: '0.8s', duration: '10s', opacity: 0.5},
-  {left: '84%', top: '52%', size: 48, delay: '2.2s', duration: '13s', opacity: 0.45},
-  {left: '92%', top: '24%', size: 22, delay: '4s', duration: '9.5s', opacity: 0.35},
-  {left: '62%', top: '68%', size: 18, delay: '2.8s', duration: '8.5s', opacity: 0.3},
-  {left: '38%', top: '74%', size: 24, delay: '1s', duration: '10.5s', opacity: 0.35},
-];
-
-function Hero() {
-  const {siteConfig} = useDocusaurusContext();
+/** 四芒星 SVG：幸运闪光 */
+function Sparkle({className}) {
   return (
-    <header
-      className={styles.hero}
-      style={{backgroundImage: `url(${heroBg})`}}>
-      <div className={styles.heroShade} />
-      {FLOATING_CLOVERS.map((c, i) => (
-        <span
-          key={i}
-          className={styles.cloverFloat}
-          style={{
-            left: c.left,
-            top: c.top,
-            width: c.size,
-            opacity: c.opacity,
-            animationDelay: c.delay,
-            animationDuration: c.duration,
-          }}>
-          <Clover className={styles.cloverSvg} />
-        </span>
-      ))}
-      <div className={clsx('container', styles.heroContent)}>
-        <span className={clsx(styles.badge, styles.fadeUp)} style={{animationDelay: '0.05s'}}>
-          <Clover className={styles.badgeClover} />
-          幸运四叶草 · 个人知识库
-        </span>
-        <Heading as="h1" className={clsx(styles.title, styles.fadeUp)} style={{animationDelay: '0.15s'}}>
-          {siteConfig.title}
-        </Heading>
-        <p className={clsx(styles.subtitle, styles.fadeUp)} style={{animationDelay: '0.3s'}}>
-          在清晨的草地上，种下每一份笔记
-          <br />
-          让知识像四叶草一样，悄悄生长、久久幸运
-        </p>
-        <div className={clsx(styles.buttons, styles.fadeUp)} style={{animationDelay: '0.45s'}}>
-          <Link className={styles.btnPrimary} to="/docs/writing/create-a-document">
-            开始阅读
-            <span className={styles.btnArrow}>→</span>
-          </Link>
-          <Link className={styles.btnGhost} to="https://github.com/345jr/docs">
-            GitHub
-          </Link>
-        </div>
-      </div>
-      {/* 草地波浪：衔接 Hero 与下方内容区 */}
-      <svg
-        className={styles.wave}
-        viewBox="0 0 1440 120"
-        preserveAspectRatio="none"
-        aria-hidden="true">
-        <path
-          className={styles.waveBack}
-          d="M0 64 C 180 110 360 20 560 44 C 760 68 900 116 1100 92 C 1260 74 1360 40 1440 56 L1440 120 L0 120 Z"
-        />
-        <path
-          className={styles.waveFront}
-          d="M0 88 C 200 120 420 56 660 76 C 880 94 1080 122 1280 100 C 1360 92 1410 84 1440 88 L1440 120 L0 120 Z"
-        />
-      </svg>
-    </header>
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path
+        d="M12 1.5 L14.2 9.8 L22.5 12 L14.2 14.2 L12 22.5 L9.8 14.2 L1.5 12 L9.8 9.8 Z"
+        fill="currentColor"
+      />
+    </svg>
   );
 }
+
+/** 全屏漂浮的四叶草粒子（位置 / 大小 / 动画节奏均为固定编排） */
+const FLOATING_CLOVERS = [
+  {left: '3%', top: '14%', size: 40, delay: '0s', duration: '11s', opacity: 0.4},
+  {left: '11%', top: '72%', size: 26, delay: '1.4s', duration: '9s', opacity: 0.32},
+  {left: '24%', top: '6%', size: 20, delay: '3s', duration: '12s', opacity: 0.28},
+  {left: '55%', top: '10%', size: 24, delay: '0.8s', duration: '10s', opacity: 0.3},
+  {left: '48%', top: '82%', size: 30, delay: '2.2s', duration: '13s', opacity: 0.3},
+  {left: '94%', top: '70%', size: 34, delay: '4s', duration: '9.5s', opacity: 0.32},
+];
+
+/** 金色闪光粒子 */
+const SPARKLES = [
+  {left: '34%', top: '16%', size: 16, delay: '0s'},
+  {left: '58%', top: '62%', size: 12, delay: '0.9s'},
+  {left: '87%', top: '12%', size: 18, delay: '1.7s'},
+  {left: '70%', top: '40%', size: 11, delay: '2.5s'},
+];
 
 const FEATURES = [
   {
     img: iconWrite,
     alt: '羽毛笔与笔记本上的四叶草',
+    accent: '#3fae5a',
     title: '写作即播种',
-    text: 'Markdown 驱动，专注内容本身。写下的每一段文字，都是埋在草地里的种子。',
+    text: 'Markdown 轻装上阵，写下的每段文字，都是埋进土里的种子。',
   },
   {
     img: iconBook,
     alt: '书本上生长的四叶草',
+    accent: '#e0a92e',
     title: '知识在生长',
-    text: '结构化侧边栏与分类，把零散的笔记连成一片草地，沉淀为可检索的知识。',
+    text: '结构化目录把零散笔记连成草地，沉淀为可检索的知识。',
   },
   {
     img: iconGear,
     alt: '四叶草形状的齿轮',
+    accent: '#e06a9a',
     title: '风格由你定',
-    text: 'React 组件、自定义主题与字体随心搭配，让站点长成自己喜欢的样子。',
+    text: '组件、主题与字体随心搭配，站点长成你喜欢的样子。',
   },
 ];
 
-function Features() {
-  return (
-    <section className={styles.features}>
-      <div className="container">
-        <Heading as="h2" className={styles.sectionTitle}>
-          这片草地上，藏着什么
-        </Heading>
-        <p className={styles.sectionSubtitle}>
-          一株四叶草的幸运，刚好分给写作、沉淀与热爱
-        </p>
-        <div className={styles.cardGrid}>
-          {FEATURES.map((f) => (
-            <article key={f.title} className={styles.card}>
-              <div className={styles.cardIconWrap}>
-                <img src={f.img} alt={f.alt} className={styles.cardIcon} loading="lazy" />
-              </div>
-              <Heading as="h3" className={styles.cardTitle}>
-                {f.title}
-              </Heading>
-              <p className={styles.cardText}>{f.text}</p>
-            </article>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
+/** 吉祥物卡片：鼠标视差倾斜（外圈负责漂浮动画，内圈负责倾斜，互不干扰） */
+function MascotCard() {
+  const tiltRef = useRef(null);
 
-function BottomCta() {
+  const handleMove = (e) => {
+    const el = tiltRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    el.style.transform =
+      `perspective(1000px) rotateY(${(x * 9).toFixed(2)}deg) ` +
+      `rotateX(${(-y * 9).toFixed(2)}deg)`;
+  };
+
+  const handleLeave = () => {
+    const el = tiltRef.current;
+    if (el) el.style.transform = 'perspective(1000px)';
+  };
+
   return (
-    <section className={styles.cta}>
-      <Clover className={clsx(styles.ctaClover, styles.ctaCloverLeft)} />
-      <Clover className={clsx(styles.ctaClover, styles.ctaCloverRight)} />
-      <div className={clsx('container', styles.ctaInner)}>
-        <Heading as="h2" className={styles.ctaTitle}>
-          把每一份笔记，种成一片幸运
-        </Heading>
-        <p className={styles.ctaText}>现在开始，翻阅这片已经长出来的草地</p>
-        <Link className={styles.ctaButton} to="/docs/writing/create-a-document">
-          进入文档 →
-        </Link>
+    <div className={styles.mascotFloat}>
+      <div
+        ref={tiltRef}
+        className={styles.mascotCard}
+        onMouseMove={handleMove}
+        onMouseLeave={handleLeave}>
+        <img
+          src={mascotLucky}
+          alt="顶着幸运四叶草的小恐龙，周围漂浮着星星、彩虹与马蹄铁"
+          className={styles.mascotImg}
+        />
+        <span className={styles.mascotChip}>
+          <Clover className={styles.mascotChipClover} />
+          幸运小龙 · 今日也在守护你的笔记
+        </span>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -187,10 +142,97 @@ export default function Home() {
     <Layout
       title={siteConfig.title}
       description="Lopop 的个人知识库：写作、沉淀与分享，让知识像四叶草一样生长。">
-      <main className={styles.page}>
-        <Hero />
-        <Features />
-        <BottomCta />
+      <main className={styles.page} style={{backgroundImage: `url(${heroBg})`}}>
+        <div className={styles.veil} />
+        {FLOATING_CLOVERS.map((c, i) => (
+          <span
+            key={`c${i}`}
+            className={styles.cloverFloat}
+            style={{
+              left: c.left,
+              top: c.top,
+              width: c.size,
+              opacity: c.opacity,
+              animationDelay: c.delay,
+              animationDuration: c.duration,
+            }}>
+            <Clover className={styles.cloverSvg} />
+          </span>
+        ))}
+        {SPARKLES.map((s, i) => (
+          <span
+            key={`s${i}`}
+            className={styles.sparkle}
+            style={{left: s.left, top: s.top, width: s.size, animationDelay: s.delay}}>
+            <Sparkle className={styles.cloverSvg} />
+          </span>
+        ))}
+
+        <div className={styles.stage}>
+          {/* 左栏：文案 + 扇形特性卡片 */}
+          <section className={styles.intro}>
+            <span className={clsx(styles.badge, styles.fadeUp)} style={{animationDelay: '0.05s'}}>
+              <Clover className={styles.badgeClover} />
+              幸运四叶草 · 个人知识库
+            </span>
+            <Heading as="h1" className={clsx(styles.title, styles.fadeUp)} style={{animationDelay: '0.15s'}}>
+              {siteConfig.title}
+            </Heading>
+            <p className={clsx(styles.subtitle, styles.fadeUp)} style={{animationDelay: '0.25s'}}>
+              在清晨的草地上，种下每一份笔记，
+              <br />
+              让知识像四叶草一样，悄悄生长、久久幸运。
+            </p>
+            <div className={clsx(styles.buttons, styles.fadeUp)} style={{animationDelay: '0.35s'}}>
+              <Link className={styles.btnPrimary} to="/docs/writing/create-a-document">
+                开始阅读
+                <span className={styles.btnArrow}>→</span>
+              </Link>
+              <Link className={styles.btnGhost} to="https://github.com/345jr/docs">
+                GitHub
+              </Link>
+            </div>
+
+            {/* 扇形排布的三张便签卡：错落旋转，悬停回正浮起 */}
+            <div className={clsx(styles.fan, styles.fadeUp)} style={{animationDelay: '0.5s'}}>
+              {FEATURES.map((f) => (
+                <article
+                  key={f.title}
+                  className={styles.fanCard}
+                  style={{'--accent': f.accent}}>
+                  <div className={styles.fanIconWrap}>
+                    <img src={f.img} alt={f.alt} className={styles.fanIcon} loading="lazy" />
+                  </div>
+                  <Heading as="h3" className={styles.fanTitle}>
+                    {f.title}
+                  </Heading>
+                  <p className={styles.fanText}>{f.text}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          {/* 右栏：幸运小龙吉祥物 */}
+          <section className={clsx(styles.mascotPane, styles.fadeUp)} style={{animationDelay: '0.4s'}}>
+            <MascotCard />
+          </section>
+        </div>
+
+        {/* 底部雾中草浪 */}
+        <svg
+          className={styles.wave}
+          viewBox="0 0 1440 120"
+          preserveAspectRatio="none"
+          aria-hidden="true">
+          <path
+            className={styles.waveBack}
+            d="M0 64 C 180 110 360 20 560 44 C 760 68 900 116 1100 92 C 1260 74 1360 40 1440 56 L1440 120 L0 120 Z"
+          />
+          <path
+            className={styles.waveFront}
+            d="M0 88 C 200 120 420 56 660 76 C 880 94 1080 122 1280 100 C 1360 92 1410 84 1440 88 L1440 120 L0 120 Z"
+          />
+        </svg>
       </main>
     </Layout>
   );
