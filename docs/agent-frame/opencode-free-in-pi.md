@@ -1,7 +1,7 @@
 ---
 title: 在 Pi 中接入 OpenCode 免费模型
 sidebar_position: 1
-description: 完整记录在 Pi 中接入 OpenCode 免费模型的过程——从 403 FreeTierError 的排查、TLS 中间人抓包、两个社区扩展的对比，到定位“User-Agent + 非空 tools”这一真实门槛，并让 CLI 与 pi-web 都成功加载 provider。
+description: 完整记录在 Pi 中接入 OpenCode 免费模型的过程——从 403 FreeTierError 的排查、TLS 中间人抓包、两个社区扩展的对比，到定位“User-Agent + 非空 tools”这一真实门槛，并让 CLI 与 pi-web 都成功加载 provider；以及 2026-10-13 上游规则变更导致伪装方案再次失效的复盘与结构性弊端分析。
 tags: [pi, opencode, pi-web, 模型接入, 抓包, 排障]
 ---
 
@@ -352,6 +352,103 @@ pi-web 的模型列表有 **60 秒**内存缓存（`__piModelsCacheState`，按 
 - 抓包用完要**还原 `/etc/hosts`、关闭代理**，并注意文档/日志里不要落明文 key。
 - 用 npm 包时启动会出现 `Warning: ... @earendil-works/pi-ai`，那是扩展把宿主包写进了 `dependencies` 而非 `peerDependencies`；改成本地扩展后即消失。
 - 未修改 `/root/.pi/agent/models.json`：本方案由扩展直接注册 provider，无需手写 models 配置。
+
+## 十三、2026-10-13 上游规则变更：伪装方案再次失效
+
+> 本章记录本方案上线后第一次被上游“打回”的完整过程。结论先行：**这是一条靠“伪造客户端身份”维持的灰色通道，上游随时可以单方面改规则，而我们只能被动跟改。** 这是本方案最大的、且无法根治的结构性弊端。
+
+### 13.1 触发事件
+
+同一天发生了两处升级：
+
+| 组件 | 之前 | 之后 |
+| --- | --- | --- |
+| pi-web | 0.11.0 | **0.12.0**（内置 `pi-ai` / `pi-coding-agent` 升到 **1.1.0**） |
+| OpenCode CLI | 1.18.34 | **1.19.0**（改为独立二进制） |
+
+升级后 pi-web 里 `opencode-zen-free` 的免费模型仍然能被列出（扩展加载正常、provider 注册正常），但**一发请求就 403**：
+
+```
+403: {"type":"FreeTierError","message":"OpenCode's free tier can only be used from within OpenCode. Download it at https://opencode.ai and keep building."}
+```
+
+### 13.2 定位方法（对照抓包）
+
+沿用第七节的思路，但不覆盖、分开保存请求，做单变量对比：
+
+1. 确认 **OpenCode CLI 1.19.0 自己能跑通**（`opencode run -m opencode/mimo-v2.6-flash-free ...` → `OK`），说明账号/网络没问题，差异在请求本身；
+2. 用 **OpenCode 插件钩子**（`chat.headers` / `chat.params`）和 **patch `globalThis.fetch`** 拿到 1.19.0 真正发出的请求；
+3. 把 CLI 的请求体/请求头作为“已知可用的基准”，逐项替换成 Pi 扩展发出的内容，观察 403 在哪一步出现。
+
+:::tip[比 TLS 中间人更省事的抓包法]
+不必再上 TLS MITM。OpenCode 1.19.0 支持插件，在 `~/.config/opencode/plugin/` 放一个 `.js`，hook `chat.headers` 即可看到头，或直接包裹 `globalThis.fetch` 打印 URL/头/body。用完记得删除插件，避免污染后续请求。
+:::
+
+### 13.3 上游具体改了什么
+
+对照结论（1.19.0 免费层）：
+
+| 项 | 旧（1.18.x，本方案依赖） | 新（1.19.0） |
+| --- | --- | --- |
+| 推理端点 | `https://opencode.ai/zen/v1` | **`https://opencode.ai/inference/v1`** |
+| 会话头 | `x-opencode-session` | 新增 **`x-opencode-session-id`** |
+| `x-client-request-id` | 旧扩展自行添加 | 真实客户端**不发**该头 |
+| User-Agent | `opencode/1.18.34 ...` | `opencode/1.19.0 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14` |
+
+此外，免费层的 body 门槛也被收紧并显式化，实测必须同时满足：
+
+- `stream: true`（非流式直接 403）；
+- `tools` 中**必须同时包含 `bash` 和 `read`**（只给 1 个工具、或给 12 个假工具都 403）；
+- **User-Agent 不得携带伪装标记**：`opencode/1.18.31 pi-opencode-direct/0.1.7` → 403；`opencode/1.18.31` → 200。
+
+最后一条是本次最直接的“死因”：旧扩展硬编码的 UA 后缀 `pi-opencode-direct/0.1.7` 已被上游识别并拉黑。
+
+### 13.4 对本地扩展做的修改
+
+只改本地扩展 `/root/.pi/agent/extensions/opencode-zen-free/provider.ts`（不动 npm 包、不动 `models.json`），共 7 处：
+
+1. `BASE_URL` 改为 `https://opencode.ai/inference/v1`（模型目录仍走 `/zen/v1`，单列为 `CATALOGUE_URL`）；
+2. `OPENCODE_USER_AGENT` 去掉 `pi-opencode-direct/0.1.7`，改为 `opencode/1.19.0 ai-sdk/provider-utils/4.0.23 runtime/bun/1.3.14`；
+3. 请求头补齐 `x-opencode-session-id`，并移除真实客户端不发的 `x-client-request-id`；
+4. 上述改动同步到三条路径：主 provider、`patchCompatDirectTransport`、`patchGlobalFetchForZen` / `patchNodeHttpForZen`。
+
+改完后的本地校验（把 `BASE_URL` 临时指向本地回环 echo 服务，**不发外网**）确认：扩展发出的请求已与真实客户端逐项一致——UA、`x-opencode-session-id`、无 `x-client-request-id`、`stream:true`、17 个工具（含 `bash`/`read`）。
+
+### 13.5 本次未闭环的地方
+
+改完后对真实端点的验证**仍返回 403**。结合对照实验（同样的 OpenCode 原样请求连续 200，本扩展请求连续 403），更可能的原因是：
+
+- **匿名免费额度按出口 IP 共享**，本轮排查对上游发了上百次请求，当前 IP 的额度很可能已被消耗或限流；
+- 因此**无法在当下这个 IP 上确认 200**。
+
+:::warning[排障纪律：不要反复打真实接口]
+排查免费层时极易在短时间内对上游产生大量请求，可能触发 `429`/`FreeTierError`，甚至招致 IP 层面的封禁。**能离线对照（本地回环、逐项替换）就不要打真实端点。** 需要验证时，间隔一段时间、只发一次。
+:::
+
+恢复窗口过后用一条命令验证：
+
+```bash
+PI_OPENCODE_DIRECT_DEBUG=1 pi --print --no-session \
+  --provider opencode-zen-free --model mimo-v2.6-flash-free "Reply with exactly: OK"
+```
+
+若仍 403，则说明上游除了 UA 还在看别的特征（例如 TLS 指纹、`x-stainless-*` 头组合等），需要等 `pi-opencode-direct` 上游跟进 1.19.0。
+
+### 13.6 结构性弊端（重要）
+
+这是本方案**必须长期接受的代价**，也是选型时要提前想清楚的：
+
+- **被动跟改**：整套机制建立在“让服务端相信请求来自 OpenCode 官方客户端”之上。上游只要改一次端点、加一个头、收紧一条门槛，我们就得重新抓包、重新对齐。
+- **没有契约保障**：这不是公开 API，没有版本号、没有变更日志、没有兼容期，随时可能单方面失效。
+- **识别维度不透明**：这次是 UA 标记，下次可能是 TLS 指纹、请求头顺序、body 字段组合等更难模仿的特征。
+- **额度按 IP 共享**：多人/多进程共用同一出口 IP 时互相挤占，且排查本身就会消耗额度。
+- **封禁风险**：反复探测或高频调用可能招致 IP 级封禁，影响机器上其它依赖该出口的服务。
+
+**取舍建议**：
+
+- 把它当**临时/兜底通道**，不要当生产依赖；关键任务走有正式契约的付费 provider。
+- 上游改动后，优先**离线对照**定位差异，确认后再发**一次**真实请求验证。
+- 若某次改动后长期无法恢复，直接停用该扩展即可——它只是本地扩展，删掉不影响 Pi 与 pi-web 的其它功能。
 
 ## 附录：准备环境时用到的信息
 
