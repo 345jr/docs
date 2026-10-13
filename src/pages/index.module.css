@@ -24,13 +24,35 @@
 
 /* ================= 舞台布局 ================= */
 
+.wordmarkWrap {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  padding: clamp(0.6rem, 2.2vh, 1.4rem) clamp(1rem, 4vw, 3rem) 0;
+  pointer-events: none;
+}
+
+.wordmark {
+  display: block;
+  width: clamp(280px, 36vw, 560px);
+  max-width: 100%;
+  height: auto;
+  filter: drop-shadow(0 6px 18px rgba(25, 90, 45, 0.18));
+  user-select: none;
+}
+
+:global([data-theme='dark']) .wordmark {
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45)) brightness(1.08);
+}
+
 .stage {
   position: relative;
   z-index: 1;
-  height: 100%;
   max-width: 1360px;
   margin: 0 auto;
-  padding: clamp(1rem, 3.5vh, 3rem) clamp(1.5rem, 4vw, 4rem);
+  padding: clamp(0.6rem, 1.8vh, 1.4rem) clamp(1.5rem, 4vw, 4rem) clamp(1rem, 3.5vh, 3rem);
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
   align-items: center;
@@ -41,20 +63,6 @@
 
 .intro {
   min-width: 0;
-}
-
-.wordmark {
-  display: block;
-  width: min(100%, 560px);
-  height: auto;
-  margin: 0 auto clamp(1rem, 2vh, 1.6rem);
-  filter: drop-shadow(0 6px 20px rgba(25, 90, 45, 0.18));
-  pointer-events: none;
-  user-select: none;
-}
-
-:global([data-theme='dark']) .wordmark {
-  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.45)) brightness(1.08);
 }
 
 .badge {
@@ -288,7 +296,7 @@
 
 .mascotCard {
   position: relative;
-  height: min(520px, calc(100dvh - var(--ifm-navbar-height, 60px) - 9rem));
+  height: min(440px, calc(100dvh - var(--ifm-navbar-height, 60px) - 14rem));
   aspect-ratio: 1;
   border-radius: 32px;
   overflow: hidden;
@@ -517,10 +525,9 @@
   }
 
   .stage {
-    height: auto;
     grid-template-columns: 1fr;
-    gap: 2.5rem;
-    padding: 2.5rem 1.25rem 6rem;
+    gap: 2rem;
+    padding: 1rem 1.25rem 5rem;
   }
 
   .intro {
@@ -528,7 +535,7 @@
   }
 
   .wordmark {
-    width: min(100%, 420px);
+    width: min(80%, 380px);
   }
 
   .buttons {
@@ -555,7 +562,7 @@
   }
 
   .mascotCard {
-    height: min(360px, 78vw);
+    height: min(300px, 70vw);
   }
 }
 

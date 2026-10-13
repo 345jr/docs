@@ -170,6 +170,15 @@ export default function Home() {
           </span>
         ))}
 
+        <div className={styles.wordmarkWrap}>
+          <img
+            src={heroWordmark}
+            alt="Lopop Docs 幸运四叶草 · 个人知识库"
+            className={clsx(styles.wordmark, styles.fadeUp)}
+            style={{animationDelay: '0.05s'}}
+          />
+        </div>
+
         <div className={styles.stage}>
           {/* 左栏：文案 + 扇形特性卡片 */}
           <section className={styles.intro}>
@@ -206,11 +215,6 @@ export default function Home() {
 
           {/* 右栏：幸运小龙吉祥物 */}
           <section className={clsx(styles.mascotPane, styles.fadeUp)} style={{animationDelay: '0.3s'}}>
-            <img
-              src={heroWordmark}
-              alt="Lopop Docs 幸运四叶草 · 个人知识库"
-              className={styles.wordmark}
-            />
             <MascotCard />
           </section>
         </div>
