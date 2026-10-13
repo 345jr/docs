@@ -12,6 +12,7 @@
 
 - `docs/`：文档内容，中文编写，支持 `.md` 与 `.mdx`（可写 React）。
 - `src/`：自定义组件与页面。
+- `src/home-themes/`：首页主题。`registry.ts` 是注册表，每个主题是一个自包含目录（组件 + 样式 + 素材引用，如 `clover/`）。新增主题只需实现组件并在 `HOME_THEMES` 登记一行；SSR 固定渲染默认主题，用户选择存 localStorage（`docs-home-theme`），由导航栏「主题」模态框（`src/components/ThemePicker`，内含首页风格 + 主题色两个区块）切换。
 - `docusaurus.config.js`：站点配置。已关闭 blog、移除 footer、开启侧边栏折叠（`docs.sidebar.hideable`）。
 - `sidebars.js`：侧边栏配置，当前按 `docs/` 目录自动生成。
 - `src/types/`：TypeScript 共享类型。`editorTypes.ts`（在线编辑页）、`privateTypes.ts`（私有文档页与 `utils/privateClient.ts`）。**别把类型文件放进 `src/pages/`**——那里每个文件都会被 Docusaurus 当成路由，会多出一个 `/xxxTypes` 页面并在 SSG 阶段构建失败。

@@ -1,20 +1,29 @@
 import React, {useEffect, useMemo, useState} from 'react';
 import {Dialog} from '@base-ui/react/dialog';
+import {
+  DEFAULT_HOME_THEME_ID,
+  HOME_THEMES,
+  persistHomeThemeId,
+  readStoredHomeThemeId,
+} from '../../home-themes/registry';
 import styles from './styles.module.css';
 
 /**
- * 顶部导航栏主题色选择器。
+ * 顶部导航栏「主题」模态框，包含两个独立区块：
  *
- * 主题色即 Infima 的 --ifm-color-primary 及其 6 个明暗梯度（dark/darker/
- * darkest/light/lighter/lightest），全站的链接、按钮、tabs、admonition
- * 边框等都引用它们。
+ * 1. 首页风格：切换首页主题（见 src/home-themes/registry.ts）。选择结果
+ *    存 localStorage 并通过 CustomEvent 广播，首页挂载后恢复 / 即时切换。
+ * 2. 主题色：即 Infima 的 --ifm-color-primary 及其 6 个明暗梯度
+ *    （dark/darker/darkest/light/lighter/lightest），全站的链接、按钮、
+ *    tabs、admonition 边框等都引用它们。
  *
- * 实现方式与 FontPicker 的按需注入 <link> 一致：默认色仍在 custom.css 里，
- * 只有用户选中主题后才往 <head> 注入一段 <style>（分别覆盖亮 / 暗两套梯度，
- * 且排在 custom.css 之后所以优先级更高）；重置即移除 <style> 节点。
- * 不改 custom.css，构建产物保持零成本——没选过主题的访客不多下载一个字节。
+ * 主题色的实现方式与 FontPicker 的按需注入 <link> 一致：默认色仍在
+ * custom.css 里，只有用户选中后才往 <head> 注入一段 <style>（分别覆盖
+ * 亮 / 暗两套梯度，且排在 custom.css 之后所以优先级更高）；重置即移除
+ * <style> 节点。不改 custom.css，构建产物保持零成本——没选过主题色的
+ * 访客不多下载一个字节。
  *
- * 选择结果存 localStorage，SSR 初始渲染始终是站点默认色，
+ * 两项选择都存 localStorage，SSR 初始渲染始终是站点默认外观，
  * 在 useEffect 中恢复用户选择，避免 hydration mismatch。
  */
 
@@ -175,6 +184,7 @@ export default function ThemePicker(): React.ReactNode {
   const [open, setOpen] = useState(false);
   const [choice, setChoice] = useState<ThemeChoice | null>(null);
   const [customHex, setCustomHex] = useState('#4263eb');
+  const [homeThemeId, setHomeThemeId] = useState(DEFAULT_HOME_THEME_ID);
   // 「跟随系统」下暗色模式的实际生效色，用于预览与回显
   const [systemDark, setSystemDark] = useState(false);
 
@@ -183,6 +193,7 @@ export default function ThemePicker(): React.ReactNode {
     setChoice(stored);
     // 刷新/重开标签页后 <style> 节点已不在 DOM 里，存量配置要重新注入
     injectTheme(stored);
+    setHomeThemeId(readStoredHomeThemeId() ?? DEFAULT_HOME_THEME_ID);
     const query = window.matchMedia('(prefers-color-scheme: dark)');
     const sync = () => setSystemDark(document.documentElement.dataset.theme === 'dark');
     sync();
@@ -195,6 +206,11 @@ export default function ThemePicker(): React.ReactNode {
       observer.disconnect();
     };
   }, []);
+
+  const applyHomeTheme = (id: string) => {
+    setHomeThemeId(id);
+    persistHomeThemeId(id);
+  };
 
   const apply = (next: ThemeChoice | null) => {
     setChoice(next);
@@ -219,8 +235,8 @@ export default function ThemePicker(): React.ReactNode {
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger
         className={styles.trigger}
-        aria-label="配置主题色"
-        title="配置主题色">
+        aria-label="配置主题"
+        title="配置主题">
         {/* Lucide「palette」图标（ISC License，
             https://github.com/lucide-icons/lucide），单色描边、跟随导航栏文字色 */}
         <svg
@@ -243,11 +259,51 @@ export default function ThemePicker(): React.ReactNode {
       <Dialog.Portal>
         <Dialog.Backdrop className={styles.backdrop} />
         <Dialog.Popup className={styles.popup}>
-          <Dialog.Title className={styles.title}>主题色</Dialog.Title>
+          <Dialog.Title className={styles.title}>主题</Dialog.Title>
           <Dialog.Description className={styles.description}>
-            选中后立即生效并保存在本地浏览器，覆盖站点默认配色。
+            选中后立即生效并保存在本地浏览器，覆盖站点默认外观。
           </Dialog.Description>
 
+          <h3 className={styles.sectionTitle}>首页风格</h3>
+          <div className={styles.themeList}>
+            {HOME_THEMES.map((theme) => {
+              const selected = theme.id === homeThemeId;
+              return (
+                <button
+                  key={theme.id}
+                  type="button"
+                  className={`${styles.item} ${selected ? styles.itemActive : ''}`}
+                  onClick={() => applyHomeTheme(theme.id)}>
+                  <span
+                    className={styles.themePreview}
+                    style={{
+                      background: `linear-gradient(135deg, ${theme.preview[0]}, ${theme.preview[1]})`,
+                    }}
+                  />
+                  <span className={styles.themeMeta}>
+                    <span className={styles.itemLabel}>
+                      {theme.name}
+                      {theme.id === DEFAULT_HOME_THEME_ID ? ' · 默认' : ''}
+                    </span>
+                    <span className={styles.themeDesc}>{theme.description}</span>
+                  </span>
+                  {selected && (
+                    <svg className={styles.check} width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+                      <path
+                        d="M3 8.5l3.5 3.5L13 4.5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <h3 className={styles.sectionTitle}>主题色</h3>
           <div className={styles.grid}>
             {PRESETS.map((preset) => {
               const selected = choice?.light.toLowerCase() === preset.light.toLowerCase();
@@ -320,7 +376,7 @@ export default function ThemePicker(): React.ReactNode {
 
           <div className={styles.footer}>
             <span className={styles.current}>
-              当前：
+              主题色：
               {choice ? (
                 <>
                   {choice.name}
@@ -334,6 +390,7 @@ export default function ThemePicker(): React.ReactNode {
               )}
             </span>
             <div className={styles.footerActions}>
+              {/* 只重置主题色；首页风格点上面的默认主题卡片即可恢复 */}
               <button
                 type="button"
                 className={styles.resetBtn}

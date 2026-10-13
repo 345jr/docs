@@ -1,4 +1,4 @@
-/* 顶部导航栏主题色选择器样式 */
+/* 顶部导航栏「主题」模态框样式（首页风格 + 主题色） */
 
 .trigger {
   display: inline-flex;
@@ -59,12 +59,53 @@
   color: var(--ifm-color-emphasis-700);
 }
 
+/* 区块标题（首页风格 / 主题色） */
+.sectionTitle {
+  margin: 18px 0 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--ifm-color-emphasis-600);
+}
+
+/* 首页风格列表：单列，每项 = 预览色块 + 名称/描述 + 选中勾 */
+.themeList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.themePreview {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.themeMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.themeDesc {
+  font-size: 0.76rem;
+  color: var(--ifm-color-emphasis-600);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* 预设色板：两列网格，每项 = 色块 + 名称 + 选中勾 */
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  margin-top: 16px;
+  margin-top: 10px;
 }
 
 .item {
