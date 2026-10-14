@@ -50,36 +50,72 @@ function Sparkle({className}: {className?: string}): React.ReactNode {
   );
 }
 
-/** 全屏漂浮的四叶草粒子（位置 / 大小 / 动画节奏均为固定编排，避免均匀感的复制粘贴） */
+/**
+ * 全屏漂浮的四叶草粒子。
+ *
+ * 位置 / 大小 / 时长 / 透明度全部手写编排：铺满全屏但不排成网格，
+ * 大小跨 14–34px、时长跨 8–13.5s、延迟打散到 5.6s，避免「同一批
+ * 复制粘贴」的均匀感。密度按「氛围元素要么成气候要么没有」的
+ * 原则拉到 28 颗，让边缘也留不下空白。
+ */
 const FLOATING_CLOVERS = [
-  {left: '3%', top: '14%', size: 40, delay: '0s', duration: '11s', opacity: 0.4},
-  {left: '11%', top: '72%', size: 26, delay: '1.4s', duration: '9s', opacity: 0.32},
-  {left: '24%', top: '6%', size: 20, delay: '3s', duration: '12s', opacity: 0.28},
-  {left: '55%', top: '10%', size: 24, delay: '0.8s', duration: '10s', opacity: 0.3},
-  {left: '48%', top: '82%', size: 30, delay: '2.2s', duration: '13s', opacity: 0.3},
-  {left: '94%', top: '70%', size: 34, delay: '4s', duration: '9.5s', opacity: 0.32},
-  {left: '17%', top: '38%', size: 18, delay: '5s', duration: '8.5s', opacity: 0.25},
-  {left: '33%', top: '88%', size: 22, delay: '1s', duration: '10.5s', opacity: 0.3},
-  {left: '68%', top: '88%', size: 26, delay: '2.8s', duration: '11.5s', opacity: 0.3},
-  {left: '82%', top: '26%', size: 20, delay: '3.6s', duration: '9s', opacity: 0.26},
-  {left: '90%', top: '45%', size: 16, delay: '0.5s', duration: '12.5s', opacity: 0.22},
-  {left: '7%', top: '50%', size: 18, delay: '4.6s', duration: '10s', opacity: 0.24},
-  {left: '40%', top: '20%', size: 14, delay: '2s', duration: '8s', opacity: 0.2},
-  {left: '63%', top: '68%', size: 18, delay: '5.4s', duration: '13.5s', opacity: 0.24},
+  {left: '2%', top: '10%', size: 34, delay: '0s', duration: '11s', opacity: 0.34},
+  {left: '8%', top: '30%', size: 18, delay: '5.2s', duration: '9.5s', opacity: 0.24},
+  {left: '5%', top: '55%', size: 26, delay: '2.4s', duration: '12s', opacity: 0.28},
+  {left: '3%', top: '80%', size: 20, delay: '4.1s', duration: '10s', opacity: 0.26},
+  {left: '13%', top: '8%', size: 22, delay: '1.2s', duration: '13s', opacity: 0.26},
+  {left: '15%', top: '45%', size: 16, delay: '3.3s', duration: '8.5s', opacity: 0.2},
+  {left: '12%', top: '70%', size: 28, delay: '0.7s', duration: '11.5s', opacity: 0.3},
+  {left: '19%', top: '20%', size: 15, delay: '4.8s', duration: '9s', opacity: 0.22},
+  {left: '22%', top: '62%', size: 24, delay: '2.9s', duration: '12.5s', opacity: 0.27},
+  {left: '27%', top: '5%', size: 20, delay: '1.7s', duration: '10.5s', opacity: 0.24},
+  {left: '30%', top: '33%', size: 14, delay: '5.6s', duration: '8s', opacity: 0.2},
+  {left: '33%', top: '88%', size: 22, delay: '0.4s', duration: '11s', opacity: 0.26},
+  {left: '38%', top: '55%', size: 17, delay: '3.8s', duration: '13.5s', opacity: 0.22},
+  {left: '44%', top: '12%', size: 26, delay: '2.1s', duration: '9.5s', opacity: 0.28},
+  {left: '46%', top: '74%', size: 19, delay: '5s', duration: '12s', opacity: 0.24},
+  {left: '52%', top: '40%', size: 15, delay: '1.4s', duration: '10s', opacity: 0.2},
+  {left: '56%', top: '8%', size: 24, delay: '4.4s', duration: '11.5s', opacity: 0.27},
+  {left: '60%', top: '84%', size: 30, delay: '0.9s', duration: '9s', opacity: 0.3},
+  {left: '64%', top: '28%', size: 16, delay: '2.7s', duration: '12.5s', opacity: 0.21},
+  {left: '68%', top: '58%', size: 22, delay: '5.3s', duration: '8.5s', opacity: 0.26},
+  {left: '73%', top: '14%', size: 18, delay: '3.1s', duration: '13s', opacity: 0.23},
+  {left: '76%', top: '44%', size: 25, delay: '1.9s', duration: '10.5s', opacity: 0.28},
+  {left: '80%', top: '76%', size: 20, delay: '4.6s', duration: '11s', opacity: 0.25},
+  {left: '85%', top: '22%', size: 32, delay: '0.6s', duration: '9.5s', opacity: 0.32},
+  {left: '88%', top: '52%', size: 17, delay: '5.5s', duration: '12s', opacity: 0.22},
+  {left: '92%', top: '34%', size: 21, delay: '2.3s', duration: '8s', opacity: 0.24},
+  {left: '91%', top: '66%', size: 27, delay: '3.6s', duration: '13.5s', opacity: 0.3},
+  {left: '93%', top: '12%', size: 15, delay: '4.9s', duration: '10s', opacity: 0.2},
 ];
 
-/** 金色闪光粒子 */
-const SPARKLES = [
-  {left: '34%', top: '16%', size: 16, delay: '0s'},
-  {left: '58%', top: '62%', size: 12, delay: '0.9s'},
-  {left: '87%', top: '12%', size: 18, delay: '1.7s'},
-  {left: '70%', top: '40%', size: 11, delay: '2.5s'},
-  {left: '15%', top: '26%', size: 13, delay: '0.4s'},
-  {left: '44%', top: '58%', size: 10, delay: '1.3s'},
-  {left: '78%', top: '78%', size: 14, delay: '2.1s'},
-  {left: '6%', top: '86%', size: 12, delay: '2.9s'},
-  {left: '92%', top: '32%', size: 10, delay: '0.7s'},
-  {left: '28%', top: '68%', size: 11, delay: '1.9s'},
+/**
+ * 闪光粒子：金色为主，掺约 1/3 淡奶油色（tone: 'pale'）制造冷暖层次。
+ * 大小 9–16px、闪烁相位打散，密而不整齐。
+ */
+const SPARKLES: {left: string; top: string; size: number; delay: string; tone?: 'pale'}[] = [
+  {left: '6%', top: '18%', size: 14, delay: '0s'},
+  {left: '11%', top: '40%', size: 10, delay: '1.1s', tone: 'pale'},
+  {left: '9%', top: '88%', size: 16, delay: '2.2s'},
+  {left: '18%', top: '12%', size: 11, delay: '0.5s'},
+  {left: '20%', top: '52%', size: 13, delay: '1.6s', tone: 'pale'},
+  {left: '25%', top: '78%', size: 10, delay: '2.6s'},
+  {left: '31%', top: '22%', size: 15, delay: '0.8s'},
+  {left: '36%', top: '44%', size: 9, delay: '1.9s', tone: 'pale'},
+  {left: '35%', top: '94%', size: 12, delay: '2.9s'},
+  {left: '43%', top: '28%', size: 13, delay: '0.3s'},
+  {left: '49%', top: '62%', size: 11, delay: '1.4s', tone: 'pale'},
+  {left: '54%', top: '18%', size: 16, delay: '2.4s'},
+  {left: '58%', top: '92%', size: 10, delay: '0.9s'},
+  {left: '62%', top: '48%', size: 14, delay: '2s', tone: 'pale'},
+  {left: '66%', top: '8%', size: 12, delay: '1.2s'},
+  {left: '71%', top: '70%', size: 9, delay: '2.7s'},
+  {left: '78%', top: '30%', size: 15, delay: '0.4s'},
+  {left: '82%', top: '90%', size: 11, delay: '1.7s', tone: 'pale'},
+  {left: '86%', top: '58%', size: 13, delay: '2.8s'},
+  {left: '90%', top: '8%', size: 10, delay: '1s'},
+  {left: '94%', top: '44%', size: 16, delay: '2.3s', tone: 'pale'},
+  {left: '95%', top: '80%', size: 12, delay: '0.6s'},
 ];
 
 /**
@@ -158,7 +194,7 @@ export default function CloverHome(): React.ReactNode {
       {SPARKLES.map((s, i) => (
         <span
           key={`s${i}`}
-          className={styles.sparkle}
+          className={clsx(styles.sparkle, s.tone === 'pale' && styles.sparklePale)}
           style={{left: s.left, top: s.top, width: s.size, animationDelay: s.delay}}>
           <Sparkle className={styles.cloverSvg} />
         </span>

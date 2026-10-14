@@ -293,14 +293,20 @@
   pointer-events: none;
 }
 
+/* 掺在金色里的淡奶油色闪光，拉开冷暖层次 */
+.sparklePale {
+  color: #fff4cf;
+  filter: drop-shadow(0 0 7px rgba(255, 236, 180, 0.8));
+}
+
 @keyframes twinkle {
   0%, 100% {
-    opacity: 0.15;
-    transform: scale(0.6) rotate(0deg);
+    opacity: 0.28;
+    transform: scale(0.62) rotate(0deg);
   }
   50% {
-    opacity: 0.95;
-    transform: scale(1.1) rotate(20deg);
+    opacity: 1;
+    transform: scale(1.12) rotate(20deg);
   }
 }
 
@@ -385,6 +391,16 @@
 
 :global([data-theme='dark']) .cloverFloat {
   color: rgba(110, 200, 125, 0.7);
+}
+
+:global([data-theme='dark']) .sparkle {
+  color: #ffcf58;
+  filter: drop-shadow(0 0 8px rgba(255, 207, 88, 0.7));
+}
+
+:global([data-theme='dark']) .sparklePale {
+  color: #fff6da;
+  filter: drop-shadow(0 0 9px rgba(255, 246, 218, 0.8));
 }
 
 :global([data-theme='dark']) .waveBack {
