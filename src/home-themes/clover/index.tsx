@@ -3,7 +3,7 @@
  * + 扇形特性便签 + 幸运小龙吉祥物。素材与样式全部内聚在本目录，
  * 登记见 ../registry.ts。
  */
-import React, {useRef} from 'react';
+import React from 'react';
 import clsx from 'clsx';
 import Link from '@docusaurus/Link';
 import Heading from '@theme/Heading';
@@ -94,48 +94,29 @@ const FEATURES = [
   },
 ];
 
-/** 吉祥物卡片：鼠标视差倾斜（外圈负责漂浮动画，内圈负责倾斜，互不干扰） */
-function MascotCard(): React.ReactNode {
-  const tiltRef = useRef<HTMLDivElement>(null);
-
-  const handleMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const el = tiltRef.current;
-    if (!el) {
-      return;
-    }
-    const r = el.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width - 0.5;
-    const y = (e.clientY - r.top) / r.height - 0.5;
-    el.style.transform =
-      `perspective(1000px) rotateY(${(x * 9).toFixed(2)}deg) ` +
-      `rotateX(${(-y * 9).toFixed(2)}deg)`;
-  };
-
-  const handleLeave = () => {
-    const el = tiltRef.current;
-    if (el) {
-      el.style.transform = 'perspective(1000px)';
-    }
-  };
-
+/** 右栏明信片：奶白纸框 + 齿孔邮票 + 邮戳，静置无动效，像随手搁在草地上的一封信 */
+function MascotPostcard(): React.ReactNode {
   return (
-    <div className={styles.mascotFloat}>
-      <div
-        ref={tiltRef}
-        className={styles.mascotCard}
-        onMouseMove={handleMove}
-        onMouseLeave={handleLeave}>
-        <img
-          src={mascotLucky}
-          alt="顶着幸运四叶草的小恐龙，周围漂浮着星星、彩虹与马蹄铁"
-          className={styles.mascotImg}
-        />
-        <span className={styles.mascotChip}>
-          <Clover className={styles.mascotChipClover} />
-          幸运小龙 · 今日也在守护你的笔记
+    <figure className={styles.postcard}>
+      <span className={styles.stamp} aria-hidden="true">
+        <Clover className={styles.stampClover} />
+      </span>
+      <span className={styles.postmark} aria-hidden="true">
+        <span className={styles.postmarkText}>
+          LUCKY
+          <br />
+          POST
         </span>
-      </div>
-    </div>
+      </span>
+      <img
+        src={mascotLucky}
+        alt="顶着幸运四叶草的小恐龙，周围漂浮着星星、彩虹与马蹄铁"
+        className={styles.postcardImg}
+      />
+      <figcaption className={styles.postcardCaption}>
+        幸运小龙 · 守护你的每一页笔记
+      </figcaption>
+    </figure>
   );
 }
 
@@ -210,9 +191,9 @@ export default function CloverHome(): React.ReactNode {
           </div>
         </section>
 
-        {/* 右栏：幸运小龙吉祥物 */}
+        {/* 右栏：幸运小龙明信片 */}
         <section className={clsx(styles.mascotPane, styles.fadeUp)} style={{animationDelay: '0.3s'}}>
-          <MascotCard />
+          <MascotPostcard />
         </section>
       </div>
 

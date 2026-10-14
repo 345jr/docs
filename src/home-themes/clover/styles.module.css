@@ -271,7 +271,7 @@
   font-size: 0.88rem;
 }
 
-/* ================= 右栏：吉祥物 ================= */
+/* ================= 右栏：明信片 ================= */
 
 .mascotPane {
   display: flex;
@@ -281,63 +281,90 @@
   height: 100%;
 }
 
-.mascotFloat {
-  animation: mascotBob 7s ease-in-out infinite;
-}
-
-@keyframes mascotBob {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-14px);
-  }
-}
-
-.mascotCard {
+/* 奶白卡纸：顶部窄边、底部宽边留给手写落款，微微斜放 */
+.postcard {
   position: relative;
-  height: min(440px, calc(100dvh - var(--ifm-navbar-height, 60px) - 14rem));
-  aspect-ratio: 1;
-  border-radius: 32px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.65);
+  margin: 0;
+  width: min(420px, calc(100dvh - var(--ifm-navbar-height, 60px) - 13rem), 100%);
+  padding: clamp(10px, 1.6vw, 16px) clamp(10px, 1.6vw, 16px) clamp(44px, 5.5vw, 56px);
+  background: #fdfcf6;
+  border: 1px solid rgba(95, 75, 40, 0.1);
+  transform: rotate(-2deg);
   box-shadow:
-    0 30px 70px rgba(25, 90, 45, 0.3),
-    0 0 0 8px rgba(255, 255, 255, 0.28);
-  transition: transform 0.18s ease-out;
-  will-change: transform;
+    0 1px 2px rgba(70, 55, 25, 0.08),
+    0 14px 30px rgba(35, 80, 45, 0.16),
+    0 34px 64px rgba(35, 80, 45, 0.12);
 }
 
-.mascotImg {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.postcardImg {
   display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
-.mascotChip {
+/* 手写落款：写在纸面上，不是叠加的盒子 */
+.postcardCaption {
   position: absolute;
-  left: 1rem;
-  bottom: 1rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.45rem 0.95rem;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #134a26;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 6px 18px rgba(20, 80, 40, 0.2);
+  left: 0;
+  right: 0;
+  bottom: clamp(10px, 1.4vw, 15px);
+  text-align: center;
+  font-family: 'Kaiti SC', 'STKaiti', 'KaiTi', cursive;
+  font-size: clamp(0.85rem, 1.05vw, 0.98rem);
+  letter-spacing: 0.08em;
+  color: #6b7f66;
 }
 
-.mascotChipClover {
-  width: 1.05em;
-  height: 1.05em;
+/* 右上角齿孔邮票：压住照片与纸边 */
+.stamp {
+  position: absolute;
+  z-index: 1;
+  top: clamp(4px, 0.8vw, 8px);
+  right: clamp(4px, 0.8vw, 8px);
+  width: clamp(38px, 4.4vw, 46px);
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 2px dashed rgba(70, 140, 90, 0.55);
+  transform: rotate(5deg);
+  box-shadow: 0 2px 6px rgba(40, 80, 45, 0.18);
+}
+
+.stampClover {
+  width: 56%;
   color: #2f9e4f;
+}
+
+/* 左上角双圈邮戳：半透明，斜盖在照片角上 */
+.postmark {
+  position: absolute;
+  z-index: 1;
+  top: clamp(24px, 3.6vw, 38px);
+  left: clamp(12px, 1.8vw, 20px);
+  width: clamp(58px, 6.6vw, 72px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(88, 96, 84, 0.35);
+  box-shadow: inset 0 0 0 3px rgba(253, 252, 246, 0.35), inset 0 0 0 5px rgba(88, 96, 84, 0.28);
+  transform: rotate(-12deg);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.postmarkText {
+  font-size: clamp(0.5rem, 0.75vw, 0.58rem);
+  font-weight: 700;
+  line-height: 1.6;
+  letter-spacing: 0.14em;
+  text-align: center;
+  color: rgba(88, 96, 84, 0.62);
 }
 
 /* ================= 漂浮粒子 ================= */
@@ -496,11 +523,18 @@
     0 8px 18px rgba(0, 0, 0, 0.4);
 }
 
-:global([data-theme='dark']) .mascotCard {
-  border-color: rgba(140, 220, 150, 0.25);
+/* 明信片是实物纸卡，暗色下保持纸感，只加深投影 */
+:global([data-theme='dark']) .postcard {
+  background: #f4f1e4;
+  border-color: rgba(0, 0, 0, 0.18);
   box-shadow:
-    0 30px 70px rgba(0, 0, 0, 0.55),
-    0 0 0 8px rgba(140, 220, 150, 0.08);
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 14px 30px rgba(0, 0, 0, 0.45),
+    0 34px 64px rgba(0, 0, 0, 0.4);
+}
+
+:global([data-theme='dark']) .postmark {
+  box-shadow: inset 0 0 0 3px rgba(244, 241, 228, 0.35), inset 0 0 0 5px rgba(88, 96, 84, 0.28);
 }
 
 :global([data-theme='dark']) .cloverFloat {
@@ -561,8 +595,9 @@
     transform: rotate(-0.8deg);
   }
 
-  .mascotCard {
-    height: min(300px, 70vw);
+  .postcard {
+    width: min(320px, 82vw);
+    transform: rotate(-1.4deg);
   }
 }
 
@@ -571,8 +606,7 @@
 @media (prefers-reduced-motion: reduce) {
   .fadeUp,
   .cloverFloat,
-  .sparkle,
-  .mascotFloat {
+  .sparkle {
     animation: none;
     opacity: 1;
   }
@@ -580,8 +614,7 @@
   .btnPrimary,
   .btnGhost,
   .fanCard,
-  .fanIconWrap,
-  .mascotCard {
+  .fanIconWrap {
     transition: none;
   }
 }
