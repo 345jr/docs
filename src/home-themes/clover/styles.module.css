@@ -59,216 +59,107 @@
   gap: clamp(1.5rem, 3.5vw, 4rem);
 }
 
-/* ================= 左栏：文案 ================= */
+/* ================= 左栏：三张明信片 ================= */
 
 .intro {
   min-width: 0;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.4rem 1rem;
-  border-radius: 999px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: #135028;
-  background: rgba(255, 255, 255, 0.66);
-  border: 1px solid rgba(70, 150, 90, 0.35);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 4px 18px rgba(30, 90, 50, 0.14);
-}
-
-.badgeClover {
-  width: 1.05em;
-  height: 1.05em;
-  color: #2f9e4f;
-}
-
-.title {
-  margin: 1rem 0 0;
-  font-size: clamp(2.4rem, 4.6vw, 4.1rem);
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: 0.015em;
-  color: transparent;
-  background: linear-gradient(115deg, #0f5c2c 15%, #2f9e4f 55%, #6fce7f 90%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  text-wrap: balance;
-}
-
-.subtitle {
-  margin: 1rem 0 0;
-  font-size: clamp(0.98rem, 1.35vw, 1.14rem);
-  line-height: 1.85;
-  color: #2c543a;
-}
-
-/* ------- 按钮 ------- */
-
-/* 按钮区里现在只放「开始阅读」一个按钮，单独留出顶部呼吸空间 */
-.buttons {
-  margin-top: 1.4rem;
   display: flex;
   align-items: center;
-  gap: 0.9rem;
-  flex-wrap: wrap;
 }
-
-.btnPrimary {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0.78rem 1.9rem;
-  border-radius: 999px;
-  font-size: 1.02rem;
-  font-weight: 700;
-  color: #f4fff2;
-  background: linear-gradient(135deg, #1d7a3c, #3fae5a);
-  box-shadow: 0 10px 26px rgba(25, 110, 55, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-
-.btnPrimary:hover {
-  transform: translateY(-3px) scale(1.02);
-  color: #ffffff;
-  text-decoration: none;
-  box-shadow: 0 16px 38px rgba(25, 110, 55, 0.45), 0 0 0 6px rgba(90, 200, 115, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-}
-
-.btnArrow {
-  transition: transform 0.25s ease;
-}
-
-.btnPrimary:hover .btnArrow {
-  transform: translateX(4px);
-}
-
-.btnGhost {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.78rem 1.7rem;
-  border-radius: 999px;
-  font-size: 1.02rem;
-  font-weight: 600;
-  color: #146031;
-  border: 1.5px solid rgba(40, 130, 70, 0.5);
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: transform 0.25s ease, background 0.25s ease;
-}
-
-.btnGhost:hover {
-  transform: translateY(-3px);
-  color: #0f5c2c;
-  text-decoration: none;
-  background: rgba(255, 255, 255, 0.85);
-}
-
-/* ================= 扇形特性便签 ================= */
 
 .fan {
-  margin-top: clamp(1.4rem, 3.2vh, 2.6rem);
+  width: 100%;
   display: flex;
   align-items: stretch;
-  gap: clamp(0.8rem, 1.4vw, 1.3rem);
-  perspective: 800px;
+  gap: clamp(0.7rem, 1.6vw, 1.4rem);
 }
 
-.fanCard {
+/* 小明信片：奶白卡纸，底部宽边留手写落款，三张纸色与错落各不相同 */
+.miniPostcard {
   --accent: #3fae5a;
+  --paper: #fdfcf6;
   position: relative;
   flex: 1 1 0;
   min-width: 0;
-  padding: 1.25rem 1.05rem 1.2rem;
-  border-radius: 20px;
-  text-align: center;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(70, 140, 90, 0.18);
-  box-shadow: 0 10px 28px rgba(35, 90, 50, 0.1);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transform-origin: 50% 120%;
-  transition: transform 0.35s cubic-bezier(0.22, 0.8, 0.32, 1), box-shadow 0.35s ease, border-color 0.35s ease;
-}
-
-/* 顶部幸运色条 */
-.fanCard::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 18%;
-  right: 18%;
-  height: 4px;
-  border-radius: 0 0 6px 6px;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0.85;
-}
-
-/* 扇形错落 */
-.fanCard:nth-child(1) {
-  transform: rotate(-3deg) translateY(10px);
-}
-
-.fanCard:nth-child(2) {
-  transform: rotate(0.8deg) translateY(-8px);
-}
-
-.fanCard:nth-child(3) {
-  transform: rotate(3deg) translateY(12px);
-}
-
-.fanCard:hover {
-  transform: rotate(0deg) translateY(-12px) scale(1.05);
-  z-index: 2;
-  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
-  box-shadow:
-    0 22px 46px rgba(35, 110, 55, 0.2),
-    0 0 0 5px color-mix(in srgb, var(--accent) 20%, transparent);
-}
-
-.fanIconWrap {
-  width: clamp(64px, 7.5vh, 88px);
-  height: clamp(64px, 7.5vh, 88px);
-  margin: 0.2rem auto 0.85rem;
-  border-radius: 24px;
-  overflow: hidden;
-  background: linear-gradient(160deg, #f3fbec, #e2f4d9);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--accent) 32%, transparent),
-    0 8px 18px rgba(45, 110, 60, 0.14);
-  transition: transform 0.35s ease;
-}
-
-.fanCard:hover .fanIconWrap {
-  transform: rotate(-5deg) scale(1.08);
-}
-
-.fanIcon {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transform: scale(1.32);
-}
-
-.fanTitle {
-  font-size: 1.08rem;
-  font-weight: 700;
-  color: #17492a;
-  margin-bottom: 0.45rem;
-}
-
-.fanText {
   margin: 0;
-  color: #476c53;
-  line-height: 1.75;
-  font-size: 0.88rem;
+  padding: clamp(8px, 1vw, 12px) clamp(8px, 1vw, 12px) clamp(34px, 4vw, 44px);
+  background: var(--paper);
+  border: 1px solid rgba(95, 75, 40, 0.1);
+  box-shadow:
+    0 1px 2px rgba(70, 55, 25, 0.08),
+    0 12px 26px rgba(35, 80, 45, 0.15);
+  transition: transform 0.35s cubic-bezier(0.22, 0.8, 0.32, 1), box-shadow 0.35s ease;
+}
+
+/* 水彩四叶草：新绿邮票 */
+.pcClover {
+  transform: rotate(-4deg) translateY(8px);
+}
+
+/* 铜刻金币：做旧牛皮纸 + 金色邮票 */
+.pcCoin {
+  --accent: #b98a2e;
+  --paper: #f9f1e0;
+  transform: rotate(1.6deg) translateY(-10px);
+}
+
+/* 剪纸拼贴：淡粉纸 + 粉色邮票 */
+.pcCollage {
+  --accent: #e06a9a;
+  --paper: #fdf5f8;
+  transform: rotate(4deg) translateY(10px);
+}
+
+.miniPostcard:hover {
+  transform: rotate(0deg) translateY(-12px) scale(1.04);
+  z-index: 2;
+  box-shadow:
+    0 2px 4px rgba(70, 55, 25, 0.1),
+    0 24px 48px rgba(35, 90, 50, 0.22),
+    0 0 0 5px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.miniImg {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06);
+}
+
+/* 手写落款：写在纸面宽边上 */
+.miniCaption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: clamp(8px, 1vw, 12px);
+  text-align: center;
+  font-family: 'Kaiti SC', 'STKaiti', 'KaiTi', cursive;
+  font-size: clamp(0.82rem, 1vw, 0.95rem);
+  letter-spacing: 0.1em;
+  color: #7a7160;
+}
+
+/* 右上角齿孔邮票：颜色跟随各卡片的幸运色 */
+.miniStamp {
+  position: absolute;
+  z-index: 1;
+  top: clamp(2px, 0.5vw, 6px);
+  right: clamp(2px, 0.5vw, 6px);
+  width: clamp(30px, 3.2vw, 38px);
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border: 2px dashed color-mix(in srgb, var(--accent) 60%, transparent);
+  transform: rotate(6deg);
+  box-shadow: 0 2px 5px rgba(40, 80, 45, 0.16);
+}
+
+.miniStampIcon {
+  width: 56%;
+  color: var(--accent);
 }
 
 /* ================= 右栏：明信片 ================= */
@@ -464,63 +355,18 @@
   );
 }
 
-:global([data-theme='dark']) .title {
-  background: linear-gradient(115deg, #d8f5cf 10%, #7fd98d 55%, #3fae5a 95%);
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
-:global([data-theme='dark']) .subtitle {
-  color: #a9cbae;
-}
-
-:global([data-theme='dark']) .badge {
-  color: #cdeed0;
-  background: rgba(16, 34, 18, 0.6);
-  border-color: rgba(110, 200, 125, 0.32);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
-}
-
-:global([data-theme='dark']) .badgeClover {
-  color: #7fd98d;
-}
-
-:global([data-theme='dark']) .btnGhost {
-  color: #b7e5ba;
-  border-color: rgba(120, 210, 130, 0.45);
-  background: rgba(16, 34, 18, 0.5);
-}
-
-:global([data-theme='dark']) .btnGhost:hover {
-  color: #e2f8e2;
-  background: rgba(24, 48, 26, 0.8);
-}
-
-:global([data-theme='dark']) .fanCard {
-  background: rgba(18, 32, 20, 0.78);
-  border-color: rgba(120, 200, 130, 0.18);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
-}
-
-:global([data-theme='dark']) .fanCard:hover {
+/* 明信片是实物纸卡，暗色下保持纸感，只加深投影 */
+:global([data-theme='dark']) .miniPostcard {
   box-shadow:
-    0 22px 46px rgba(0, 0, 0, 0.55),
-    0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent);
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 12px 26px rgba(0, 0, 0, 0.4);
 }
 
-:global([data-theme='dark']) .fanTitle {
-  color: #d5f2c8;
-}
-
-:global([data-theme='dark']) .fanText {
-  color: #9dc2a1;
-}
-
-:global([data-theme='dark']) .fanIconWrap {
-  background: linear-gradient(160deg, #223324, #18251a);
+:global([data-theme='dark']) .miniPostcard:hover {
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent),
-    0 8px 18px rgba(0, 0, 0, 0.4);
+    0 2px 4px rgba(0, 0, 0, 0.35),
+    0 24px 48px rgba(0, 0, 0, 0.55),
+    0 0 0 5px color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 /* 明信片是实物纸卡，暗色下保持纸感，只加深投影 */
@@ -572,27 +418,23 @@
     width: min(80%, 380px);
   }
 
-  .buttons {
-    justify-content: center;
-  }
-
   .fan {
     flex-direction: column;
-    max-width: 420px;
+    max-width: 300px;
     margin-left: auto;
     margin-right: auto;
   }
 
-  .fanCard:nth-child(1) {
-    transform: rotate(-1.2deg);
+  .pcClover {
+    transform: rotate(-1.6deg);
   }
 
-  .fanCard:nth-child(2) {
-    transform: rotate(1deg);
+  .pcCoin {
+    transform: rotate(1.2deg);
   }
 
-  .fanCard:nth-child(3) {
-    transform: rotate(-0.8deg);
+  .pcCollage {
+    transform: rotate(-1deg);
   }
 
   .postcard {
@@ -611,10 +453,7 @@
     opacity: 1;
   }
 
-  .btnPrimary,
-  .btnGhost,
-  .fanCard,
-  .fanIconWrap {
+  .miniPostcard {
     transition: none;
   }
 }

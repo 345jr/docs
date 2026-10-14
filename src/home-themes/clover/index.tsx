@@ -5,15 +5,13 @@
  */
 import React from 'react';
 import clsx from 'clsx';
-import Link from '@docusaurus/Link';
-import Heading from '@theme/Heading';
 
 import heroBg from '../../../static/img/home/hero-meadow-20261013-111741-0.jpg';
 import heroWordmark from '../../../static/img/home/hero-wordmark.png';
 import mascotLucky from '../../../static/img/home/mascot-lucky-20261013-114830-0.jpg';
-import iconWrite from '../../../static/img/home/icon-write-20261013-111820-0.jpg';
-import iconBook from '../../../static/img/home/icon-book-20261013-111819-0.jpg';
-import iconGear from '../../../static/img/home/icon-gear-20261013-112154-0.jpg';
+import postcardClover from '../../../static/img/home/postcard-clover-20261014-110822-0.jpg';
+import postcardCoin from '../../../static/img/home/postcard-coin-20261014-111104-0.jpg';
+import postcardCollage from '../../../static/img/home/postcard-collage-20261014-111132-0.jpg';
 
 import styles from './styles.module.css';
 
@@ -70,27 +68,31 @@ const SPARKLES = [
   {left: '70%', top: '40%', size: 11, delay: '2.5s'},
 ];
 
-const FEATURES = [
+/**
+ * 左栏三张明信片：幸运元素 × 三种艺术风格，由 Seedream 生成
+ * variant 对应 styles.module.css 里的纸色 / 错落角度
+ */
+const POSTCARDS = [
   {
-    img: iconWrite,
-    alt: '羽毛笔与笔记本上的四叶草',
-    accent: '#3fae5a',
-    title: '写作即播种',
-    text: 'Markdown 轻装上阵，写下的每段文字，都是埋进土里的种子。',
+    img: postcardClover,
+    alt: '水彩画：一株挂着露珠的四叶草从泥土中生长出来，旁边散落一颗种子',
+    variant: 'pcClover',
+    stamp: 'clover',
+    caption: '写作即播种',
   },
   {
-    img: iconBook,
-    alt: '书本上生长的四叶草',
-    accent: '#e0a92e',
-    title: '知识在生长',
-    text: '结构化目录把零散笔记连成草地，沉淀为可检索的知识。',
+    img: postcardCoin,
+    alt: '复古铜版雕刻画：一摞金币像小塔一样堆叠，顶端长出绿色嫩芽',
+    variant: 'pcCoin',
+    stamp: 'sparkle',
+    caption: '知识在生长',
   },
   {
-    img: iconGear,
-    alt: '四叶草形状的齿轮',
-    accent: '#e06a9a',
-    title: '风格由你定',
-    text: '组件、主题与字体随心搭配，站点长成你喜欢的样子。',
+    img: postcardCollage,
+    alt: '剪纸拼贴画：粉金色马蹄铁、黄色幸运星、彩虹与白云自由拼贴',
+    variant: 'pcCollage',
+    stamp: 'clover',
+    caption: '风格由你定',
   },
 ];
 
@@ -158,35 +160,23 @@ export default function CloverHome(): React.ReactNode {
       </div>
 
       <div className={styles.stage}>
-        {/* 左栏：文案 + 扇形特性卡片 */}
+        {/* 左栏：三张风格各异的明信片，像随手摊在草地上的收藏 */}
         <section className={styles.intro}>
-          <p className={clsx(styles.subtitle, styles.fadeUp)} style={{animationDelay: '0.15s'}}>
-            在清晨的草地上，种下每一份笔记，
-            <br />
-            让知识像四叶草一样，悄悄生长、久久幸运。
-          </p>
-          <div className={clsx(styles.buttons, styles.fadeUp)} style={{animationDelay: '0.25s'}}>
-            <Link className={styles.btnPrimary} to="/docs/writing/create-a-document">
-              开始阅读
-              <span className={styles.btnArrow}>→</span>
-            </Link>
-          </div>
-
-          {/* 扇形排布的三张便签卡：错落旋转，悬停回正浮起 */}
-          <div className={clsx(styles.fan, styles.fadeUp)} style={{animationDelay: '0.4s'}}>
-            {FEATURES.map((f) => (
-              <article
-                key={f.title}
-                className={styles.fanCard}
-                style={{'--accent': f.accent} as React.CSSProperties}>
-                <div className={styles.fanIconWrap}>
-                  <img src={f.img} alt={f.alt} className={styles.fanIcon} loading="lazy" />
-                </div>
-                <Heading as="h3" className={styles.fanTitle}>
-                  {f.title}
-                </Heading>
-                <p className={styles.fanText}>{f.text}</p>
-              </article>
+          <div className={clsx(styles.fan, styles.fadeUp)} style={{animationDelay: '0.2s'}}>
+            {POSTCARDS.map((p) => (
+              <figure
+                key={p.caption}
+                className={clsx(styles.miniPostcard, styles[p.variant])}>
+                <span className={styles.miniStamp} aria-hidden="true">
+                  {p.stamp === 'clover' ? (
+                    <Clover className={styles.miniStampIcon} />
+                  ) : (
+                    <Sparkle className={styles.miniStampIcon} />
+                  )}
+                </span>
+                <img src={p.img} alt={p.alt} className={styles.miniImg} loading="lazy" />
+                <figcaption className={styles.miniCaption}>{p.caption}</figcaption>
+              </figure>
             ))}
           </div>
         </section>
