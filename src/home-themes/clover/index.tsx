@@ -50,7 +50,7 @@ function Sparkle({className}: {className?: string}): React.ReactNode {
   );
 }
 
-/** 全屏漂浮的四叶草粒子（位置 / 大小 / 动画节奏均为固定编排） */
+/** 全屏漂浮的四叶草粒子（位置 / 大小 / 动画节奏均为固定编排，避免均匀感的复制粘贴） */
 const FLOATING_CLOVERS = [
   {left: '3%', top: '14%', size: 40, delay: '0s', duration: '11s', opacity: 0.4},
   {left: '11%', top: '72%', size: 26, delay: '1.4s', duration: '9s', opacity: 0.32},
@@ -58,6 +58,14 @@ const FLOATING_CLOVERS = [
   {left: '55%', top: '10%', size: 24, delay: '0.8s', duration: '10s', opacity: 0.3},
   {left: '48%', top: '82%', size: 30, delay: '2.2s', duration: '13s', opacity: 0.3},
   {left: '94%', top: '70%', size: 34, delay: '4s', duration: '9.5s', opacity: 0.32},
+  {left: '17%', top: '38%', size: 18, delay: '5s', duration: '8.5s', opacity: 0.25},
+  {left: '33%', top: '88%', size: 22, delay: '1s', duration: '10.5s', opacity: 0.3},
+  {left: '68%', top: '88%', size: 26, delay: '2.8s', duration: '11.5s', opacity: 0.3},
+  {left: '82%', top: '26%', size: 20, delay: '3.6s', duration: '9s', opacity: 0.26},
+  {left: '90%', top: '45%', size: 16, delay: '0.5s', duration: '12.5s', opacity: 0.22},
+  {left: '7%', top: '50%', size: 18, delay: '4.6s', duration: '10s', opacity: 0.24},
+  {left: '40%', top: '20%', size: 14, delay: '2s', duration: '8s', opacity: 0.2},
+  {left: '63%', top: '68%', size: 18, delay: '5.4s', duration: '13.5s', opacity: 0.24},
 ];
 
 /** 金色闪光粒子 */
@@ -66,6 +74,12 @@ const SPARKLES = [
   {left: '58%', top: '62%', size: 12, delay: '0.9s'},
   {left: '87%', top: '12%', size: 18, delay: '1.7s'},
   {left: '70%', top: '40%', size: 11, delay: '2.5s'},
+  {left: '15%', top: '26%', size: 13, delay: '0.4s'},
+  {left: '44%', top: '58%', size: 10, delay: '1.3s'},
+  {left: '78%', top: '78%', size: 14, delay: '2.1s'},
+  {left: '6%', top: '86%', size: 12, delay: '2.9s'},
+  {left: '92%', top: '32%', size: 10, delay: '0.7s'},
+  {left: '28%', top: '68%', size: 11, delay: '1.9s'},
 ];
 
 /**
