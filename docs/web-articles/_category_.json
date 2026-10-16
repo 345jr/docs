@@ -1,0 +1,8 @@
+{
+  "label": "网络文章",
+  "position": 7,
+  "link": {
+    "type": "generated-index",
+    "description": "对网络上读到的文章所做的摘要与观点提炼。"
+  }
+}
