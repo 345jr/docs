@@ -1,0 +1,8 @@
+{
+  "position": 4,
+  "label": "项目迭代",
+  "link": {
+    "type": "generated-index",
+    "description": "各个项目（Docs、SkyDrop 等）的设计决策与迭代记录。"
+  }
+}
