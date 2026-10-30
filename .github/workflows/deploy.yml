@@ -53,7 +53,7 @@ jobs:
       - name: Record Commit
         if: github.event_name == 'push'
         run: |
-          cat <<'PAYLOAD' | curl -sf -X POST "http://107.174.102.34/steward/hooks/commits?token=${{ secrets.STEWARD_HOOK_TOKEN }}" -H "Content-Type: application/json" -d @- || echo " ⚠ commit 记录失败"
+          cat <<'PAYLOAD' | curl -sf -X POST "http://107.174.102.11/steward/hooks/commits?token=${{ secrets.STEWARD_HOOK_TOKEN }}" -H "Content-Type: application/json" -d @- || echo " ⚠ commit 记录失败"
           {"project":"docs","sha":"${{ github.sha }}","message":${{ toJSON(github.event.head_commit.message) }}}
           PAYLOAD
 
