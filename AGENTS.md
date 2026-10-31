@@ -15,7 +15,7 @@
 - `src/home-themes/`：首页主题。`registry.ts` 是注册表，每个主题是一个自包含目录（组件 + 样式 + 素材引用，如 `clover/`）。新增主题只需实现组件并在 `HOME_THEMES` 登记一行；SSR 固定渲染默认主题，用户选择存 localStorage（`docs-home-theme`），由导航栏「主题」模态框（`src/components/ThemePicker`，内含首页风格 + 主题色两个区块）切换。
 - `docusaurus.config.js`：站点配置。已关闭 blog、移除 footer、开启侧边栏折叠（`docs.sidebar.hideable`）。
 - `sidebars.js`：侧边栏配置，当前按 `docs/` 目录自动生成。
-- `src/types/`：TypeScript 共享类型。`editorTypes.ts`（在线编辑页）、`privateTypes.ts`（私有文档页与 `utils/privateClient.ts`）。**别把类型文件放进 `src/pages/`**——那里每个文件都会被 Docusaurus 当成路由，会多出一个 `/xxxTypes` 页面并在 SSG 阶段构建失败。
+- `src/types/`：TypeScript 共享类型。`editorTypes.ts`（在线编辑页）、`privateTypes.ts`（私有文档页与 `utils/privateClient.ts`）、`boardTypes.ts`（私有白板页与 `utils/boardClient.ts`）。**别把类型文件放进 `src/pages/`**——那里每个文件都会被 Docusaurus 当成路由，会多出一个 `/xxxTypes` 页面并在 SSG 阶段构建失败。
 
 ## 类型检查
 
@@ -37,6 +37,19 @@ TS 6.0 起 `noImplicitAny` 默认开启（与有无 tsconfig 无关），`src/` 
 - 文档使用中文；文件名用英文小写加连字符，保证 URL 友好。
 - 提交信息使用中文，并带 `feat:` / `fix:` / `docs:` / `chore:` 前缀。
 - `onBrokenLinks: 'throw'`：构建时遇到坏链会直接失败，改完文档建议先确认链接有效。
+
+## 私有白板
+
+`/whiteboard` 是 Excalidraw（`@excalidraw/excalidraw`，**版本锁死** 0.18.1）做的私有白板，与私有文档共用同一把密钥和 `docs-editor-token`。后端接口约定见 `docs/project-iteration/private-whiteboard-api.md`。
+
+四个必须记住的点：
+
+1. **CSS 和字体不进全局样式表**。`import '@excalidraw/excalidraw/index.css'` 在 `future.v4` 下会被合进全局 `styles.css`（135KB→279KB），所以走 `plugins/excalidraw-assets` 拷到 `assets/excalidraw/<版本>/`，`BoardCanvas` 挂载前才注入 `<link>` 并设 `window.EXCALIDRAW_ASSET_PATH`。
+2. **资源路径必须过 `useBaseUrl`**。相对路径会被解析成「当前页面目录 + 相对路径」，在 `/whiteboard/<文件名>` 下会 404。
+3. **rspack 解析不了 `roughjs/bin/rough`**（无 exports 的扩展名解析差异），`docusaurus.config.js` 里有三条 alias 兜着，删了直接构建失败。
+4. **`onChange` 不等于内容变了**。滚动/选中/hover 都会触发，`BoardCanvas` 里用 `sceneSignature()`（只比 elements + files）过滤，否则刚存完就变脏、无限循环保存。
+
+另外：`useColorMode` 不能在页面顶层调用（SSG 阶段没有 Provider，`docusaurus build` 会抛 `ReactContextError`），只能在 `BrowserOnly` 包住的组件里用。
 
 ## 正文字体切换
 

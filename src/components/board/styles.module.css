@@ -1,0 +1,611 @@
+/* 私有白板页面样式：侧栏对齐在线编辑，画布铺满剩余空间 */
+
+/* ── 整体骨架 ─────────────────────────────────────── */
+
+.shell {
+  --board-subbar-height: 48px;
+  display: flex;
+  flex-direction: column;
+  /* 导航栏高度由 Infima 变量给，减去它才能刚好一屏不出现页面滚动条 */
+  height: calc(100vh - var(--ifm-navbar-height));
+  overflow: hidden;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.contentCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* ── 子顶部栏 ─────────────────────────────────────── */
+
+.subbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: var(--board-subbar-height);
+  padding: 0 0.75rem;
+  border-bottom: 1px solid var(--ifm-toc-border-color);
+  background: var(--ifm-background-surface-color);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.titleInput {
+  min-width: 0;
+  flex: 0 1 22rem;
+  padding: 0.3rem 0.5rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ifm-font-color-base);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.titleInput:hover {
+  border-color: var(--ifm-color-emphasis-300);
+}
+
+.titleInput:focus {
+  outline: none;
+  border-color: var(--ifm-color-primary);
+  background: var(--ifm-background-color);
+}
+
+.pathHint {
+  font-size: 0.78rem;
+  color: var(--ifm-color-emphasis-600);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.subbarSpacer {
+  flex: 1;
+  min-width: 0.5rem;
+}
+
+.barBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ifm-font-color-base);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.barBtn:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+/* ── 保存状态灯 ───────────────────────────────────── */
+
+.save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--ifm-color-emphasis-700);
+  white-space: nowrap;
+}
+
+.saveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ifm-color-emphasis-400);
+  flex-shrink: 0;
+}
+
+.saveBusy .saveDot {
+  background: var(--ifm-color-primary);
+  animation: savePulse 1s ease-in-out infinite;
+}
+
+.saveDirty .saveDot {
+  background: var(--ifm-color-warning, #e6a700);
+}
+
+.saveOk .saveDot {
+  background: var(--ifm-color-success, #2e8555);
+}
+
+.saveError {
+  color: var(--ifm-color-danger);
+}
+
+.saveError .saveDot,
+.saveConflict .saveDot {
+  background: var(--ifm-color-danger);
+}
+
+.saveConflict {
+  color: var(--ifm-color-danger);
+}
+
+.saveLink {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ifm-color-primary);
+  font: inherit;
+  font-size: 0.78rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@keyframes savePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .saveBusy .saveDot {
+    animation: none;
+  }
+}
+
+/* ── 画布 ─────────────────────────────────────────── */
+
+.canvasArea {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  /* Excalidraw 自己画背景；这里只兜底避免加载瞬间透出页面底色 */
+  background: var(--ifm-background-color);
+}
+
+.canvasHost {
+  position: absolute;
+  inset: 0;
+}
+
+.canvasHost > :global(.excalidraw) {
+  /* Excalidraw 默认 height:100%，父容器是 absolute inset-0，能拿到高度 */
+  height: 100%;
+}
+
+.canvasFallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.canvasHint {
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.emptyState {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  text-align: center;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+/* ── 侧栏 ─────────────────────────────────────────── */
+
+.sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  position: relative;
+  border-right: 1px solid var(--ifm-toc-border-color);
+  background: var(--ifm-background-surface-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: width var(--ifm-transition-fast) ease;
+}
+
+.sidebarCollapsed {
+  width: 0;
+  border-right-color: transparent;
+}
+
+.sidebarInner {
+  width: 260px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebarHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.5rem 0.4rem 0.8rem;
+}
+
+.sidebarTitle {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ifm-color-emphasis-700);
+  cursor: pointer;
+}
+
+.iconBtn:hover {
+  background: var(--ifm-color-emphasis-100);
+  color: var(--ifm-font-color-base);
+}
+
+.searchWrap {
+  padding: 0 0.5rem 0.4rem;
+}
+
+.search {
+  width: 100%;
+  padding: 0.3rem 0.5rem;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--ifm-font-color-base);
+  background: var(--ifm-background-color);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 6px;
+}
+
+.search:focus {
+  outline: none;
+  border-color: var(--ifm-color-primary);
+}
+
+.sidebarScroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 0.35rem 0.5rem;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border-radius: 6px;
+}
+
+.row:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.rowMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0.4rem 0.5rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ifm-font-color-base);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rowMainActive {
+  background: var(--ifm-menu-color-background-active);
+  color: var(--ifm-menu-color-active);
+}
+
+.rowMainActive .rowMeta {
+  color: var(--ifm-menu-color-active);
+  opacity: 0.75;
+}
+
+.rowTitle {
+  font-size: 0.86rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowMeta {
+  font-size: 0.72rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.rowMenuBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ifm-color-emphasis-600);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.row:hover .rowMenuBtn,
+.rowMenuBtn[aria-expanded='true'] {
+  opacity: 1;
+}
+
+.rowMenuBtn:hover {
+  color: var(--ifm-font-color-base);
+}
+
+/* 触屏没有 hover，操作按钮常驻 */
+@media (pointer: coarse) {
+  .rowMenuBtn {
+    opacity: 1;
+  }
+}
+
+.menuScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: default;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% - 2px);
+  right: 0;
+  z-index: 31;
+  min-width: 110px;
+  padding: 0.25rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  background: var(--ifm-background-surface-color);
+  box-shadow: var(--ifm-global-shadow-md);
+  display: flex;
+  flex-direction: column;
+}
+
+.menuItem {
+  padding: 0.35rem 0.6rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ifm-font-color-base);
+  font: inherit;
+  font-size: 0.84rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.menuItemDanger {
+  color: var(--ifm-color-danger);
+}
+
+.collapseBtn {
+  height: 40px;
+  width: 100%;
+  padding: 0;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-top: 1px solid var(--ifm-toc-border-color);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ifm-color-emphasis-600);
+  cursor: pointer;
+}
+
+.collapseBtn:hover,
+.collapseBtn:focus {
+  background-color: rgb(0 0 0 / 10%);
+}
+
+.sidebarCollapsed .collapseBtn {
+  /* 收起后整条侧栏宽 0，按钮要能反向展开：贴到右侧外面 */
+  position: absolute;
+  top: 50%;
+  right: -24px;
+  width: 24px;
+  height: 40px;
+  border: 1px solid var(--ifm-toc-border-color);
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  background: var(--ifm-background-surface-color);
+  transform: translateY(-50%);
+}
+
+.sidebarCollapsed .collapseBtn svg {
+  transform: rotate(180deg);
+}
+
+.placeholder {
+  margin: 0.5rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ifm-color-emphasis-600);
+}
+
+/* ── 移动端 ───────────────────────────────────────── */
+
+@media (max-width: 996px) {
+  .sidebar {
+    position: absolute;
+    z-index: 20;
+    top: var(--board-subbar-height);
+    bottom: 0;
+    left: 0;
+    box-shadow: var(--ifm-global-shadow-md);
+  }
+
+  .sidebarCollapsed {
+    box-shadow: none;
+  }
+
+  .titleInput {
+    flex: 1 1 auto;
+  }
+
+  .pathHint {
+    display: none;
+  }
+}
+
+
+/* ── 命名对话框 ───────────────────────────────────── */
+
+.modalScrim {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 45%);
+}
+
+.modal {
+  width: min(420px, 100%);
+  padding: 1.1rem 1.2rem 1rem;
+  border-radius: 12px;
+  background: var(--ifm-background-surface-color);
+  box-shadow: var(--ifm-global-shadow-md);
+}
+
+.modalTitle {
+  margin: 0 0 0.8rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.modalLabel {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.modalInput {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  color: var(--ifm-font-color-base);
+  background: var(--ifm-background-color);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+}
+
+.modalInput:focus {
+  outline: none;
+  border-color: var(--ifm-color-primary);
+}
+
+.modalHint {
+  margin: 0.55rem 0 0;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  color: var(--ifm-color-emphasis-600);
+  word-break: break-all;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.modalBtn {
+  padding: 0.4rem 0.85rem;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ifm-font-color-base);
+  background: var(--ifm-background-color);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.modalBtn:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.modalBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.modalBtnPrimary {
+  color: var(--ifm-color-white, #fff);
+  background: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+}
+
+.modalBtnPrimary:hover {
+  background: var(--ifm-color-primary-dark);
+}

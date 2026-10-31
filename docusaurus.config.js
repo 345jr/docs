@@ -39,6 +39,28 @@ const config = {
   // 使侧边栏 active 判定与文档站行为一致。
   plugins: [
     require.resolve('./plugins/cjk-webfonts'),
+    require.resolve('./plugins/excalidraw-assets'),
+
+    // Excalidraw 的 dist 产物里 import 了 `roughjs/bin/rough` 这类「不带扩展名」
+    // 的子路径。rspack 的解析策略与 webpack 不同，不会自动补 `.js`，
+    // 构建会直接报 "Module not found"。这里显式别名到实际文件。
+    function excalidrawResolve() {
+      return {
+        name: 'excalidraw-resolve',
+        configureWebpack() {
+          return {
+            resolve: {
+              alias: {
+                'roughjs/bin/rough': require.resolve('roughjs/bin/rough.js'),
+                'roughjs/bin/math': require.resolve('roughjs/bin/math.js'),
+                'roughjs/bin/generator': require.resolve('roughjs/bin/generator.js'),
+              },
+            },
+          };
+        },
+      };
+    },
+
     function privateDocsRoutes() {
       return {
         name: 'private-docs-routes',
@@ -52,6 +74,25 @@ const config = {
         postBuild({outDir}) {
           // SSG 会为 splat 路由多生成一个字面量 build/private/*/index.html，删掉它
           fs.rmSync(path.join(outDir, 'private', '*'), {recursive: true, force: true});
+        },
+      };
+    },
+
+    // 私有白板：/whiteboard 只注册根路径，这里补展开路由 /whiteboard/<文件名>，
+    // 让刷新、收藏、新标签页打开某块白板都能命中同一个页面。
+    function whiteboardRoutes() {
+      return {
+        name: 'whiteboard-routes',
+        contentLoaded({actions}) {
+          actions.addRoute({
+            path: '/whiteboard/*',
+            component: '@site/src/pages/whiteboard.tsx',
+            exact: true,
+          });
+        },
+        postBuild({outDir}) {
+          // 同 private：删掉 SSG 为 splat 生成的占位目录
+          fs.rmSync(path.join(outDir, 'whiteboard', '*'), {recursive: true, force: true});
         },
       };
     },
@@ -78,7 +119,7 @@ const config = {
         },
         blog: false,
         sitemap: {
-          ignorePatterns: ['/private', '/private/**'],
+          ignorePatterns: ['/private', '/private/**', '/whiteboard', '/whiteboard/**'],
         },
         theme: {
           customCss: './src/css/custom.css',
@@ -123,6 +164,11 @@ const config = {
             to: '/editor',
             position: 'left',
             label: '在线编辑',
+          },
+          {
+            to: '/whiteboard',
+            position: 'left',
+            label: '白板',
           },
           {
             type: 'custom-themePicker',

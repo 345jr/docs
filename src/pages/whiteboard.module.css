@@ -1,0 +1,209 @@
+/* 白板页的壳层样式：组件级样式都在 components/board/styles.module.css，
+   这里只放页面骨架与顶栏，避免一个文件被两处引用时互相覆盖。 */
+
+.shell {
+  --board-subbar-height: 48px;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--ifm-navbar-height));
+  overflow: hidden;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.contentCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.subbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: var(--board-subbar-height);
+  padding: 0 0.75rem;
+  border-bottom: 1px solid var(--ifm-toc-border-color);
+  background: var(--ifm-background-surface-color);
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.titleInput {
+  min-width: 0;
+  flex: 0 1 22rem;
+  padding: 0.3rem 0.5rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ifm-font-color-base);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.titleInput:hover:not(:disabled) {
+  border-color: var(--ifm-color-emphasis-300);
+}
+
+.titleInput:focus {
+  outline: none;
+  border-color: var(--ifm-color-primary);
+  background: var(--ifm-background-color);
+}
+
+.titleInput:disabled {
+  color: var(--ifm-color-emphasis-500);
+}
+
+.pathHint {
+  font-size: 0.78rem;
+  color: var(--ifm-color-emphasis-600);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.subbarSpacer {
+  flex: 1;
+  min-width: 0.5rem;
+}
+
+.barBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ifm-font-color-base);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.barBtn:hover:not(:disabled) {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.barBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ifm-color-emphasis-700);
+  cursor: pointer;
+}
+
+.iconBtn:hover {
+  background: var(--ifm-color-emphasis-100);
+  color: var(--ifm-font-color-base);
+}
+
+.canvasArea {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+  background: var(--ifm-background-color);
+}
+
+.canvasFallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.emptyState {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ifm-font-color-base);
+}
+
+/* 空态里的主按钮复用对话框按钮的观感 */
+.modalBtn {
+  padding: 0.45rem 0.95rem;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ifm-font-color-base);
+  background: var(--ifm-background-color);
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.modalBtnPrimary {
+  color: #fff;
+  background: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+}
+
+.modalBtnPrimary:hover {
+  background: var(--ifm-color-primary-dark);
+}
+
+/* 移动端展开侧栏时的遮罩：点一下收回，避免侧栏「卡」在画布上 */
+.sidebarScrim {
+  display: none;
+}
+
+@media (max-width: 996px) {
+  .pathHint {
+    display: none;
+  }
+
+  .titleInput {
+    flex: 1 1 auto;
+  }
+
+  .barBtnLabel {
+    display: none;
+  }
+
+  .sidebarScrim {
+    display: block;
+    position: absolute;
+    inset: var(--board-subbar-height) 0 0 0;
+    z-index: 15;
+    border: none;
+    padding: 0;
+    background: rgb(0 0 0 / 35%);
+    cursor: pointer;
+  }
+}
