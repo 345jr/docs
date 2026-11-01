@@ -414,6 +414,18 @@ export default function WhiteboardPage(): React.ReactNode {
       return;
     }
     if (currentRef.current?.path === slug) return;
+    // 列表里没有这个 slug 就别读了：典型场景是刚删掉当前白板——那时
+    // setBoards 已生效但 history.replace 还没刷新 location，effect 会拿
+    // 旧 slug 再读一次已删除的文件，弹出一个莫名其妙的「不存在」错误。
+    // 顺带也处理了「别处删掉了这块板」：停在空态而不是报错。
+    if (!boards.some((b) => b.path === slug)) {
+      if (currentRef.current) {
+        pendingRef.current = null;
+        setCurrent(null);
+        setStatus('idle');
+      }
+      return;
+    }
     void openBoard(slug);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, boards, token]);
@@ -589,10 +601,11 @@ export default function WhiteboardPage(): React.ReactNode {
         setBoards((list) => (list || []).filter((b) => b.path !== board.path));
         if (currentRef.current?.path === board.path) {
           pendingRef.current = null;
+          lastPushedRef.current = null;
+          // 先改地址栏再清 current：反过来会让 effect 用旧 slug 多读一次
+          history.replace('/whiteboard');
           setCurrent(null);
           setStatus('idle');
-          lastPushedRef.current = null;
-          history.replace('/whiteboard');
         }
         void reloadList();
         toast.success('已删除');
