@@ -46,6 +46,47 @@
   color: var(--ifm-color-emphasis-700);
 }
 
+/* 画布区居中 loading：转圈 + 一行小字。
+   比直接闪一个「还没有打开白板」的空态温和：列表请求或自动打开首块
+   白板还没回来时，用户看到的是「在加载」而不是「你没内容」。 */
+.canvasLoading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ifm-color-emphasis-300);
+  /* 只用一边上色做出「缺一段」的转圈感，不引任何动画库 */
+  border-top-color: var(--ifm-color-primary);
+  border-radius: 50%;
+  animation: boardSpin 0.8s linear infinite;
+}
+
+.loadingText {
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
+@keyframes boardSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+}
+
 .emptyState {
   position: absolute;
   inset: 0;

@@ -156,16 +156,19 @@ const config = {
             label: '文档',
           },
           {
+            type: 'custom-sectionLink',
             to: '/private',
             position: 'left',
             label: '私有文档',
           },
           {
+            type: 'custom-sectionLink',
             to: '/editor',
             position: 'left',
             label: '在线编辑',
           },
           {
+            type: 'custom-sectionLink',
             to: '/whiteboard',
             position: 'left',
             label: '白板',

@@ -51,6 +51,8 @@ tags: [站点建设, 前端, 后端]
 - 侧栏视觉与私有文档（`DocSidebar`）逐项对齐：滚动容器挂 `menu thin-scrollbar`、菜单项内边距/圆角走 Infima 变量、侧栏底色透明、收起按钮四边描边 + 双人字箭头、收起态整列内容 `visibility: hidden` 并在窄列上盖满高的展开按钮。
 - 改名走列表行内「更多操作」菜单（Base UI `Menu`，Portal 到 body）。早先手写的 absolute 菜单挂在 `static` 的 `<li>` 上会相对 `aside` 定位、落到侧栏底部之外并被 `overflow: hidden` + `clip-path: inset(0)` 裁掉，表现就是「点三个点没反应」。
 - 深色模式跟随站点 `colorMode`；窄屏侧栏默认收起，选中白板后自动收起。
+- 进入页面时列表未就绪、或正在自动打开首块白板，画布区显示居中的转圈 loading，不再先闪一下「还没有打开白板」空态。
+- 导航栏的「私有文档 / 在线编辑 / 白板」用 `custom-sectionLink`（`src/components/SectionLink`）：已在该栏目内时点击不跳转，避免白板页被重置成 `/whiteboard` 再重开一遍画布。
 - 单板内容超过 16 MB 时前端直接拦截并提示，不发请求。
 
 ## 二、需要新增的接口

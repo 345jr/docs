@@ -445,6 +445,20 @@ export default function WhiteboardPage(): React.ReactNode {
     if (location.pathname !== target) history.replace(target);
   }, [current, history, location.pathname]);
 
+  /**
+   * 还没决定该显示什么：列表没回来、或列表就绪但正在自动打开首块白板。
+   *
+   * 早先这段窗口期会落到「还没有打开白板」的空态上——从其它栏目切进来时
+   * 列表请求有几百毫秒延迟，用户先看到「没有白板」再跳成画布，就是那一闪。
+   * 现在这段窗口期一律渲染居中 loading，等真的有结论（打开/真空态）再切。
+   */
+  const booting =
+    !boards ||
+    (!current &&
+      !loadingBoard &&
+      !slug &&
+      boards.length > 0);
+
   // 浏览器标题
   useEffect(() => {
     document.title = current
@@ -632,8 +646,13 @@ export default function WhiteboardPage(): React.ReactNode {
 
             <div className={styles.contentCol}>
               <div className={styles.canvasArea}>
-                {loadingBoard ? (
-                  <p className={styles.canvasFallback}>加载白板中…</p>
+                {loadingBoard || booting ? (
+                  <div className={styles.canvasLoading} role="status" aria-live="polite">
+                    <span className={styles.spinner} aria-hidden="true" />
+                    <span className={styles.loadingText}>
+                      {loadingBoard ? '正在打开白板' : '正在加载'}
+                    </span>
+                  </div>
                 ) : current ? (
                   <BrowserOnly fallback={<p className={styles.canvasFallback}>正在加载画布…</p>}>
                     {() => (
