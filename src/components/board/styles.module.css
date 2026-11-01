@@ -483,3 +483,106 @@
     box-shadow: none;
   }
 }
+
+/* ── 画布容器 ─────────────────────────────────────── */
+
+.canvasHost {
+  position: absolute;
+  inset: 0;
+}
+
+.canvasHost > :global(.excalidraw) {
+  /* Excalidraw 默认 height:100%；父容器是 absolute inset-0，能拿到高度 */
+  height: 100%;
+}
+
+.canvasFallback {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.canvasHint {
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+/* ── 顶栏保存状态灯 ───────────────────────────────── */
+
+.save {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  color: var(--ifm-color-emphasis-700);
+  white-space: nowrap;
+}
+
+.saveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ifm-color-emphasis-400);
+  flex-shrink: 0;
+}
+
+.saveBusy .saveDot {
+  background: var(--ifm-color-primary);
+  animation: savePulse 1s ease-in-out infinite;
+}
+
+.saveDirty .saveDot {
+  background: var(--ifm-color-warning, #e6a700);
+}
+
+.saveOk .saveDot {
+  background: var(--ifm-color-success, #2e8555);
+}
+
+.saveError {
+  color: var(--ifm-color-danger);
+}
+
+.saveError .saveDot,
+.saveConflict .saveDot {
+  background: var(--ifm-color-danger);
+}
+
+.saveConflict {
+  color: var(--ifm-color-danger);
+}
+
+.saveLink {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--ifm-color-primary);
+  font: inherit;
+  font-size: 0.78rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@keyframes savePulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .saveBusy .saveDot {
+    animation: none;
+  }
+}
