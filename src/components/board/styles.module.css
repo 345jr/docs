@@ -1,231 +1,10 @@
-/* 私有白板页面样式：侧栏对齐在线编辑，画布铺满剩余空间 */
+/* 私有白板：侧栏与弹窗样式（页面骨架在 pages/whiteboard.module.css） */
 
-/* ── 整体骨架 ─────────────────────────────────────── */
-
-.shell {
-  --board-subbar-height: 48px;
-  display: flex;
-  flex-direction: column;
-  /* 导航栏高度由 Infima 变量给，减去它才能刚好一屏不出现页面滚动条 */
-  height: calc(100vh - var(--ifm-navbar-height));
-  overflow: hidden;
-}
-
-.body {
-  flex: 1;
-  display: flex;
-  min-height: 0;
-}
-
-.contentCol {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  min-height: 0;
-}
-
-/* ── 子顶部栏 ─────────────────────────────────────── */
-
-.subbar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  height: var(--board-subbar-height);
-  padding: 0 0.75rem;
-  border-bottom: 1px solid var(--ifm-toc-border-color);
-  background: var(--ifm-background-surface-color);
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.titleInput {
-  min-width: 0;
-  flex: 0 1 22rem;
-  padding: 0.3rem 0.5rem;
-  font: inherit;
-  font-weight: 600;
-  color: var(--ifm-font-color-base);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
-}
-
-.titleInput:hover {
-  border-color: var(--ifm-color-emphasis-300);
-}
-
-.titleInput:focus {
-  outline: none;
-  border-color: var(--ifm-color-primary);
-  background: var(--ifm-background-color);
-}
-
-.pathHint {
-  font-size: 0.78rem;
-  color: var(--ifm-color-emphasis-600);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
-.subbarSpacer {
-  flex: 1;
-  min-width: 0.5rem;
-}
-
-.barBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.6rem;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--ifm-font-color-base);
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.barBtn:hover {
-  background: var(--ifm-color-emphasis-100);
-}
-
-/* ── 保存状态灯 ───────────────────────────────────── */
-
-.save {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-size: 0.78rem;
-  color: var(--ifm-color-emphasis-700);
-  white-space: nowrap;
-}
-
-.saveDot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--ifm-color-emphasis-400);
-  flex-shrink: 0;
-}
-
-.saveBusy .saveDot {
-  background: var(--ifm-color-primary);
-  animation: savePulse 1s ease-in-out infinite;
-}
-
-.saveDirty .saveDot {
-  background: var(--ifm-color-warning, #e6a700);
-}
-
-.saveOk .saveDot {
-  background: var(--ifm-color-success, #2e8555);
-}
-
-.saveError {
-  color: var(--ifm-color-danger);
-}
-
-.saveError .saveDot,
-.saveConflict .saveDot {
-  background: var(--ifm-color-danger);
-}
-
-.saveConflict {
-  color: var(--ifm-color-danger);
-}
-
-.saveLink {
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--ifm-color-primary);
-  font: inherit;
-  font-size: 0.78rem;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-@keyframes savePulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.35;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .saveBusy .saveDot {
-    animation: none;
-  }
-}
-
-/* ── 画布 ─────────────────────────────────────────── */
-
-.canvasArea {
-  flex: 1;
-  position: relative;
-  min-height: 0;
-  /* Excalidraw 自己画背景；这里只兜底避免加载瞬间透出页面底色 */
-  background: var(--ifm-background-color);
-}
-
-.canvasHost {
-  position: absolute;
-  inset: 0;
-}
-
-.canvasHost > :global(.excalidraw) {
-  /* Excalidraw 默认 height:100%，父容器是 absolute inset-0，能拿到高度 */
-  height: 100%;
-}
-
-.canvasFallback {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  padding: 1.5rem;
-  text-align: center;
-  color: var(--ifm-color-emphasis-700);
-}
-
-.canvasHint {
-  font-size: 0.8rem;
-  color: var(--ifm-color-emphasis-600);
-}
-
-.emptyState {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  text-align: center;
-  color: var(--ifm-color-emphasis-700);
-}
-
-.emptyTitle {
-  margin: 0;
-  font-size: 1.05rem;
-  font-weight: 600;
-}
-
-/* ── 侧栏 ─────────────────────────────────────────── */
+/* ── 侧栏：对齐文档站 / 在线编辑 ───────────────────── */
 
 .sidebar {
-  width: 260px;
+  /* 与文档站 --doc-sidebar-width、在线编辑侧栏一致 */
+  width: var(--doc-sidebar-width, 300px);
   flex-shrink: 0;
   position: relative;
   border-right: 1px solid var(--ifm-toc-border-color);
@@ -233,20 +12,28 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  will-change: width;
+  clip-path: inset(0);
   transition: width var(--ifm-transition-fast) ease;
 }
 
-.sidebarCollapsed {
-  width: 0;
-  border-right-color: transparent;
-}
-
+/* 内层固定宽度：收起时外层只做裁切，内容不回流，避免文字被挤压 */
 .sidebarInner {
-  width: 260px;
+  width: var(--doc-sidebar-width, 300px);
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.sidebarCollapsed {
+  width: 30px; /* 对齐文档站 --doc-sidebar-hidden-width */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebar {
+    transition: none;
+  }
 }
 
 .sidebarHead {
@@ -254,20 +41,27 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  padding: 0.6rem 0.5rem 0.4rem 0.8rem;
+  padding: 0.7rem 0.5rem 0.35rem 1rem;
+  flex-shrink: 0;
 }
 
 .sidebarTitle {
-  font-weight: 700;
+  font-weight: var(--ifm-font-weight-bold);
   font-size: 0.9rem;
+}
+
+.sidebarActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .iconBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   padding: 0;
   border: none;
   border-radius: 6px;
@@ -276,13 +70,19 @@
   cursor: pointer;
 }
 
-.iconBtn:hover {
+.iconBtn:hover:not(:disabled) {
   background: var(--ifm-color-emphasis-100);
   color: var(--ifm-font-color-base);
 }
 
+.iconBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .searchWrap {
-  padding: 0 0.5rem 0.4rem;
+  padding: 0 0.5rem 0.5rem 1rem;
+  flex-shrink: 0;
 }
 
 .search {
@@ -301,79 +101,78 @@
   border-color: var(--ifm-color-primary);
 }
 
+/* 与在线编辑 .sidebarScroll 完全一致的内边距与字重 */
 .sidebarScroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 0.35rem 0.5rem;
+  padding: 0.5rem;
+  font-weight: var(--ifm-font-weight-semibold);
 }
 
-.list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+@supports (scrollbar-gutter: stable) {
+  .sidebarScroll {
+    padding: 0.5rem 0 0.5rem 0.5rem;
+    scrollbar-gutter: stable;
+  }
+}
+
+/* Infima 的 menu__link 面向 <a> 设计，用在 <button> 上需要补齐：
+   button 自带 border/background/padding，不清掉会露出浏览器默认的
+   「2px outset 黑边 + 灰色底」（在线编辑的侧栏也是这么处理的）。 */
+.sidebarScroll :global(button.menu__link) {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-weight: inherit;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  /* 两行内容（标题 + 时间）需要纵向排布，Infima 默认是横向 flex */
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 1px;
+  padding: 0.375rem 0.5rem;
+  line-height: 1.3;
+  border-radius: var(--ifm-global-radius, 0.4rem);
 }
+
+/* hover / active 由 Infima 的 .menu__link 规则给，但那是针对 <a> 的；
+   这里用行容器兜住背景，保证点击态与文档站一致 */
+.sidebarScroll :global(button.menu__link:hover) {
+  background: var(--ifm-menu-color-background-hover);
+  color: var(--ifm-menu-color);
+}
+
+.sidebarScroll :global(button.menu__link:focus-visible) {
+  outline: 2px solid var(--ifm-color-primary);
+  outline-offset: -2px;
+}
+
+/* ── 单行 ─────────────────────────────────────────── */
 
 .row {
   position: relative;
   display: flex;
   align-items: stretch;
-  border-radius: 6px;
+  border-radius: var(--ifm-global-radius, 0.4rem);
 }
 
-.row:hover {
-  background: var(--ifm-color-emphasis-100);
-}
-
-.rowMain {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 0.4rem 0.5rem;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--ifm-font-color-base);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.rowMainActive {
+/* 选中态由 Infima 的 .menu__link--active 负责，这里只兜底行容器圆角 */
+.rowActive {
   background: var(--ifm-menu-color-background-active);
-  color: var(--ifm-menu-color-active);
 }
 
-.rowMainActive .rowMeta {
-  color: var(--ifm-menu-color-active);
-  opacity: 0.75;
-}
-
-.rowTitle {
-  font-size: 0.86rem;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.rowMeta {
-  font-size: 0.72rem;
-  color: var(--ifm-color-emphasis-600);
-}
-
+/* 行内的「更多操作」按钮：贴右侧，不参与 menu__link 的排版 */
 .rowMenuBtn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
+  width: 26px;
   flex-shrink: 0;
+  margin-left: -2px;
   padding: 0;
   border: none;
   border-radius: 6px;
@@ -381,6 +180,7 @@
   color: var(--ifm-color-emphasis-600);
   cursor: pointer;
   opacity: 0;
+  transition: opacity 0.1s ease;
 }
 
 .row:hover .rowMenuBtn,
@@ -390,6 +190,7 @@
 
 .rowMenuBtn:hover {
   color: var(--ifm-font-color-base);
+  background: var(--ifm-color-emphasis-200);
 }
 
 /* 触屏没有 hover，操作按钮常驻 */
@@ -398,6 +199,36 @@
     opacity: 1;
   }
 }
+
+.rowTitle {
+  width: 100%;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rowMeta {
+  font-size: 0.72rem;
+  font-weight: var(--ifm-font-weight-normal);
+  color: var(--ifm-color-emphasis-600);
+}
+
+.rowActive :global(.menu__link--active) {
+  background: var(--ifm-menu-color-background-active);
+  color: var(--ifm-menu-color-active);
+}
+
+.rowActive .rowTitle {
+  color: var(--ifm-menu-color-active);
+}
+
+.rowActive .rowMeta {
+  color: var(--ifm-menu-color-active);
+  opacity: 0.75;
+}
+
+/* ── 行内菜单 ─────────────────────────────────────── */
 
 .menuScrim {
   position: fixed;
@@ -412,7 +243,7 @@
 .menu {
   position: absolute;
   top: calc(100% - 2px);
-  right: 0;
+  right: 0.25rem;
   z-index: 31;
   min-width: 110px;
   padding: 0.25rem;
@@ -444,6 +275,8 @@
   color: var(--ifm-color-danger);
 }
 
+/* ── 收起按钮：对齐文档站 CollapseButton ───────────── */
+
 .collapseBtn {
   height: 40px;
   width: 100%;
@@ -465,18 +298,21 @@
   background-color: rgb(0 0 0 / 10%);
 }
 
+:global([data-theme='dark']) .collapseBtn {
+  background-color: rgb(255 255 255 / 5%);
+}
+
+:global([data-theme='dark']) .collapseBtn:hover,
+:global([data-theme='dark']) .collapseBtn:focus {
+  background-color: rgb(255 255 255 / 10%);
+}
+
 .sidebarCollapsed .collapseBtn {
-  /* 收起后整条侧栏宽 0，按钮要能反向展开：贴到右侧外面 */
+  /* 收起后侧栏宽 30px，箭头反向并贴到右缘 */
   position: absolute;
-  top: 50%;
-  right: -24px;
-  width: 24px;
-  height: 40px;
-  border: 1px solid var(--ifm-toc-border-color);
-  border-left: none;
-  border-radius: 0 6px 6px 0;
-  background: var(--ifm-background-surface-color);
-  transform: translateY(-50%);
+  top: 0;
+  right: 0;
+  width: 30px;
 }
 
 .sidebarCollapsed .collapseBtn svg {
@@ -484,73 +320,100 @@
 }
 
 .placeholder {
-  margin: 0.5rem;
+  margin: 0.5rem 0.5rem 0.5rem 0.75rem;
   font-size: 0.82rem;
   line-height: 1.5;
   color: var(--ifm-color-emphasis-600);
+  font-weight: var(--ifm-font-weight-normal);
 }
 
-/* ── 移动端 ───────────────────────────────────────── */
+/* ── 命名对话框（Base UI Dialog，与在线编辑同源）────── */
 
-@media (max-width: 996px) {
-  .sidebar {
-    position: absolute;
-    z-index: 20;
-    top: var(--board-subbar-height);
-    bottom: 0;
-    left: 0;
-    box-shadow: var(--ifm-global-shadow-md);
-  }
-
-  .sidebarCollapsed {
-    box-shadow: none;
-  }
-
-  .titleInput {
-    flex: 1 1 auto;
-  }
-
-  .pathHint {
-    display: none;
-  }
-}
-
-
-/* ── 命名对话框 ───────────────────────────────────── */
-
-.modalScrim {
+.modalBackdrop {
   position: fixed;
   inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
+  z-index: 1000;
   background: rgb(0 0 0 / 45%);
+  transition: opacity 0.15s ease;
+}
+
+.modalBackdrop[data-starting-style],
+.modalBackdrop[data-ending-style] {
+  opacity: 0;
 }
 
 .modal {
-  width: min(420px, 100%);
-  padding: 1.1rem 1.2rem 1rem;
-  border-radius: 12px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1001;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100vw - 2rem));
+  display: flex;
+  flex-direction: column;
   background: var(--ifm-background-surface-color);
-  box-shadow: var(--ifm-global-shadow-md);
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 18%);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.modal[data-starting-style],
+.modal[data-ending-style] {
+  opacity: 0;
+  transform: translate(-50%, calc(-50% + 10px)) scale(0.98);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.25rem 0.4rem;
 }
 
 .modalTitle {
-  margin: 0 0 0.8rem;
+  margin: 0;
   font-size: 1rem;
-  font-weight: 700;
 }
 
-.modalLabel {
+.modalClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modalClose:hover {
+  background: var(--ifm-color-emphasis-100);
+}
+
+.modalBody {
+  padding: 0.3rem 1.25rem 0.9rem;
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0 1.25rem 1.1rem;
+}
+
+.fieldLabel {
   display: block;
-  margin-bottom: 0.3rem;
+  margin-bottom: 0.35rem;
   font-size: 0.8rem;
   color: var(--ifm-color-emphasis-700);
 }
 
-.modalInput {
+.fieldInput {
   width: 100%;
   padding: 0.45rem 0.6rem;
   font: inherit;
@@ -560,28 +423,21 @@
   border-radius: 8px;
 }
 
-.modalInput:focus {
+.fieldInput:focus {
   outline: none;
   border-color: var(--ifm-color-primary);
 }
 
-.modalHint {
-  margin: 0.55rem 0 0;
+.fieldHint {
+  margin: 0.5rem 0 0;
   font-size: 0.76rem;
   line-height: 1.6;
   color: var(--ifm-color-emphasis-600);
   word-break: break-all;
 }
 
-.modalActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.modalBtn {
-  padding: 0.4rem 0.85rem;
+.btn {
+  padding: 0.4rem 0.9rem;
   font: inherit;
   font-size: 0.85rem;
   color: var(--ifm-font-color-base);
@@ -591,21 +447,39 @@
   cursor: pointer;
 }
 
-.modalBtn:hover {
+.btn:hover {
   background: var(--ifm-color-emphasis-100);
 }
 
-.modalBtn:disabled {
+.btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.modalBtnPrimary {
-  color: var(--ifm-color-white, #fff);
+.btnPrimary {
+  color: #fff;
   background: var(--ifm-color-primary);
   border-color: var(--ifm-color-primary);
 }
 
-.modalBtnPrimary:hover {
+.btnPrimary:hover:not(:disabled) {
   background: var(--ifm-color-primary-dark);
+  border-color: var(--ifm-color-primary-dark);
+}
+
+/* ── 移动端 ───────────────────────────────────────── */
+
+@media (max-width: 996px) {
+  .sidebar {
+    position: absolute;
+    z-index: 20;
+    top: var(--board-subbar-height, 48px);
+    bottom: 0;
+    left: 0;
+    box-shadow: var(--ifm-global-shadow-md);
+  }
+
+  .sidebarCollapsed {
+    box-shadow: none;
+  }
 }

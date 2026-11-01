@@ -10,6 +10,7 @@ import React, {
 import {useLocation, useHistory} from '@docusaurus/router';
 import Layout from '@theme/Layout';
 import BrowserOnly from '@docusaurus/BrowserOnly';
+import {Dialog} from '@base-ui/react/dialog';
 import toast, {Toaster} from 'react-hot-toast';
 // 刻意用相对路径而非 `@site/` 别名：站点没有 tsconfig，`@site/*` 只由打包器
 // 解析，tsc 会报 TS2307 并让下游参数退化成隐式 any（同 private.tsx）。
@@ -45,6 +46,7 @@ import type {
   ExcalidrawApi,
   SaveStatus,
 } from '../types/boardTypes';
+import boardStyles from '../components/board/styles.module.css';
 import styles from './whiteboard.module.css';
 
 /**
@@ -108,69 +110,72 @@ function NameDialog({
     if (open) setTitle(initialTitle);
   }, [open, initialTitle]);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onCancel]);
-
-  if (!open) return null;
-
   const trimmed = title.trim();
-  const fileName = trimmed ? `${titleToFileName(trimmed)}.excalidraw` : '（待输入名称）';
+  const fileName = trimmed ? `${titleToFileName(trimmed)}.excalidraw` : '待输入名称';
+  const submit = () => {
+    if (trimmed && !busy) onSubmit(trimmed);
+  };
 
   return (
-    <div className={styles.modalScrim} role="presentation" onClick={onCancel}>
-      <div
-        className={styles.modal}
-        role="dialog"
-        aria-modal="true"
-        aria-label={mode === 'create' ? '新建白板' : '重命名白板'}
-        onClick={(e) => e.stopPropagation()}>
-        <h2 className={styles.modalTitle}>
-          {mode === 'create' ? '新建白板' : '重命名白板'}
-        </h2>
-        <label className={styles.modalLabel} htmlFor="board-name-input">
-          名称
-        </label>
-        <input
-          id="board-name-input"
-          className={styles.modalInput}
-          value={title}
-          autoFocus
-          placeholder="例如：架构草图"
-          onFocus={(e) => e.currentTarget.select()}
-          onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && title.trim() && !busy) onSubmit(title);
-          }}
-        />
-        <p className={styles.modalHint}>
-          文件名：<code>{fileName}</code>
-          {mode === 'rename' && currentPath && currentPath !== fileName ? (
-            <>
-              <br />
-              当前：<code>{currentPath}</code>
-            </>
-          ) : null}
-        </p>
-        <div className={styles.modalActions}>
-          <button type="button" className={styles.modalBtn} onClick={onCancel}>
-            取消
-          </button>
-          <button
-            type="button"
-            className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
-            disabled={!title.trim() || busy}
-            onClick={() => onSubmit(title)}>
-            {busy ? '处理中…' : mode === 'create' ? '创建' : '保存'}
-          </button>
-        </div>
-      </div>
-    </div>
+    <Dialog.Root
+      open={open}
+      onOpenChange={(next: boolean) => {
+        if (!next) onCancel();
+      }}>
+      <Dialog.Portal>
+        <Dialog.Backdrop className={boardStyles.modalBackdrop} />
+        <Dialog.Popup
+          className={boardStyles.modal}
+          aria-label={mode === 'create' ? '新建白板' : '重命名白板'}>
+          <div className={boardStyles.modalHeader}>
+            <Dialog.Title className={boardStyles.modalTitle} render={<h3 />}>
+              {mode === 'create' ? '新建白板' : '重命名白板'}
+            </Dialog.Title>
+            <Dialog.Close className={boardStyles.modalClose} title="关闭（Esc）">
+              ×
+            </Dialog.Close>
+          </div>
+
+          <div className={boardStyles.modalBody}>
+            <label className={boardStyles.fieldLabel} htmlFor="board-name-input">
+              名称
+            </label>
+            <input
+              id="board-name-input"
+              className={boardStyles.fieldInput}
+              value={title}
+              autoFocus
+              placeholder="例如：架构草图"
+              onFocus={(e) => e.currentTarget.select()}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') submit();
+              }}
+            />
+            <p className={boardStyles.fieldHint}>
+              将保存为 <code>{fileName}</code>
+              {mode === 'rename' && currentPath && currentPath !== fileName ? (
+                <>
+                  <br />
+                  当前：<code>{currentPath}</code>
+                </>
+              ) : null}
+            </p>
+          </div>
+
+          <div className={boardStyles.modalFooter}>
+            <Dialog.Close className={boardStyles.btn}>取消</Dialog.Close>
+            <button
+              type="button"
+              className={`${boardStyles.btn} ${boardStyles.btnPrimary}`}
+              disabled={!trimmed || busy}
+              onClick={submit}>
+              {busy ? '处理中…' : mode === 'create' ? '创建' : '保存'}
+            </button>
+          </div>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -697,32 +702,6 @@ export default function WhiteboardPage(): React.ReactNode {
               }}
               onReload={() => void handleReload()}
             />
-            <button
-              type="button"
-              className={styles.barBtn}
-              onClick={() => {
-                apiRef.current?.scrollToContent(undefined, {fitToContent: true});
-              }}
-              title="适应画布（缩放到全部内容）"
-              aria-label="适应画布"
-              disabled={!current}>
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path
-                  d="M2.5 6V3.5a1 1 0 0 1 1-1H6M10 2.5h2.5a1 1 0 0 1 1 1V6M13.5 10v2.5a1 1 0 0 1-1 1H10M6 13.5H3.5a1 1 0 0 1-1-1V10"
-                  stroke="currentColor"
-                  strokeWidth="1.4"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <span className={styles.barBtnLabel}>适应画布</span>
-            </button>
-            <button
-              type="button"
-              className={styles.barBtn}
-              onClick={() => setDialog({mode: 'create'})}
-              title="新建白板">
-              新建
-            </button>
           </div>
 
           <div className={styles.body}>
@@ -734,6 +713,9 @@ export default function WhiteboardPage(): React.ReactNode {
               collapsed={collapsed}
               onSelect={(p) => void openBoard(p)}
               onCreate={() => setDialog({mode: 'create'})}
+              onFit={() => {
+                apiRef.current?.scrollToContent(undefined, {fitToContent: true});
+              }}
               onRename={(b) => setDialog({mode: 'rename', board: b})}
               onDelete={(b) => void handleDelete(b)}
               onToggleCollapse={() => setCollapsed((v) => !v)}
@@ -764,11 +746,11 @@ export default function WhiteboardPage(): React.ReactNode {
                     <p>
                       {boards && boards.length > 0
                         ? '从左侧选择一块，或新建一块空白白板。'
-                        : '点「新建」开始第一块白板。'}
+                        : '点左上角的 + 开始第一块白板。'}
                     </p>
                     <button
                       type="button"
-                      className={`${styles.modalBtn} ${styles.modalBtnPrimary}`}
+                      className={styles.emptyAction}
                       onClick={() => setDialog({mode: 'create'})}>
                       新建白板
                     </button>

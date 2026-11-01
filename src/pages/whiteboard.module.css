@@ -75,30 +75,6 @@
   min-width: 0.5rem;
 }
 
-.barBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.6rem;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--ifm-font-color-base);
-  font: inherit;
-  font-size: 0.85rem;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.barBtn:hover:not(:disabled) {
-  background: var(--ifm-color-emphasis-100);
-}
-
-.barBtn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .iconBtn {
   display: inline-flex;
   align-items: center;
@@ -156,26 +132,21 @@
   color: var(--ifm-font-color-base);
 }
 
-/* 空态里的主按钮复用对话框按钮的观感 */
-.modalBtn {
+/* 空态里的主按钮 */
+.emptyAction {
   padding: 0.45rem 0.95rem;
   font: inherit;
   font-size: 0.85rem;
-  color: var(--ifm-font-color-base);
-  background: var(--ifm-background-color);
-  border: 1px solid var(--ifm-color-emphasis-300);
+  color: #fff;
+  background: var(--ifm-color-primary);
+  border: 1px solid var(--ifm-color-primary);
   border-radius: 8px;
   cursor: pointer;
 }
 
-.modalBtnPrimary {
-  color: #fff;
-  background: var(--ifm-color-primary);
-  border-color: var(--ifm-color-primary);
-}
-
-.modalBtnPrimary:hover {
+.emptyAction:hover {
   background: var(--ifm-color-primary-dark);
+  border-color: var(--ifm-color-primary-dark);
 }
 
 /* 移动端展开侧栏时的遮罩：点一下收回，避免侧栏「卡」在画布上 */
@@ -190,10 +161,6 @@
 
   .titleInput {
     flex: 1 1 auto;
-  }
-
-  .barBtnLabel {
-    display: none;
   }
 
   .sidebarScrim {

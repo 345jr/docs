@@ -37,6 +37,19 @@ function IconDots() {
   );
 }
 
+function IconFit() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M2.5 6V3.5a1 1 0 0 1 1-1H6M10 2.5h2.5a1 1 0 0 1 1 1V6M13.5 10v2.5a1 1 0 0 1-1 1H10M6 13.5H3.5a1 1 0 0 1-1-1V10"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function IconArrow() {
   return (
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -62,26 +75,30 @@ type RowProps = {
 function BoardRow({board, active, onSelect, onRename, onDelete}: RowProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
-    <li className={styles.row}>
-      <button
-        type="button"
-        className={clsx(styles.rowMain, active && styles.rowMainActive)}
-        onClick={onSelect}
-        title={board.path}>
-        <span className={styles.rowTitle}>{board.title}</span>
-        <span className={styles.rowMeta}>
-          {formatTime(board.updated_at)}
-          {board.size > 1024 * 1024 ? ` · ${formatBytes(board.size)}` : ''}
-        </span>
-      </button>
-      <button
-        type="button"
-        className={styles.rowMenuBtn}
-        aria-label="更多操作"
-        aria-expanded={menuOpen}
-        onClick={() => setMenuOpen((v) => !v)}>
-        <IconDots />
-      </button>
+    <li className="menu__list-item">
+      <div className={clsx(styles.row, active && styles.rowActive)}>
+        {/* 用 Infima 的 menu__link 类名，hover / active / 缩进直接继承文档站样式 */}
+        <button
+          type="button"
+          className={clsx('menu__link', active && 'menu__link--active')}
+          onClick={onSelect}
+          title={board.path}
+          aria-current={active ? 'page' : undefined}>
+          <span className={styles.rowTitle}>{board.title}</span>
+          <span className={styles.rowMeta}>
+            {formatTime(board.updated_at)}
+            {board.size > 1024 * 1024 ? ` · ${formatBytes(board.size)}` : ''}
+          </span>
+        </button>
+        <button
+          type="button"
+          className={styles.rowMenuBtn}
+          aria-label="更多操作"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}>
+          <IconDots />
+        </button>
+      </div>
       {menuOpen && (
         <>
           {/* 点空白处关闭：用一个透明遮罩接住点击，比全局监听省事且不吞滚动 */}
@@ -130,6 +147,7 @@ export default function BoardList({
   collapsed,
   onSelect,
   onCreate,
+  onFit,
   onRename,
   onDelete,
   onToggleCollapse,
@@ -150,14 +168,25 @@ export default function BoardList({
       <div className={styles.sidebarInner}>
         <div className={styles.sidebarHead}>
           <span className={styles.sidebarTitle}>白板</span>
-          <button
-            type="button"
-            className={styles.iconBtn}
-            onClick={onCreate}
-            title="新建白板"
-            aria-label="新建白板">
-            <IconPlus />
-          </button>
+          <div className={styles.sidebarActions}>
+            <button
+              type="button"
+              className={styles.iconBtn}
+              onClick={onFit}
+              disabled={!activePath}
+              title="适应画布（缩放到全部内容）"
+              aria-label="适应画布">
+              <IconFit />
+            </button>
+            <button
+              type="button"
+              className={styles.iconBtn}
+              onClick={onCreate}
+              title="新建白板"
+              aria-label="新建白板">
+              <IconPlus />
+            </button>
+          </div>
         </div>
 
         <div className={styles.searchWrap}>
@@ -180,7 +209,7 @@ export default function BoardList({
                 : '还没有白板。点右上角 + 新建一块。'}
             </p>
           ) : (
-            <ul className={styles.list}>
+            <ul className="menu__list">
               {shown.map((b) => (
                 <BoardRow
                   key={b.path}

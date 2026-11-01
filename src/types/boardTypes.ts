@@ -93,6 +93,8 @@ export type BoardListProps = {
   collapsed: boolean;
   onSelect: (path: string) => void;
   onCreate: () => void;
+  /** 适应画布（缩放到全部内容），无打开白板时禁用 */
+  onFit: () => void;
   onRename: (board: BoardSummary) => void;
   onDelete: (board: BoardSummary) => void;
   onToggleCollapse: () => void;
