@@ -51,16 +51,17 @@ function IconFit() {
   );
 }
 
+/**
+ * 收起按钮箭头：与文档站 `@theme/Icon/Arrow` 完全一致（双人字 + 20px）。
+ * 自己画个单箭头虽然更小，但与私有文档侧栏并排时一眼能看出不是同一套。
+ */
 function IconArrow() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M10 3.5 5.5 8l4.5 4.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
+    <svg width="20" height="20" aria-hidden="true">
+      <g fill="#7a7a7a">
+        <path d="M9.992 10.023c0 .2-.062.399-.172.547l-4.996 7.492a.982.982 0 01-.828.454H1c-.55 0-1-.453-1-1 0-.2.059-.403.168-.551l4.629-6.942L.168 3.078A.939.939 0 010 2.528c0-.548.45-.997 1-.997h2.996c.352 0 .649.18.828.45L9.82 9.472c.11.148.172.347.172.55zm0 0" />
+        <path d="M19.98 10.023c0 .2-.058.399-.168.547l-4.996 7.492a.987.987 0 01-.828.454h-3c-.547 0-.996-.453-.996-1 0-.2.059-.403.168-.551l4.625-6.942-4.625-6.945a.939.939 0 01-.168-.55 1 1 0 01.996-.997h3c.348 0 .649.18.828.45l4.996 7.492c.11.148.168.347.168.55zm0 0" />
+      </g>
     </svg>
   );
 }
@@ -186,7 +187,9 @@ export default function BoardList({
           />
         </div>
 
-        <div className={styles.sidebarScroll}>
+        {/* 滚动容器与文档站侧栏同名同结构：`menu thin-scrollbar`，
+            细滚动条 + 内边距由 Infima 与本文件的 .sidebarScroll 共同决定。 */}
+        <div className={clsx('menu', 'thin-scrollbar', styles.sidebarScroll)}>
           {loading ? (
             <p className={styles.placeholder}>加载中…</p>
           ) : shown.length === 0 ? (
@@ -211,8 +214,7 @@ export default function BoardList({
           )}
         </div>
 
-        {/* 当前白板信息（标题 / 路径 / 保存状态）挂在侧栏底部：
-            页面没有顶栏了，这些能力全部收进侧栏，布局退化成纯左右两栏。 */}
+        {/* 当前白板信息（保存状态）挂在侧栏底部 */}
         {footer ? <div className={styles.sidebarFooter}>{footer}</div> : null}
 
         <button
@@ -224,6 +226,20 @@ export default function BoardList({
           <IconArrow />
         </button>
       </div>
+
+      {/* 收起态：与文档站一致，在裁切后的窄列上盖一个撑满高度的展开按钮。
+          注意必须放在 .sidebarInner 外面——内层在收起态是 visibility: hidden，
+          放在里面会连展开按钮一起隐形，用户就没法再展开了。 */}
+      {collapsed && (
+        <button
+          type="button"
+          className={styles.expandBtn}
+          onClick={onToggleCollapse}
+          title="展开侧边栏"
+          aria-label="展开侧边栏">
+          <IconArrow />
+        </button>
+      )}
     </aside>
   );
 }
