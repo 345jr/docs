@@ -187,6 +187,20 @@ export default function WhiteboardPage(): React.ReactNode {
   >(null);
   const [dialogBusy, setDialogBusy] = useState(false);
 
+  /**
+   * 对话框退场期间沿用最后一次非空的配置。
+   *
+   * 关闭时 `setDialog(null)` 会立即生效，但 Base UI 还要把弹窗渲染 ~150ms
+   * 做退场动画（`data-ending-style`）。若直接从 `dialog` 推导 mode/标题，
+   * 这段时间会落到 `create` 分支——用户看到的就是「点取消的一瞬间标题从
+   * 重命名白板闪成新建白板」。用 ref 留住上一次的值即可。
+   */
+  const lastDialogRef = useRef<
+    {mode: 'create'} | {mode: 'rename'; board: BoardSummary} | null
+  >(null);
+  if (dialog) lastDialogRef.current = dialog;
+  const shownDialog = dialog ?? lastDialogRef.current;
+
   // 待保存内容：画布回调写这里，防抖计时器统一落盘
   const pendingRef = useRef<{content: string; title: string} | null>(null);
   const timerRef = useRef<number | null>(null);
@@ -657,8 +671,8 @@ export default function WhiteboardPage(): React.ReactNode {
 
           <NameDialog
             open={dialog !== null}
-            mode={dialog?.mode === 'rename' ? 'rename' : 'create'}
-            initialTitle={dialog?.mode === 'rename' ? dialog.board.title : ''}
+            mode={shownDialog?.mode === 'rename' ? 'rename' : 'create'}
+            initialTitle={shownDialog?.mode === 'rename' ? shownDialog.board.title : ''}
             busy={dialogBusy}
             onCancel={() => setDialog(null)}
             onSubmit={(title) => {
