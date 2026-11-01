@@ -145,6 +145,7 @@ export default function BoardList({
   activePath,
   loading,
   collapsed,
+  footer,
   onSelect,
   onCreate,
   onFit,
@@ -223,6 +224,10 @@ export default function BoardList({
             </ul>
           )}
         </div>
+
+        {/* 当前白板信息（标题 / 路径 / 保存状态）挂在侧栏底部：
+            页面没有顶栏了，这些能力全部收进侧栏，布局退化成纯左右两栏。 */}
+        {footer ? <div className={styles.sidebarFooter}>{footer}</div> : null}
 
         <button
           type="button"

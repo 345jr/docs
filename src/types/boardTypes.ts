@@ -9,6 +9,8 @@
  * （详见 `editorTypes.ts` 头部注释）。
  */
 
+import type {ReactNode} from 'react';
+
 // ── 后端数据 ─────────────────────────────────────────
 
 /** `GET /boards` 返回的一行。按 `updated_at` 降序，前端直接照序渲染。 */
@@ -91,6 +93,11 @@ export type BoardListProps = {
   activePath: string | null;
   loading: boolean;
   collapsed: boolean;
+  /**
+   * 侧栏底部插槽：当前白板的标题输入框 + 路径 + 保存状态灯。
+   * 由页面注入——列表只负责位置，不关心标题编辑与保存调度。
+   */
+  footer?: ReactNode;
   onSelect: (path: string) => void;
   onCreate: () => void;
   /** 适应画布（缩放到全部内容），无打开白板时禁用 */
@@ -127,7 +134,7 @@ export type ExcalidrawApi = {
   updateScene: (scene: Record<string, unknown>) => void;
 };
 
-/** 顶栏保存状态灯 */
+/** 侧栏底部的保存状态灯 */
 export type SaveIndicatorProps = {
   status: SaveStatus;
   /** 上次成功保存的时间戳（ms），null 表示本次会话还没存过 */

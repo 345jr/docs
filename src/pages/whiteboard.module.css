@@ -1,8 +1,10 @@
 /* 白板页的壳层样式：组件级样式都在 components/board/styles.module.css，
-   这里只放页面骨架与顶栏，避免一个文件被两处引用时互相覆盖。 */
+   这里只放页面骨架，避免一个文件被两处引用时互相覆盖。
+
+   布局只有左右两栏：左侧栏（占满 navbar 以下的整个高度）+ 右侧画布。
+   原来那条横贯整屏的顶栏已经去掉，标题编辑、路径、保存状态全部移进侧栏底部。 */
 
 .shell {
-  --board-subbar-height: 48px;
   display: flex;
   flex-direction: column;
   height: calc(100vh - var(--ifm-navbar-height));
@@ -13,6 +15,8 @@
   flex: 1;
   display: flex;
   min-height: 0;
+  /* 窄屏下侧栏与遮罩都是 absolute，锚在这里才不会跑出 navbar 区域 */
+  position: relative;
 }
 
 .contentCol {
@@ -23,21 +27,10 @@
   min-height: 0;
 }
 
-.subbar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  height: var(--board-subbar-height);
-  padding: 0 0.75rem;
-  border-bottom: 1px solid var(--ifm-toc-border-color);
-  background: var(--ifm-background-surface-color);
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
+/* 侧栏底部的「当前白板」区（由 BoardList 的 footer 插槽渲染） */
 .titleInput {
+  width: 100%;
   min-width: 0;
-  flex: 0 1 22rem;
   padding: 0.3rem 0.5rem;
   font: inherit;
   font-weight: 600;
@@ -62,37 +55,13 @@
 }
 
 .pathHint {
-  font-size: 0.78rem;
+  display: block;
+  font-size: 0.72rem;
   color: var(--ifm-color-emphasis-600);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
-}
-
-.subbarSpacer {
-  flex: 1;
-  min-width: 0.5rem;
-}
-
-.iconBtn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  flex-shrink: 0;
-  padding: 0;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--ifm-color-emphasis-700);
-  cursor: pointer;
-}
-
-.iconBtn:hover {
-  background: var(--ifm-color-emphasis-100);
-  color: var(--ifm-font-color-base);
 }
 
 .canvasArea {
@@ -155,18 +124,10 @@
 }
 
 @media (max-width: 996px) {
-  .pathHint {
-    display: none;
-  }
-
-  .titleInput {
-    flex: 1 1 auto;
-  }
-
   .sidebarScrim {
     display: block;
     position: absolute;
-    inset: var(--board-subbar-height) 0 0 0;
+    inset: 0;
     z-index: 15;
     border: none;
     padding: 0;

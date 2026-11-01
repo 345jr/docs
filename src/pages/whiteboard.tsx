@@ -56,7 +56,9 @@ import styles from './whiteboard.module.css';
  *   同一个 401 广播事件，登录过一次三处互通。
  * - 画布只在浏览器加载（BrowserOnly + lazy），样式与字体由
  *   `plugins/excalidraw-assets` 版本化托管，不进全局 styles.css。
- * - 边画边存：改动后防抖 1.2s 落盘，顶栏状态灯常驻；切板/关页面前会强制落盘。
+ * - 布局是纯左右两栏：左侧栏占满导航栏以下的高度，右侧是画布。没有横贯
+ *   整屏的顶栏，标题编辑 / 路径 / 保存状态都挂在侧栏底部的 footer 插槽里。
+ * - 边画边存：改动后防抖 1.2s 落盘，侧栏状态灯常驻；切板/关页面前会强制落盘。
  * - 每块白板是真实路径 `/whiteboard/<文件名>`，刷新/收藏/新标签页都成立。
  */
 
@@ -65,7 +67,7 @@ const BoardCanvas = lazy(() => import('../components/board/BoardCanvas'));
 /** 改动后多久落盘（ms）。Excalidraw 拖动时 onChange 很密集，防抖必须给足。 */
 const SAVE_DEBOUNCE_MS = 1200;
 
-/** 顶栏「已保存」状态保持多久再淡出（ms）。 */
+/** 侧栏「已保存」状态保持多久再淡出（ms）。 */
 const SAVED_HINT_MS = 4000;
 
 type Current = {
@@ -455,7 +457,7 @@ export default function WhiteboardPage(): React.ReactNode {
   // ── 标题编辑 ──────────────────────────────────────
 
   /**
-   * 顶栏标题提交：改名即改文件名。
+   * 侧栏标题提交：改名即改文件名。
    *
    * 白板只有一个「名字」概念——标题就是文件名主干。这样侧栏、地址栏、
    * 标题输入框三处永远一致，不会出现「标题叫 A、路径叫 B」的困惑。
@@ -660,52 +662,14 @@ export default function WhiteboardPage(): React.ReactNode {
         />
       ) : (
         <div className={styles.shell}>
-          <div className={styles.subbar}>
-            <button
-              type="button"
-              className={styles.iconBtn}
-              onClick={() => setCollapsed((v) => !v)}
-              title={collapsed ? '展开白板列表' : '收起白板列表'}
-              aria-label={collapsed ? '展开白板列表' : '收起白板列表'}>
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path
-                  d="M2.5 4h11M2.5 8h11M2.5 12h11"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </button>
-
-            <input
-              className={styles.titleInput}
-              value={titleDraft}
-              disabled={!current}
-              placeholder={current ? '白板名称' : '未打开白板'}
-              aria-label="白板名称"
-              onChange={(e) => setTitleDraft(e.target.value)}
-              onBlur={() => void applyTitle()}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') e.currentTarget.blur();
-              }}
-            />
-            {current && <span className={styles.pathHint}>{current.path}</span>}
-
-            <span className={styles.subbarSpacer} />
-
-            <SaveIndicator
-              status={status}
-              savedAt={savedAt}
-              onRetry={() => {
-                setStatus('dirty');
-                void flush({force: true});
-              }}
-              onReload={() => void handleReload()}
-            />
-          </div>
-
           <div className={styles.body}>
-            {!collapsed && <div className={styles.sidebarScrim} onClick={() => setCollapsed(true)} role="presentation" />}
+            {!collapsed && (
+              <div
+                className={styles.sidebarScrim}
+                onClick={() => setCollapsed(true)}
+                role="presentation"
+              />
+            )}
             <BoardList
               boards={boards}
               activePath={current?.path ?? null}
@@ -719,6 +683,32 @@ export default function WhiteboardPage(): React.ReactNode {
               onRename={(b) => setDialog({mode: 'rename', board: b})}
               onDelete={(b) => void handleDelete(b)}
               onToggleCollapse={() => setCollapsed((v) => !v)}
+              footer={
+                <>
+                  <input
+                    className={styles.titleInput}
+                    value={titleDraft}
+                    disabled={!current}
+                    placeholder={current ? '白板名称' : '未打开白板'}
+                    aria-label="白板名称"
+                    onChange={(e) => setTitleDraft(e.target.value)}
+                    onBlur={() => void applyTitle()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') e.currentTarget.blur();
+                    }}
+                  />
+                  {current && <span className={styles.pathHint}>{current.path}</span>}
+                  <SaveIndicator
+                    status={status}
+                    savedAt={savedAt}
+                    onRetry={() => {
+                      setStatus('dirty');
+                      void flush({force: true});
+                    }}
+                    onReload={() => void handleReload()}
+                  />
+                </>
+              }
             />
 
             <div className={styles.contentCol}>

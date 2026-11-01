@@ -275,6 +275,20 @@
   color: var(--ifm-color-danger);
 }
 
+/* 侧栏底部「当前白板」区：标题输入框 + 路径 + 保存状态。
+   页面没有顶栏了，这些能力都收进这里，所以允许换行以适配 300px 窄栏。 */
+.sidebarFooter {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.3rem;
+  padding: 0.5rem 0.5rem 0.6rem 0.75rem;
+  border-top: 1px solid var(--ifm-toc-border-color);
+  background: var(--ifm-background-surface-color);
+  min-width: 0;
+}
+
 /* ── 收起按钮：对齐文档站 CollapseButton ───────────── */
 
 .collapseBtn {
@@ -473,7 +487,7 @@
   .sidebar {
     position: absolute;
     z-index: 20;
-    top: var(--board-subbar-height, 48px);
+    top: 0;
     bottom: 0;
     left: 0;
     box-shadow: var(--ifm-global-shadow-md);
@@ -515,13 +529,15 @@
   color: var(--ifm-color-emphasis-600);
 }
 
-/* ── 顶栏保存状态灯 ───────────────────────────────── */
+/* ── 侧栏保存状态灯 ───────────────────────────────── */
 
 .save {
   display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
-  font-size: 0.78rem;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  max-width: 100%;
+  font-size: 0.76rem;
   color: var(--ifm-color-emphasis-700);
   white-space: nowrap;
 }
@@ -566,7 +582,7 @@
   background: none;
   color: var(--ifm-color-primary);
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   text-decoration: underline;
   cursor: pointer;
 }
