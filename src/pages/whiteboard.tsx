@@ -37,7 +37,6 @@ import {
   formatBytes,
   pathToTitle,
   readTitle,
-  titleToFileName,
   titleToPath,
   writeTitle,
 } from '../utils/boardScene';
@@ -90,8 +89,6 @@ type NameDialogProps = {
   open: boolean;
   mode: 'create' | 'rename';
   initialTitle: string;
-  /** 重命名时展示当前路径，新建时不显示 */
-  currentPath?: string;
   busy: boolean;
   onCancel: () => void;
   onSubmit: (title: string) => void;
@@ -101,7 +98,6 @@ function NameDialog({
   open,
   mode,
   initialTitle,
-  currentPath,
   busy,
   onCancel,
   onSubmit,
@@ -113,7 +109,6 @@ function NameDialog({
   }, [open, initialTitle]);
 
   const trimmed = title.trim();
-  const fileName = trimmed ? `${titleToFileName(trimmed)}.excalidraw` : '待输入名称';
   const submit = () => {
     if (trimmed && !busy) onSubmit(trimmed);
   };
@@ -154,15 +149,6 @@ function NameDialog({
                 if (e.key === 'Enter') submit();
               }}
             />
-            <p className={boardStyles.fieldHint}>
-              将保存为 <code>{fileName}</code>
-              {mode === 'rename' && currentPath && currentPath !== fileName ? (
-                <>
-                  <br />
-                  当前：<code>{currentPath}</code>
-                </>
-              ) : null}
-            </p>
           </div>
 
           <div className={boardStyles.modalFooter}>
@@ -673,7 +659,6 @@ export default function WhiteboardPage(): React.ReactNode {
             open={dialog !== null}
             mode={dialog?.mode === 'rename' ? 'rename' : 'create'}
             initialTitle={dialog?.mode === 'rename' ? dialog.board.title : ''}
-            currentPath={dialog?.mode === 'rename' ? dialog.board.path : undefined}
             busy={dialogBusy}
             onCancel={() => setDialog(null)}
             onSubmit={(title) => {

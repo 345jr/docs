@@ -438,14 +438,6 @@
   border-color: var(--ifm-color-primary);
 }
 
-.fieldHint {
-  margin: 0.5rem 0 0;
-  font-size: 0.76rem;
-  line-height: 1.6;
-  color: var(--ifm-color-emphasis-600);
-  word-break: break-all;
-}
-
 .btn {
   padding: 0.4rem 0.9rem;
   font: inherit;
