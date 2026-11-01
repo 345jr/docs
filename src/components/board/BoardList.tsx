@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import clsx from 'clsx';
 import {Menu} from '@base-ui/react/menu';
 import type {BoardListProps, BoardSummary} from '../../types/boardTypes';
@@ -141,6 +141,11 @@ export default function BoardList({
   onToggleCollapse,
 }: BoardListProps): React.ReactNode {
   const [keyword, setKeyword] = useState('');
+  // 只在首次拿到数据时播一次淡入；后续重排/切板不重放，否则列表会反复「闪亮」
+  const [readyOnce, setReadyOnce] = useState(false);
+  useEffect(() => {
+    if (!loading && boards) setReadyOnce(true);
+  }, [loading, boards]);
   const shown = useMemo(() => {
     const list = boards || [];
     const k = keyword.trim().toLowerCase();
@@ -190,7 +195,10 @@ export default function BoardList({
         {/* 滚动容器与文档站侧栏同名同结构：`menu thin-scrollbar`，
             细滚动条 + 内边距由 Infima 与本文件的 .sidebarScroll 共同决定。 */}
         <div className={clsx('menu', 'thin-scrollbar', styles.sidebarScroll)}>
-          {loading ? (
+          {/* 只在「还没拿到过数据」时显示加载文案。刷新列表（reloadList）也会
+              把 loading 置 true，若此时整块替换成「加载中…」，列表会整体卸载
+              再重建，看起来就是侧栏闪了一下。保留旧数据等新数据覆盖即可。 */}
+          {loading && !boards ? (
             <p className={styles.placeholder}>加载中…</p>
           ) : shown.length === 0 ? (
             <p className={styles.placeholder}>
@@ -199,7 +207,7 @@ export default function BoardList({
                 : '还没有白板。点右上角 + 新建一块。'}
             </p>
           ) : (
-            <ul className="menu__list">
+            <ul className={clsx('menu__list', readyOnce && styles.sidebarList)}>
               {shown.map((b) => (
                 <BoardRow
                   key={b.path}

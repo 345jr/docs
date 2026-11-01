@@ -51,7 +51,9 @@ tags: [站点建设, 前端, 后端]
 - 侧栏视觉与私有文档（`DocSidebar`）逐项对齐：滚动容器挂 `menu thin-scrollbar`、菜单项内边距/圆角走 Infima 变量、侧栏底色透明、收起按钮四边描边 + 双人字箭头、收起态整列内容 `visibility: hidden` 并在窄列上盖满高的展开按钮。
 - 改名走列表行内「更多操作」菜单（Base UI `Menu`，Portal 到 body）。早先手写的 absolute 菜单挂在 `static` 的 `<li>` 上会相对 `aside` 定位、落到侧栏底部之外并被 `overflow: hidden` + `clip-path: inset(0)` 裁掉，表现就是「点三个点没反应」。
 - 深色模式跟随站点 `colorMode`；窄屏侧栏默认收起，选中白板后自动收起。
-- 进入页面时列表未就绪、或正在自动打开首块白板，画布区显示居中的转圈 loading，不再先闪一下「还没有打开白板」空态。
+- 加载链路上的三个阶段（拉列表 / 读白板 / 下载 Excalidraw 整包）共用一个 `CanvasLoading` 组件，只换文案；它常驻 DOM、靠 `data-hidden` 交叉淡出，画布则在 `data-obscured` 解除后才淡入，全程无中间占位切换。
+- 地址栏同步用 `history.replaceState` 而非 `history.replace`：`/whiteboard` 与 `/whiteboard/*` 是两条独立路由，后者会让整页卸载重建（state 归零、列表重拉、画布重挂），正是「切换时闪一下」的根因。
+- loading 有 320ms 最短展示时间，避免 `readBoard` 一帧返回时 loading 还没浮现就被撤掉。
 - 导航栏的「私有文档 / 在线编辑 / 白板」用 `custom-sectionLink`（`src/components/SectionLink`）：已在该栏目内时点击不跳转，避免白板页被重置成 `/whiteboard` 再重开一遍画布。
 - 单板内容超过 16 MB 时前端直接拦截并提示，不发请求。
 

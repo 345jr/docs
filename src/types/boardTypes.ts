@@ -117,6 +117,16 @@ export type BoardCanvasProps = {
   onChange: (content: string) => void;
   /** 首次挂载拿到 excalidrawAPI，用于读取当前场景与滚动位置 */
   onReady: (api: ExcalidrawApi) => void;
+  /**
+   * 样式表与整包都就绪（即将渲染画布）时回调。
+   * 页面据此把统一的 loading 淡出，避免两套占位交替造成闪烁。
+   */
+  onLoaded?: () => void;
+  /**
+   * 上面还有 loading 盖着。此时画布不淡入，等 loading 真正开始淡出再露出来，
+   * 两者才不会抢帧。
+   */
+  hidden?: boolean;
 };
 
 /**

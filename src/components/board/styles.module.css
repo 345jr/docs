@@ -111,6 +111,27 @@
   border-color: var(--ifm-color-primary);
 }
 
+/* 列表出现时淡入：与画布的交叉淡入同步，避免侧栏「啪」地多出两行。
+   只在首次就绪时生效（React 会保留这个节点，后续切换白板不重放动画）。 */
+.sidebarList {
+  animation: sidebarListIn 0.24s ease both;
+}
+
+@keyframes sidebarListIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidebarList {
+    animation: none;
+  }
+}
+
 /* 与在线编辑 .sidebarScroll 完全一致的内边距与字重 */
 .sidebarScroll {
   flex: 1;
@@ -548,6 +569,27 @@
   inset: 0;
 }
 
+/* 仍然被 loading 盖着：先别露出来，等 loading 淡出时再一起淡入，
+   否则画布会在 loading 还没浮现时就整块出现。 */
+.canvasHost:not([data-obscured]) {
+  animation: canvasFadeIn 0.3s ease both;
+}
+
+@keyframes canvasFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canvasHost {
+    animation: none;
+  }
+}
+
 .canvasHost > :global(.excalidraw) {
   /* Excalidraw 默认 height:100%；父容器是 absolute inset-0，能拿到高度 */
   height: 100%;
@@ -643,5 +685,63 @@
 @media (prefers-reduced-motion: reduce) {
   .saveBusy .saveDot {
     animation: none;
+  }
+}
+
+/* ── 画布加载态（CanvasLoading）─────────────────────── */
+
+/* 画布区居中 loading：转圈 + 一行小字（组件见 components/board/CanvasLoading）。
+   列表请求、读白板、Excalidraw 整包下载三个阶段共用它，只换文案，
+   避免不同占位样式互相切换造成闪烁。 */
+.canvasLoading {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.7rem;
+  color: var(--ifm-color-emphasis-600);
+  /* 盖住底下的画布，淡出时才露出内容 */
+  background: var(--ifm-background-color);
+  opacity: 1;
+  transition: opacity 0.28s ease;
+}
+
+/* 加载完成：淡出后不拦截点击，也不再占据无障碍焦点 */
+.canvasLoading[data-hidden] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--ifm-color-emphasis-300);
+  /* 只用一边上色做出「缺一段」的转圈感，不引任何动画库 */
+  border-top-color: var(--ifm-color-primary);
+  border-radius: 50%;
+  animation: boardSpin 0.8s linear infinite;
+}
+
+.loadingText {
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+
+@keyframes boardSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation-duration: 2.4s;
+  }
+
+  .canvasLoading {
+    transition: none;
   }
 }

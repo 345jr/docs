@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {useLocation, useHistory} from '@docusaurus/router';
+import {useLocation} from '@docusaurus/router';
 import Layout from '@theme/Layout';
 import BrowserOnly from '@docusaurus/BrowserOnly';
 import {Dialog} from '@base-ui/react/dialog';
@@ -17,6 +17,7 @@ import toast, {Toaster} from 'react-hot-toast';
 import LoginForm from '../components/LoginForm';
 import BoardList from '../components/board/BoardList';
 import SaveIndicator from '../components/board/SaveIndicator';
+import CanvasLoading from '../components/board/CanvasLoading';
 import {
   ConflictError,
   UNAUTHORIZED_EVENT,
@@ -65,6 +66,9 @@ const BoardCanvas = lazy(() => import('../components/board/BoardCanvas'));
 
 /** 改动后多久落盘（ms）。Excalidraw 拖动时 onChange 很密集，防抖必须给足。 */
 const SAVE_DEBOUNCE_MS = 1200;
+
+/** loading 至少展示多久（ms），避免一闪而过。 */
+const MIN_LOADING_MS = 320;
 
 /** 侧栏「已保存」状态保持多久再淡出（ms）。 */
 const SAVED_HINT_MS = 4000;
@@ -171,7 +175,6 @@ function NameDialog({
 
 export default function WhiteboardPage(): React.ReactNode {
   const location = useLocation();
-  const history = useHistory();
 
   const [mounted, setMounted] = useState(false);
   const [token, setToken] = useState<string | null>(null);
@@ -186,6 +189,8 @@ export default function WhiteboardPage(): React.ReactNode {
     {mode: 'create'} | {mode: 'rename'; board: BoardSummary} | null
   >(null);
   const [dialogBusy, setDialogBusy] = useState(false);
+  /** 画布样式 + 整包已就绪，Excalidraw 即将渲染。 */
+  const [canvasLoaded, setCanvasLoaded] = useState(false);
 
   /**
    * 对话框退场期间沿用最后一次非空的配置。
@@ -207,8 +212,23 @@ export default function WhiteboardPage(): React.ReactNode {
   const currentRef = useRef<Current | null>(null);
   const apiRef = useRef<ExcalidrawApi | null>(null);
   const savedHintRef = useRef<number | null>(null);
+  /** 正在加载的白板路径：用于抑制重复的 openBoard（见 openBoard 注释） */
+  const loadingRef = useRef<string | null>(null);
 
   currentRef.current = current;
+
+  /**
+   * 地址栏同步：用 `history.replaceState` 而不是 `history.replace`。
+   *
+   * `/whiteboard` 与 `/whiteboard/*` 是两条独立路由，`history.replace` 会让
+   * 路由重新匹配，`<WhiteboardPage>` 整个被卸载重建——所有 state 归零、
+   * 列表重新请求、画布重新挂载。用户看到的就是「刚打开就闪一下、列表重来」。
+   * `replaceState` 只改地址、不通知路由，页面组件原样保留。
+   */
+  const replacePath = useCallback((target: string) => {
+    if (window.location.pathname === target) return;
+    window.history.replaceState(window.history.state, '', target);
+  }, []);
 
   const slug = useMemo(() => {
     const raw = location.pathname.replace(/^\/whiteboard\/?/, '');
@@ -218,6 +238,18 @@ export default function WhiteboardPage(): React.ReactNode {
       return raw;
     }
   }, [location.pathname]);
+
+  /**
+   * 实际生效的 slug。
+   *
+   * `slug` 派生自 router 的 location，而 `replacePath` 用 replaceState 改地址
+   * 不会让 router 重新渲染，两者会短暂不一致。所以维护一份自己的 currentSlug：
+   * replacePath 时同步写、地址被外部改变（前进/后退）时跟 router 对齐。
+   */
+  const [currentSlug, setCurrentSlug] = useState('');
+  useEffect(() => {
+    setCurrentSlug(slug);
+  }, [slug]);
 
   useEffect(() => {
     setMounted(true);
@@ -376,6 +408,14 @@ export default function WhiteboardPage(): React.ReactNode {
   const openBoard = useCallback(
     async (path: string) => {
       if (path === currentRef.current?.path) return;
+      // 同一块板正在加载：不要重复置 loading 态，否则会把加载中的文案
+      // 打断成「正在加载 → 正在打开白板」来回跳。
+      if (loadingRef.current === path) return;
+      loadingRef.current = path;
+      // 必须在清 current 之前复位：否则 current 换了新内容、canvasLoaded
+      // 还是上一块的 true，loading 会瞬间被判为「不必显示」而不淡入，
+      // 画布则从 0 淡入——看起来就像切换时闪了一下。
+      setCanvasLoaded(false);
       // 切板前先把当前改动落盘，避免丢内容
       if (pendingRef.current) {
         const ok = await flush();
@@ -402,6 +442,7 @@ export default function WhiteboardPage(): React.ReactNode {
         // 文件不存在（被别处删掉）时退回空态并刷新列表
         void reloadList();
       } finally {
+        loadingRef.current = null;
         setLoadingBoard(false);
       }
     },
@@ -411,19 +452,19 @@ export default function WhiteboardPage(): React.ReactNode {
   // URL → 打开对应白板；列表就绪后才知道这块板还在不在
   useEffect(() => {
     if (!token || !boards) return;
-    if (!slug) {
+    if (!currentSlug) {
       // 根路径：自动打开最近一块，没有就停在空态
       if (!currentRef.current && boards.length > 0) {
         void openBoard(boards[0].path);
       }
       return;
     }
-    if (currentRef.current?.path === slug) return;
+    if (currentRef.current?.path === currentSlug) return;
     // 列表里没有这个 slug 就别读了：典型场景是刚删掉当前白板——那时
     // setBoards 已生效但 history.replace 还没刷新 location，effect 会拿
     // 旧 slug 再读一次已删除的文件，弹出一个莫名其妙的「不存在」错误。
     // 顺带也处理了「别处删掉了这块板」：停在空态而不是报错。
-    if (!boards.some((b) => b.path === slug)) {
+    if (!boards.some((b) => b.path === currentSlug)) {
       if (currentRef.current) {
         pendingRef.current = null;
         setCurrent(null);
@@ -431,9 +472,9 @@ export default function WhiteboardPage(): React.ReactNode {
       }
       return;
     }
-    void openBoard(slug);
+    void openBoard(currentSlug);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug, boards, token]);
+  }, [currentSlug, boards, token]);
 
   // 打开的白板同步到地址栏（便于刷新与收藏）
   const lastPushedRef = useRef<string | null>(null);
@@ -442,8 +483,9 @@ export default function WhiteboardPage(): React.ReactNode {
     if (lastPushedRef.current === current.path) return;
     lastPushedRef.current = current.path;
     const target = `/whiteboard/${encodeURIComponent(current.path)}`;
-    if (location.pathname !== target) history.replace(target);
-  }, [current, history, location.pathname]);
+    replacePath(target);
+    setCurrentSlug(current.path);
+  }, [current, replacePath]);
 
   /**
    * 还没决定该显示什么：列表没回来、或列表就绪但正在自动打开首块白板。
@@ -456,8 +498,52 @@ export default function WhiteboardPage(): React.ReactNode {
     !boards ||
     (!current &&
       !loadingBoard &&
-      !slug &&
+      !currentSlug &&
       boards.length > 0);
+
+  /**
+   * 画布区是否还没到「能看」的状态。
+   *
+   * 一条链上的每一段都要算进来，否则各阶段各闪各的：
+   *   拉列表 → 读白板（loadingBoard）→ 下载 Excalidraw 整包（canvasLoaded）
+   * 任何一段没完成，都由同一个 loading 盖住，视觉上只有一次出现、一次淡出。
+   */
+  const waiting = loadingBoard || booting || (!!current && !canvasLoaded);
+
+  /**
+   * loading 的最短展示时间。
+   *
+   * 切换白板时 readBoard 往往在一个动画帧内就返回，`waiting` 从 true 变回
+   * false 快于一次 CSS 过渡，loading 会「还没浮现就被撤掉」，画布独自淡入，
+   * 观感上就是闪一下。这里给足一个下限，让每次进入都完成一次
+   * 「浮现 → 保持 → 交叉淡出」的完整动作。
+   */
+  const [showLoading, setShowLoading] = useState(false);
+  const shownAtRef = useRef(0);
+  useEffect(() => {
+    if (waiting) {
+      if (!showLoading) {
+        shownAtRef.current = performance.now();
+        setShowLoading(true);
+      }
+      return undefined;
+    }
+    if (!showLoading) return undefined;
+    const elapsed = performance.now() - shownAtRef.current;
+    const rest = MIN_LOADING_MS - elapsed;
+    if (rest <= 0) {
+      setShowLoading(false);
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setShowLoading(false), rest);
+    return () => window.clearTimeout(timer);
+  }, [waiting, showLoading]);
+
+  // 用同步派生（而不是 showLoading || waiting）：showLoading 靠 effect 置位，
+  // 会晚一帧，那一帧 loading 不可见而画布已淡入完毕。
+  const canvasPending = waiting || showLoading;
+  // 只要「和画布比谁先到位」这件事还没结束，就压住画布淡入
+  const canvasHidden = waiting;
 
   // 浏览器标题
   useEffect(() => {
@@ -559,7 +645,8 @@ export default function WhiteboardPage(): React.ReactNode {
           pendingRef.current = null;
           lastPushedRef.current = null;
           // 先改地址栏再清 current：反过来会让 effect 用旧 slug 多读一次
-          history.replace('/whiteboard');
+          replacePath('/whiteboard');
+          setCurrentSlug('');
           setCurrent(null);
           setStatus('idle');
         }
@@ -569,7 +656,7 @@ export default function WhiteboardPage(): React.ReactNode {
         toast.error(errMsg(err));
       }
     },
-    [history, reloadList],
+    [replacePath, reloadList],
   );
 
   // 重载：把服务端最新内容拉回来（冲突时用）
@@ -646,17 +733,10 @@ export default function WhiteboardPage(): React.ReactNode {
 
             <div className={styles.contentCol}>
               <div className={styles.canvasArea}>
-                {loadingBoard || booting ? (
-                  <div className={styles.canvasLoading} role="status" aria-live="polite">
-                    <span className={styles.spinner} aria-hidden="true" />
-                    <span className={styles.loadingText}>
-                      {loadingBoard ? '正在打开白板' : '正在加载'}
-                    </span>
-                  </div>
-                ) : current ? (
-                  <BrowserOnly fallback={<p className={styles.canvasFallback}>正在加载画布…</p>}>
+                {current ? (
+                  <BrowserOnly fallback={null}>
                     {() => (
-                      <Suspense fallback={<p className={styles.canvasFallback}>正在加载画布…</p>}>
+                      <Suspense fallback={null}>
                         <BoardCanvas
                           path={current.path}
                           content={current.content}
@@ -664,11 +744,22 @@ export default function WhiteboardPage(): React.ReactNode {
                           onReady={(api) => {
                             apiRef.current = api;
                           }}
+                          onLoaded={() => setCanvasLoaded(true)}
+                          hidden={canvasHidden}
                         />
                       </Suspense>
                     )}
                   </BrowserOnly>
-                ) : (
+                ) : null}
+
+                {/* 统一 loading：列表、读白板、下载整包三个阶段共用同一个节点，
+                    只换文案。它常驻在 DOM 里靠 data-hidden 淡出，不参与条件渲染，
+                    所以不会出现「换一个占位再换回来」的中间帧。 */}
+                {current || canvasPending ? (
+                  <CanvasLoading visible={canvasPending} label="正在加载白板" />
+                ) : null}
+
+                {!current && !canvasPending ? (
                   <div className={styles.emptyState}>
                     <p className={styles.emptyTitle}>还没有打开白板</p>
                     <p>
@@ -683,7 +774,7 @@ export default function WhiteboardPage(): React.ReactNode {
                       新建白板
                     </button>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           </div>

@@ -104,6 +104,8 @@ export default function BoardCanvas({
   content,
   onChange,
   onReady,
+  onLoaded,
+  hidden = false,
 }: BoardCanvasProps): React.ReactNode {
   const assets = usePluginData('excalidraw-assets') as AssetsData;
   // 必须走 useBaseUrl：相对路径会被解析成「当前页面目录 + 相对路径」，
@@ -119,6 +121,13 @@ export default function BoardCanvas({
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState<string | null>(null);
   const [mod, setMod] = useState<ExcalidrawModule | null>(null);
+
+  // 整包与样式就绪后通知页面：页面据此把统一的 loading 淡出。
+  // 不能只依赖 Suspense 的 fallback —— 那会在「模块已下载但还没渲染」的
+  // 一两帧里露出另一套占位，视觉上就是闪一下。
+  useEffect(() => {
+    if (ready && mod) onLoaded?.();
+  }, [ready, mod, onLoaded]);
 
   // 初始场景只取一次：之后内容变化由画布自己管。若每次保存后都用服务端
   // 内容重建 initialData，用户正在画的图会被重置回上一版。
@@ -161,18 +170,14 @@ export default function BoardCanvas({
     );
   }
 
-  if (!ready || !mod) {
-    return (
-      <div className={styles.canvasFallback}>
-        <p>正在加载画布…</p>
-      </div>
-    );
-  }
+  // 等待期间不渲染任何占位：页面的统一 loading 正盖在上面，
+  // 这里再画一层文字就会在淡出瞬间露出「第二套样式」。
+  if (!ready || !mod) return null;
 
   const {Excalidraw, serializeAsJSON} = mod;
 
   return (
-    <div className={styles.canvasHost}>
+    <div className={styles.canvasHost} data-obscured={hidden ? '' : undefined}>
       <Excalidraw
         key={path}
         langCode="zh-CN"
