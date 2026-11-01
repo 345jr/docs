@@ -1,19 +1,21 @@
 ---
 title: 私有白板接口约定
 sidebar_position: 2
-description: 前端已完成的私有白板功能所需的 steward 后端接口清单、请求响应结构、存储与安全约束，以及需要同步变动的部署细节。
+description: 私有白板的 steward 后端接口清单、请求响应结构、存储与安全约束，以及部署侧必须同步的 nginx 改动。
 tags: [站点建设, 前端, 后端]
 ---
 
 # 私有白板接口约定
 
-本文是**前端已完成、后端待实现**的交接文档。前端代码已合入仓库并通过构建与浏览器 E2E（本地 mock 后端），后端只需按本文实现接口，前端无需改动即可对接。
+白板是**一块存成 `.excalidraw` JSON 的私有文件**，落 steward 的 `data/private-boards/`，鉴权复用编辑器已有的 `SessionStore`，不 commit、不触发构建。
 
-:::tip[一句话]
-白板就是「一块存成 `.excalidraw` JSON 的私有文件」，落 `steward` 的 `data/private-boards/`，鉴权复用编辑器已有的 `SessionStore`，不 commit、不触发构建。
+:::tip[实现状态]
+前端与后端均已上线（2026-11-01）。本文既是接口约定，也是实现记录——第六节的验收清单已逐条跑过。
 :::
 
-## 一、前端现状
+## 一、代码分布
+
+### 前端
 
 | 文件 | 作用 |
 | --- | --- |
@@ -25,6 +27,15 @@ tags: [站点建设, 前端, 后端]
 | `src/utils/boardScene.ts` | 场景 JSON 读写、标题与文件名转换、体积上限 |
 | `src/types/boardTypes.ts` | 共享类型 |
 | `plugins/excalidraw-assets/index.js` | 把 Excalidraw 的 CSS 与字体拷到 `assets/excalidraw/<版本>/` |
+
+### 后端（steward）
+
+| 文件 | 作用 |
+| --- | --- |
+| `internal/privateboards/store.go` | `Store`：`root` + `writeMu` + rev 索引；`List / Read / Save / Create / Rename / Delete` |
+| `internal/handlers/privateboards.go` | 6 个 handler，`ready()` + `requireSession()` 照抄 `privatedocs.go` |
+| `internal/handlers/router.go` | `Router.privboards` 字段 + 6 条路由注册 |
+| `cmd/steward/main.go` | `privateboards.New("data/private-boards")` 注入 |
 
 路由：`/whiteboard` 与 `/whiteboard/*`（后者由 `docusaurus.config.js` 的内联插件注册，`postBuild` 会删掉 SSG 生成的占位目录）。导航栏「白板」入口位于「在线编辑」之后。
 
@@ -90,7 +101,7 @@ GET /boards/read?path=<相对路径>
 ```
 
 - `content` 是**字符串**（场景 JSON 原文），不是嵌套对象——前端 `JSON.parse` 后交给画布。
-- `rev` 是服务端维护的写入序号，从 1 开始，每次成功保存 +1。
+- `rev` 是服务端维护的写入序号，从 1 开始，每次成功保存 +1。索引落在 `data/private-boards/.revs.json`（点开头，不会被当成白板列出），**进程重启不丢**——否则 steward 每次自更新都会让正在编辑的标签页撞一次假冲突，而「载入最新」会把未保存的改动丢掉。
 - 路径不存在返回 `404`。
 
 ### 3. 保存
@@ -120,9 +131,10 @@ Content-Type: application/json
   ```
 
   前端据此进入「别处已修改」状态。
-- `base_rev = -1` 表示**强制覆盖**（用户在冲突提示里点了「覆盖保存」），此时跳过 rev 校验。
+- `base_rev = -1` 表示**强制覆盖**（用户在冲突提示里点了「覆盖保存」），此时跳过 rev 校验。字段缺失时也按 `-1` 处理，避免漏传字段导致每次保存都冲突。
 - 文件不存在时返回 `404`（新建走 `/create`，不在这里隐式创建，避免手滑路径写错就在别处生文件）。
-- 写入前把 `title` 同步进场景 JSON 的顶层 `_title`（前端也会写，后端做一次兜底，保证列表标题永远与内容一致）。
+- 写入前把 `title` 同步进场景 JSON 的顶层 `_title`（前端也会写，后端做一次兜底，保证列表标题永远与内容一致）。解析失败时原样保留内容，不把用户数据改成非法 JSON。
+- 请求体上限在 handler 侧放宽到 32 MB（`content` 经 JSON 转义后可能翻倍），真正的 16 MB 业务上限仍由 store 按 `content` 解码后的字节数把关，超出返回 `413`。
 
 ### 4. 新建
 
@@ -156,8 +168,9 @@ POST /boards/rename
 响应 `200`：`{ "ok": true, "path": "新名.excalidraw" }`
 
 - `new_path == path` 时视为「只改标题」，不移动文件。
-- 目标已存在 → `409`。
-- 移动时若 `title` 非空，一并写进场景 JSON 的 `_title`。
+- 目标已存在 → `409`（前端据此退化为「只改标题」并提示）。
+- 移动时若 `title` 非空，一并写进场景 JSON 的 `_title`；先写内容再 `rename`，避免出现「路径改了、标题没改」的中间态。
+- `rev` 跟着白板走：改名不会让客户端看到「别处已修改」。
 
 ### 6. 删除
 
@@ -175,19 +188,20 @@ POST /boards/delete
 - 只允许 `.excalidraw` 扩展名，大小写不敏感。
 - 路径校验复用 `privatedocs.validateRel` 的规则：拒绝空段、`.`、`..`、绝对路径、`~`、`\`，防目录逃逸。
 - 单文件上限 **16 MB**（`content` 解码后的字节数），超出返回 `413`。前端已同步拦同一阈值。
-- 写入用「临时文件 + rename」的原子替换，避免并发/断电写坏文件（白板是纯覆盖写，没有 git 兜底）。
+- 写入用「临时文件 + fsync + rename」的原子替换，避免并发/断电写坏文件（白板是纯覆盖写，没有 git 兜底）。临时文件名是 `.tmp-<随机>`，**不带** `.excalidraw` 后缀，写盘瞬间不会被 `List` 当成一块白板列出来。
 - 所有写操作共用一把 `writeMu` 串行化（照抄 `privatedocs.Store` 的做法）。
-- `rev` 不落盘也够用（进程重启后归 1，最坏只是触发一次「别处已修改」提示）；要更稳可以在文件名旁存 `<name>.rev`，或用 mtime 派生。**建议先用内存 map**，简单且满足单人使用。
-- `GET /boards` 只需要读每个文件的头部/顶层键拿 `_title`，不必整份解析大文件；实现上读全文件再 `json.Unmarshal` 到 `struct{Title string \`json:"_title"\`}` 即可（16 MB 上限下可接受）。
+- `rev` 索引落在 `<root>/.revs.json`。原计划只用内存 map，实现时改成落盘：steward 自更新/重启会让内存归零，正在编辑的标签页下一次自动保存就撞假冲突，而「载入最新」会把未保存的改动丢掉——用一次重启换一次数据丢失不划算。索引损坏或缺失时退化为空（各板从 1 开始），最坏只是多一次冲突提示。
+- 扩展名大小写不敏感。磁盘上若是外部拷进来的 `.EXCALIDRAW`，读/写会回退到原始文件名，避免「列表里看得见却读不了」。
+- `GET /boards` 读全文件再 `json.Unmarshal` 到 `struct{Title string \`json:"_title"\`}` 拿标题（16 MB 上限下可接受）。坏 JSON 不让整页挂掉：标题退回文件名，仍列出来让用户能打开修或删。
 
-## 四、steward 需要变动的文件
+## 四、steward 侧改动
 
 照私有文档的模式，改动很小：
 
 | 文件 | 改动 |
 | --- | --- |
-| `internal/privateboards/store.go`（新增） | `Store`：`root` + `writeMu`；方法 `List / Read / Save / Create / Rename / Delete`，校验规则与 `privatedocs` 一致 |
-| `internal/handlers/privateboards.go`（新增） | 6 个 handler，`ready()` + `requireSession()` 照抄 `privatedocs.go` |
+| `internal/privateboards/store.go`（新增） | `Store`：`root` + `writeMu` + rev 索引；方法 `List / Read / Save / Create / Rename / Delete`，路径校验规则与 `privatedocs` 一致 |
+| `internal/handlers/privateboards.go`（新增） | 6 个 handler，`ready()` + `requireSession()` 照抄 `privatedocs.go`；`failBoard()` 把 store 的错误哨兵映射成 404/409/413 |
 | `internal/handlers/router.go` | `Router` 加字段 `privboards *PrivateBoardsHandler`；`NewRouter` 加参数 `privateBoards *privateboards.Store`；注册 6 条路由 |
 | `cmd/steward/main.go` | `privateBoards := privateboards.New("data/private-boards")`，传给 `NewRouter` |
 
@@ -208,25 +222,47 @@ mux.HandleFunc("POST /boards/delete", r.privboards.HandleDelete)
 
 ## 五、部署侧必须同步的两处
 
-### 1. nginx 请求体上限（**阻塞项**）
+### 1. nginx：请求体上限 + 一条**容易写错**的 location（**阻塞项**）
 
-docs 站点的 vhost 没设 `client_max_body_size`，走 nginx 默认 **1 MB**。实测 1.5 MB 请求直接 `413`——带一张截图的白板必然超。
+docs 站点的 vhost 原本没设 `client_max_body_size`，走 nginx 默认 **1 MB**——带一张截图的白板必然 `413`。
 
-`/etc/nginx/sites-available/docs.lopop.top` 的 `server` 块内加：
+而且原有的 `/editor/api/` 是 `proxy_pass .../docs-api/docs-editor/`，白板接口 `/editor/api/boards` 会被它接走，变成 `/docs-api/docs-editor/boards` → 404。所以要单独加一条前缀更长的 location。
+
+`/etc/nginx/sites-available/docs.lopop.top`：
 
 ```nginx
 server {
     listen 80;
     server_name docs.lopop.top;
 
-    # 私有白板带插图时 JSON 会很大（前端限制单板 16MB）
+    root /var/www/docs;
+    index index.html;
+
+    # 私有白板带插图时 JSON 会很大（前端限制单板 16MB，steward 侧同样 16MB）
     client_max_body_size 32m;
+
+    # 白板接口：/editor/api/boards* → /docs-api/boards*
+    # 必须写在下面 /editor/api/ 之前，且**不带尾斜杠**——前端列表接口就是
+    # GET /editor/api/boards，写成 /editor/api/boards/ 会漏掉它。
+    location ^~ /editor/api/boards {
+        proxy_pass http://127.0.0.1:9092/docs-api/boards;
+        include snippets/proxy-common.conf;
+    }
+
+    location ^~ /editor/api/ {
+        proxy_pass http://127.0.0.1:9092/docs-api/docs-editor/;
+        include snippets/proxy-common.conf;
+    }
 
     ...
 }
 ```
 
 改完 `nginx -t && systemctl reload nginx`。
+
+:::note[`^~` 前缀匹配是按长度取最长]
+两条 location 都是 `^~`，nginx 选前缀最长的那条，与书写顺序无关；写在前面的说明是为了让人一眼看到「boards 要先于 `/editor/api/`」。真正的坑在尾斜杠：`/editor/api/boards/` 匹配不到 `/editor/api/boards`，那个请求会落到 `/editor/api/` 上，被拼成 `/docs-api/docs-editor/boards`。
+:::
 
 ### 2. 静态资源体积
 
@@ -235,9 +271,29 @@ server {
 - 现有 `location ^~ /assets/` 已配 `expires 1y` + `immutable`，字体和 CSS 都在这个前缀下，**无需改 nginx**。
 - release zip 会因此从约 60 MB 涨到约 75 MB，部署耗时略增。
 
-## 六、验收清单
+## 六、验收
 
-后端实现后，用同一把密钥登录 `https://docs.lopop.top/whiteboard` 逐条验证：
+接口层已用真实密钥在服务器上逐条跑过（`curl` 走公网 `https://docs.lopop.top/editor/api/boards/*`）：
+
+| 用例 | 结果 |
+| --- | --- |
+| 无 token 访问 | `401` |
+| 列表（空库） | `{"boards":[]}` |
+| 新建 → 列表 → 读取 | `rev` 从 1 起，`_title` 已写入内容，列表按更新时间倒序 |
+| 保存（`base_rev` 匹配） | `200`，`rev` +1 |
+| 保存（`base_rev` 过期） | `409` + `{"error":"conflict","rev":N}` |
+| 强制覆盖（`base_rev=-1`） | `200` |
+| 保存不存在的路径 | `404` |
+| 改名（换路径 / 只改标题） | `200`，`rev` 跟着走 |
+| 改名到已存在的名字 | `409` |
+| 删除 → 再删 | `200` → `404` |
+| 路径逃逸（`../../etc/passwd`） | `400` |
+| 非 `.excalidraw` 扩展名 | `400` |
+| 2 MB / 15 MB 内容 | `200`（验证 nginx 32 MB 生效） |
+| 17 MB 内容 | `413` |
+| steward 重启后 rev 保持 | 保持，无假冲突 |
+
+浏览器侧（登录、自动打开最近一块、防抖保存、冲突提示、深色模式、窄屏侧栏）请按下面清单人工过一遍：
 
 1. 未登录时显示解锁框；用编辑器密钥解锁后直接进入（三处互通，无需二次输入）。
 2. 首次进入自动打开最近一块白板；左侧列表按更新时间倒序。
@@ -246,13 +302,13 @@ server {
 5. 顶栏改名 → 侧栏名称与地址栏路径**同时**变化。
 6. 删除 → 列表消失；删的若是当前板，回到空态。
 7. 开两个标签页改同一块板 → 后保存的那个显示「别处已修改」，点「载入最新」能拿到对方版本，点「覆盖保存」能强推自己的。
-8. 上传一张大截图（接近 10 MB）→ 保存成功（验证 nginx 32 MB 生效）。
+8. 上传一张大截图（接近 10 MB）→ 保存成功。
 9. 深色模式下画布跟随；手机宽度下侧栏默认收起、画布占满。
 
 ## 七、已知限制
 
 - **无版本历史**：白板不进 git，保存是覆盖写，误删不可恢复。后续要留历史得靠服务端定期快照（`data/private-boards/.snapshots/`）。
-- **无协作**：没有实时多人编辑，冲突靠 `base_rev` 事后检测。
+- **无协作**：没有实时多人编辑，冲突靠 `base_rev` 事后检测。rev 索引是落盘的（`.revs.json`），但删掉它或换机器后各板会从 1 重新计数，届时开着的标签页可能撞一次冲突——点「载入最新」前先确认没有未保存的改动。
 - **导出走 Excalidraw 自带菜单**（PNG/SVG/`.excalidraw` 文件），本站不额外做导出接口。
 - **不做公开分享**：目前白板只有私有入口。若要嵌进私有文档或公开分享，需要额外的「导出为图片 + 上传」链路。
 - `appState.name` 上游只标 `browser`（导出/服务端都丢），所以标题存的是自定义顶层键 `_title`；Excalidraw 的 `restore()` 会忽略未知顶层键，文件仍是合法 `.excalidraw`，官方应用可直接打开。
