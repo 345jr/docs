@@ -196,7 +196,6 @@ export default function WhiteboardPage(): React.ReactNode {
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [collapsed, setCollapsed] = useState(false);
-  const [titleDraft, setTitleDraft] = useState('');
   const [dialog, setDialog] = useState<
     {mode: 'create'} | {mode: 'rename'; board: BoardSummary} | null
   >(null);
@@ -395,7 +394,6 @@ export default function WhiteboardPage(): React.ReactNode {
           rev: payload.rev,
           content,
         });
-        setTitleDraft(payload.title || readTitle(content) || pathToTitle(payload.path));
         setSavedAt(null);
         // 移动端选完白板就把列表收起来，把整屏让给画布
         if (window.matchMedia('(max-width: 996px)').matches) setCollapsed(true);
@@ -454,67 +452,6 @@ export default function WhiteboardPage(): React.ReactNode {
       : '私有白板 | Lopop Docs';
   }, [current]);
 
-  // ── 标题编辑 ──────────────────────────────────────
-
-  /**
-   * 侧栏标题提交：改名即改文件名。
-   *
-   * 白板只有一个「名字」概念——标题就是文件名主干。这样侧栏、地址栏、
-   * 标题输入框三处永远一致，不会出现「标题叫 A、路径叫 B」的困惑。
-   * 目标文件名已被占用时退回「只改标题」，并提示用户。
-   */
-  const applyTitle = useCallback(async () => {
-    const cur = currentRef.current;
-    if (!cur) return;
-    const next = titleDraft.trim();
-    if (!next) {
-      // 空标题视为放弃编辑，回填当前标题
-      setTitleDraft(cur.title);
-      return;
-    }
-    if (next === cur.title) return;
-
-    const nextPath = titleToPath(next);
-    const conflict = boards?.some(
-      (b) => b.path === nextPath && b.path !== cur.path,
-    );
-
-    // 先把标题落到场景 JSON 的 `_title`，随保存一起写盘
-    const content = writeTitle(pendingRef.current?.content ?? cur.content, next);
-    pendingRef.current = {content, title: next};
-    setCurrent((c) => (c ? {...c, title: next} : c));
-    setStatus((s) => (s === 'saving' ? s : 'dirty'));
-
-    if (nextPath !== cur.path && !conflict) {
-      // 改名 + 移动路径：服务端一次完成，避免「先存标题再改名」两次请求
-      try {
-        const res = await renameBoard({path: cur.path, newPath: nextPath, title: next});
-        pendingRef.current = null;
-        setCurrent((c) => (c ? {...c, path: res.path, title: next, content} : c));
-        setBoards((list) =>
-          (list || []).map((b) =>
-            b.path === cur.path ? {...b, path: res.path, title: next} : b,
-          ),
-        );
-        lastPushedRef.current = null;
-        setStatus('saved');
-        setSavedAt(Date.now());
-        void reloadList();
-        return;
-      } catch (err) {
-        toast.error(`改名失败：${errMsg(err)}`);
-        // 退化为只改标题（内容仍会照常保存）
-      }
-    } else if (conflict) {
-      toast.error(`已存在同名白板，仅更新标题：${nextPath}`);
-    }
-
-    setBoards((list) =>
-      (list || []).map((b) => (b.path === cur.path ? {...b, title: next} : b)),
-    );
-    void flush();
-  }, [titleDraft, boards, flush, reloadList]);
-
   // ── 新建 / 重命名 / 删除 ──────────────────────────
 
   const handleCreate = useCallback(
@@ -545,7 +482,6 @@ export default function WhiteboardPage(): React.ReactNode {
           rev: created.rev,
           content: ensureScene(created.content || emptyScene()),
         });
-        setTitleDraft(created.title || title);
         setSavedAt(null);
         setStatus('idle');
         toast.success('白板已创建');
@@ -585,7 +521,6 @@ export default function WhiteboardPage(): React.ReactNode {
             title,
           );
           setCurrent((c) => (c ? {...c, path: res.path, title, content} : c));
-          setTitleDraft(title);
           // 允许地址栏跟着改到新路径
           lastPushedRef.current = null;
         }
@@ -638,7 +573,6 @@ export default function WhiteboardPage(): React.ReactNode {
         rev: payload.rev,
         content,
       });
-      setTitleDraft(payload.title || pathToTitle(payload.path));
       toast.success('已载入最新版本');
     } catch (err) {
       toast.error(errMsg(err));
@@ -684,30 +618,15 @@ export default function WhiteboardPage(): React.ReactNode {
               onDelete={(b) => void handleDelete(b)}
               onToggleCollapse={() => setCollapsed((v) => !v)}
               footer={
-                <>
-                  <input
-                    className={styles.titleInput}
-                    value={titleDraft}
-                    disabled={!current}
-                    placeholder={current ? '白板名称' : '未打开白板'}
-                    aria-label="白板名称"
-                    onChange={(e) => setTitleDraft(e.target.value)}
-                    onBlur={() => void applyTitle()}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') e.currentTarget.blur();
-                    }}
-                  />
-                  {current && <span className={styles.pathHint}>{current.path}</span>}
-                  <SaveIndicator
-                    status={status}
-                    savedAt={savedAt}
-                    onRetry={() => {
-                      setStatus('dirty');
-                      void flush({force: true});
-                    }}
-                    onReload={() => void handleReload()}
-                  />
-                </>
+                <SaveIndicator
+                  status={status}
+                  savedAt={savedAt}
+                  onRetry={() => {
+                    setStatus('dirty');
+                    void flush({force: true});
+                  }}
+                  onReload={() => void handleReload()}
+                />
               }
             />
 

@@ -1,5 +1,6 @@
 import React, {useMemo, useState} from 'react';
 import clsx from 'clsx';
+import {Menu} from '@base-ui/react/menu';
 import type {BoardListProps, BoardSummary} from '../../types/boardTypes';
 import {formatBytes} from '../../utils/boardScene';
 import styles from './styles.module.css';
@@ -73,7 +74,6 @@ type RowProps = {
 };
 
 function BoardRow({board, active, onSelect, onRename, onDelete}: RowProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <li className="menu__list-item">
       <div className={clsx(styles.row, active && styles.rowActive)}>
@@ -90,48 +90,34 @@ function BoardRow({board, active, onSelect, onRename, onDelete}: RowProps) {
             {board.size > 1024 * 1024 ? ` · ${formatBytes(board.size)}` : ''}
           </span>
         </button>
-        <button
-          type="button"
-          className={styles.rowMenuBtn}
-          aria-label="更多操作"
-          aria-expanded={menuOpen}
-          onClick={() => setMenuOpen((v) => !v)}>
-          <IconDots />
-        </button>
+
+        {/* 行内操作菜单走 Base UI Menu（Portal + Positioner）：
+            早先手写的 absolute 菜单挂在 static 的 <li> 上，会相对 aside 定位，
+            直接落到侧栏底部之外，再被侧栏的 overflow/clip-path 裁掉——
+            点了「完全没反应」就是这个原因。Portal 到 body 后不再受裁切影响。 */}
+        <Menu.Root>
+          <Menu.Trigger className={styles.rowMenuBtn} aria-label="更多操作">
+            <IconDots />
+          </Menu.Trigger>
+          <Menu.Portal>
+            <Menu.Positioner
+              className={styles.menuPositioner}
+              sideOffset={4}
+              align="end">
+              <Menu.Popup className={styles.menu}>
+                <Menu.Item className={styles.menuItem} onClick={onRename}>
+                  重命名
+                </Menu.Item>
+                <Menu.Item
+                  className={clsx(styles.menuItem, styles.menuItemDanger)}
+                  onClick={onDelete}>
+                  删除
+                </Menu.Item>
+              </Menu.Popup>
+            </Menu.Positioner>
+          </Menu.Portal>
+        </Menu.Root>
       </div>
-      {menuOpen && (
-        <>
-          {/* 点空白处关闭：用一个透明遮罩接住点击，比全局监听省事且不吞滚动 */}
-          <button
-            type="button"
-            className={styles.menuScrim}
-            aria-label="关闭菜单"
-            onClick={() => setMenuOpen(false)}
-          />
-          <div className={styles.menu} role="menu">
-            <button
-              type="button"
-              role="menuitem"
-              className={styles.menuItem}
-              onClick={() => {
-                setMenuOpen(false);
-                onRename();
-              }}>
-              重命名
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className={clsx(styles.menuItem, styles.menuItemDanger)}
-              onClick={() => {
-                setMenuOpen(false);
-                onDelete();
-              }}>
-              删除
-            </button>
-          </div>
-        </>
-      )}
     </li>
   );
 }

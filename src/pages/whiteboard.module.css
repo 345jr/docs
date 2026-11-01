@@ -27,42 +27,7 @@
   min-height: 0;
 }
 
-/* 侧栏底部的「当前白板」区（由 BoardList 的 footer 插槽渲染） */
-.titleInput {
-  width: 100%;
-  min-width: 0;
-  padding: 0.3rem 0.5rem;
-  font: inherit;
-  font-weight: 600;
-  color: var(--ifm-font-color-base);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 6px;
-}
-
-.titleInput:hover:not(:disabled) {
-  border-color: var(--ifm-color-emphasis-300);
-}
-
-.titleInput:focus {
-  outline: none;
-  border-color: var(--ifm-color-primary);
-  background: var(--ifm-background-color);
-}
-
-.titleInput:disabled {
-  color: var(--ifm-color-emphasis-500);
-}
-
-.pathHint {
-  display: block;
-  font-size: 0.72rem;
-  color: var(--ifm-color-emphasis-600);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
+/* 侧栏底部只放保存状态灯（标题改名走行内「更多操作」菜单）。 */
 
 .canvasArea {
   flex: 1;

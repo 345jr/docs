@@ -184,11 +184,12 @@
 }
 
 .row:hover .rowMenuBtn,
-.rowMenuBtn[aria-expanded='true'] {
+.rowMenuBtn[data-popup-open] {
   opacity: 1;
 }
 
-.rowMenuBtn:hover {
+.rowMenuBtn:hover,
+.rowMenuBtn[data-popup-open] {
   color: var(--ifm-font-color-base);
   background: var(--ifm-color-emphasis-200);
 }
@@ -228,23 +229,14 @@
   opacity: 0.75;
 }
 
-/* ── 行内菜单 ─────────────────────────────────────── */
+/* ── 行内菜单（Base UI Menu，Portal 到 body）────────── */
 
-.menuScrim {
-  position: fixed;
-  inset: 0;
-  z-index: 30;
-  padding: 0;
-  border: none;
-  background: transparent;
-  cursor: default;
+.menuPositioner {
+  /* 侧栏是 300px 的 z-index 上下文；菜单要盖在它和画布之上 */
+  z-index: calc(var(--ifm-z-index-fixed) + 1);
 }
 
 .menu {
-  position: absolute;
-  top: calc(100% - 2px);
-  right: 0.25rem;
-  z-index: 31;
   min-width: 110px;
   padding: 0.25rem;
   border: 1px solid var(--ifm-color-emphasis-300);
@@ -267,7 +259,8 @@
   cursor: pointer;
 }
 
-.menuItem:hover {
+.menuItem:hover,
+.menuItem[data-highlighted] {
   background: var(--ifm-color-emphasis-100);
 }
 
@@ -275,18 +268,21 @@
   color: var(--ifm-color-danger);
 }
 
-/* 侧栏底部「当前白板」区：标题输入框 + 路径 + 保存状态。
-   页面没有顶栏了，这些能力都收进这里，所以允许换行以适配 300px 窄栏。 */
+/* 侧栏底部只保留一行保存状态（标题改名已改走行内「更多操作」菜单）。
+   做成“没有独立边框/底色”的一行小字：状态为 idle 时 SaveIndicator 返回 null，
+   容器空了就整块隐藏，不占位也不留空边框。 */
 .sidebarFooter {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.3rem;
-  padding: 0.5rem 0.5rem 0.6rem 0.75rem;
-  border-top: 1px solid var(--ifm-toc-border-color);
-  background: var(--ifm-background-surface-color);
+  padding: 0 0.75rem 0.5rem;
   min-width: 0;
+}
+
+.sidebarFooter:empty {
+  display: none;
 }
 
 /* ── 收起按钮：对齐文档站 CollapseButton ───────────── */
