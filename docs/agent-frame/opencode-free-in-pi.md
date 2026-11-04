@@ -9,6 +9,10 @@ tags: [pi, opencode, pi-web, 模型接入, 抓包, 排障]
 
 > 一次完整的接入与排障记录：把 OpenCode 的免费模型接进 Pi，经历 403 `FreeTierError`、TLS 中间人抓包、社区扩展对比，最终定位到服务端的真实门槛并跑通。涉及命令、抓包方法和结论，可作为同类“把第三方模型接进 Pi”问题的参考。
 
+:::warning[2026-11-04 更新：免费层已迁到 v2 车道]
+本文第一~十二节记录的是 2026-10 的 `/zen/v1` 车道。upstream 之后把免费层迁到 v2 车道（`/inference/v1` + **TLS ClientHello 指纹** + `read`/`shell` 精确 schema + `<env>` 标记），按本文旧结论做出来的扩展会稳定返回 `429 FreeUsageLimitError`。**现行方案见第十三节。**
+:::
+
 ## 一、目标与初始状态
 
 目标：在 Pi CLI 里使用 OpenCode 的免费模型（截图中 OpenCode Zen 下的 `Ling / LongCat / MiMo / Muse Spark / Nemotron` 等标注“免费”的模型）。
@@ -449,6 +453,158 @@ PI_OPENCODE_DIRECT_DEBUG=1 pi --print --no-session \
 - 把它当**临时/兜底通道**，不要当生产依赖；关键任务走有正式契约的付费 provider。
 - 上游改动后，优先**离线对照**定位差异，确认后再发**一次**真实请求验证。
 - 若某次改动后长期无法恢复，直接停用该扩展即可——它只是本地扩展，删掉不影响 Pi 与 pi-web 的其它功能。
+## 十四、2026-11 v2 车道变更（承接第十三节）：旧扩展为什么稳定 429
+
+第十三节记录到“改完 UA 仍然 403、怀疑是 TLS 指纹”就断了。2026-11-04 顺着这条线索继续查，结论完整落地：**新门槛确实是 TLS ClientHello 指纹。** 下面是全部对账与最终方案。
+
+旧扩展（第一~十二节的产物）跑最简单的请求：
+
+```bash
+pi --print --no-session --provider opencode-zen --model mimo-v2.6-flash-free \
+  "Reply with exactly: HELLO"
+# 429: {"type":"FreeUsageLimitError","message":"Free usage limit reached..."}
+```
+
+同一时刻官方 CLI 正常，说明账号、额度、出口 IP 都没问题：
+
+```bash
+~/.opencode/bin/opencode run -m opencode/mimo-v2.6-flash-free "只回复: OK"   # OK
+```
+
+差别只可能在“客户端发出的请求”。逐条对齐社区项目 9router 的三个文件后确认，upstream 新增/收紧了三个门槛：
+
+| 9router 文件 | 负责的门槛 |
+| --- | --- |
+| `open-sse/services/opencodeTlsClient.js` | TLS ClientHello 指纹 |
+| `open-sse/executors/opencode.js` | UA / session 头 / 端点 / `Bearer public` |
+| `open-sse/utils/opencodeFingerprint.js` | body 指纹（tools + `<env>`） |
+
+### 14.1 门槛一：TLS ClientHello（新增，最致命）
+
+9router 的注释直接写了结论：
+
+> The free gate keys on the TLS ClientHello, not on headers: … node fetch/https/http2 all **429**, Bun's BoringSSL fetch **200**. JA4's cipher hash identifies the list (Bun: `5b57614c22b0`), so the match is on the cipher-list hash and nothing else — reordering the same list still passes.
+
+即：**同一份 header/body，从 Node 的 OpenSSL 发是 429，从 Bun(BoringSSL) 发是 200。** 所以 curl 重放同样 429，改 header 也救不回来。
+
+9router 的解法是用 `wreq-js`（Rust `wreq` + BoringSSL 的 napi 绑定）建一个指定 cipher list 的 session，再交给它发请求；workers/streaming 不受影响，返回的仍是原生 `Response`。
+
+### 14.2 门槛二：身份（UA 形态 + session 四件套 + 不许带 `x-opencode-request`）
+
+| 项 | v1（旧扩展） | v2（现行） |
+| --- | --- | --- |
+| 端点 | `/zen/v1`（chat 已迁 `/inference/v1`） | `/inference/v1/chat/completions`、`/inference/v1/responses` |
+| `User-Agent` | `opencode/1.19.0 ai-sdk/provider-utils/…` | `opencode/latest/2.0.26/cli`（`opencode/<channel>/<ver>/<client>`）；v1 形自 2026-10-14 起 403 |
+| `x-opencode-request` | 每条都发 | **绝不发**（v1 遗留头，v2 见它即 403） |
+| session 头 | `x-opencode-session` / `-session-id` | 四件套：`x-opencode-session`、`x-opencode-session-id`、`x-session-affinity`、`x-session-id` |
+| 免费模型鉴权 | 用 key | 强制 `Authorization: Bearer public`（真 `oc_sk_*` key 在免费层反而 403） |
+| session 形态 | `ses_<12hex><14base62>` | 同上，但前缀 hex 会被 **解码**：约等于 `~(now·0x1000 + counter)` 的低 48 位 |
+
+session 前缀的两条硬约束（9router 实测记录）：
+
+- counter 必须保持“真实的小值”（0~16 通过，≥100 拒绝）；用哈希填出来的前缀 10 次里只过 1 次；
+- 解码出的时间必须在免费层允许窗口内（未来或过旧都拒）；**用 `Date.now()` 现场生成，按会话 memoize**。
+- 另外免费额度按 **session** 计账：每条请求新建 session 会迅速把额度烧光，表现为 429 且 reset 时间越来越长。
+
+### 14.3 门槛三：body 指纹（`read` + `shell` 精确 schema + `<env>` 标记）
+
+旧方案注入的是 name 对得上但 description/parameters 随便写的 stub（`bash` + `read`），无工具时还把 `tool_choice` 钉成 `"none"`。这些都是 403。
+
+现行要求（`opencodeFingerprint.js` 里有逐字常量，不要改写措辞）：
+
+1. `tools` 里必须有 `read` 和 `shell` 两个 function 声明，**description 与 parameters 逐字匹配** OpenCode v2.0.26 CLI 的定义；
+2. `tool_choice` 不允许是 `"none"`；
+3. system prompt（Responses 车道是 `instructions`）里必须带 CLI 的 `<env>` 环境块；
+4. `stream: true`（免费层拒绝 `stream:false`）；
+5. reasoning effort 只接受 OpenAI 枚举（`none|minimal|low|medium|high|xhigh|max`），`"auto"` 直接删字段。
+
+缺 tools 或缺 `<env>` 的那一半，返回的 **不是 403 而是 429**，所以看到 429 时不要只怀疑额度。
+
+工具冲突的处理也很关键：
+
+- 调用方工具名与指纹名相同但 schema 不同 → 若参数名能承载 OpenCode 的定义，**原地替换定义、保留原名**；
+- 参数名不兼容 → 改名为 `read_client` / `shell_client` 发出去，响应侧再改回来，并在 system prompt 里说明“别调占位工具”。
+
+Pi 自己的 `read` 工具参数是 `path`/`offset`/`limit`，与 OpenCode 完全兼容，所以直接原地替换即可；Pi 的 `bash` 与 `shell` 名字不冲突，可以并存（`shell` 作为占位并在 prompt 里声明不要调用）。
+
+### 14.4 状态码语义（排查时按这个分层）
+
+| 状态码 | 含义 |
+| --- | --- |
+| `403 FreeTierError` | 身份或 body 指纹不对（UA 版本形、带了 `x-opencode-request`、tools/`<env>` 不符、`tool_choice:"none"`…） |
+| `429 FreeUsageLimitError` | TLS 指纹不对，**或** 免费额度真的用光（按 session 计） |
+| `403 RegionError` | 上游地区封锁（如 `muse-spark-*` 在本机网络返回 “not available in your country”），与门槛无关 |
+
+### 14.5 现行方案：单文件本地扩展 + `wreq-js`
+
+扩展收敛成**一个自包含的 `index.ts`**（约 1000 行，内含指纹工具定义、TLS 客户端、provider 注册）：
+
+```text
+~/.pi/agent/extensions/opencode-zen/
+├── index.ts           # 全部逻辑
+├── package.json       # 声明 wreq-js 依赖
+└── node_modules/      # wreq-js（首次 npm i，按平台自动挑 binding）
+```
+
+安装（换机器/别的 Pi 环境）：
+
+```bash
+mkdir -p ~/.pi/agent/extensions
+tar xzf opencode-zen.tar.gz -C ~/.pi/agent/extensions
+cd ~/.pi/agent/extensions/opencode-zen && npm i --no-audit --no-fund   # 已有 node_modules 可跳过
+```
+
+结构对应关系：
+
+| 位置 | 作用 |
+| --- | --- |
+| `installFetchPatch()` | 拦截所有 `opencode.ai` 请求：抹掉 `x-stainless-*` / `x-client-request-id` / `x-opencode-request`，写 v2 UA 与 session 四件套，免费模型钉 `Bearer public`，强制 `stream` |
+| `opencodeTlsFetch()` | `wreq-js` session（cipher list = Bun 那张表）；返回原生 `Response`，SSE 直通；wreq 缺失时 fail-open 回原生 fetch |
+| `applyFingerprintTools()` | `read`/`shell` 逐字定义 + 名称冲突处理 + `tool_choice` 兜底 |
+| `applyEnvFingerprint()` | 往 system / `instructions` 追 `<env>` 块（文本级门槛，外来 system prompt 不影响） |
+| `normalizeResponsesBody()` | Responses 车道：`max_output_tokens`、`reasoning.summary`、`store:false`、丢弃跨账号失效的 `reasoning` item |
+
+### 14.6 验证
+
+```bash
+# 纯文本
+pi --print --no-session --provider opencode-zen --model mimo-v2.6-flash-free \
+  "Reply with exactly: HELLO"                    # HELLO
+# 工具往返（必须带工具）
+pi --print --no-session --provider opencode-zen --model mimo-v2.6-flash-free \
+  "用 bash 工具执行 echo hi-from-tool，然后只回复命令输出"   # hi-from-tool
+# 思考等级 / 其他免费模型
+pi --print --no-session --provider opencode-zen --model deepseek-v4.1-flash-free --thinking high "Reply: DS_OK"
+pi --print --no-session --provider opencode-zen --model glm-5.3-flash-free "Reply: GLM_OK"
+```
+
+wire 日志（`PI_ZEN_DEBUG=1`，写入 `/tmp/pi-zen-debug.json`）应看到：
+
+```text
+wire body … /inference/v1/chat/completions … tools=5 … session=ses_…
+response … 200
+```
+
+同一对话的第二条请求必须复用**同一个** `ses_…`（Pi 的 `x-client-request-id` 作为会话键），否则就是在烧额度。
+
+pi-web 侧（本机 SDK 已是 `1.4.0`）用其 SDK 离线加载校验：
+
+```text
+extension errors: []
+opencode-zen: beam-free / big-pickle / deepseek-v4.1-flash-free / glm-5.3-flash-free / mimo-v2.6-flash-free …
+```
+
+### 14.7 这次的坑
+
+- **别再只改 header**：TLS 指纹是新增的硬门槛，Node/curl 一律 429。
+- 不要发 `x-opencode-request`；也不要保留 `x-stainless-*` / `x-client-request-id`。
+- UA 用 v2 形态；v1 形（`opencode/1.18.x ai-sdk/…`）已 403。
+- stub 定义的 `bash`/`read` 不行了，必须 `read` + `shell` 且逐字 schema；无工具时不要写 `tool_choice:"none"`。
+- 缺 `<env>` 标记时返回 **429**（不是 403），容易误判成“额度用光”。
+- 免费额度按 session（不是按 IP）计账，且 session 前缀会被解码校验时间与 counter。
+- `muse-spark-*` 在本机网络是 `403 RegionError`（地区封锁），Responses 车道代码对齐了但此地区用不了。
+- 本机 `pi --list-models` 会崩（某个自定义 provider 的模型缺 `contextWindow`，与 OpenCode 扩展无关），验证请用真实 prompt。
+- 旧文档里“`--no-tools` 必 403”的结论已过期：现在 tools 必须存在且 schema 精确，`--no-tools` 反而更适合验证注入逻辑是否生效。
 
 ## 附录：准备环境时用到的信息
 
