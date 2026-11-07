@@ -1,26 +1,36 @@
-/* 解锁/登录页（由在线编辑与私有文档共享） */
+/* 解锁/登录页（在线编辑、私有文档、私有白板共用）
+ *
+ * 版式：一个居中的窄栏，标题 + 一行下划线式输入，没有卡片、没有边框盒子。
+ * 三个细节值得记下来：
+ * 1. letter-spacing 会在末字右侧多出一格空隙，居中对齐时文字看起来偏左，
+ *    所以 `.loginTitle / .loginHint` 用 padding-left 抵消（见注释）。
+ * 2. 底部留白比顶部多，靠内联轴线的「光学中心」比几何中心更稳；
+ *    之前用 margin-top: -10vh 硬顶上去，会随视口高度抖动。
+ * 3. 输入框必须把浏览器自动填充的浅蓝底盖掉，否则一进来就出现一块蓝背景。
+ */
 
 .loginWrap {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: calc(100vh - var(--ifm-navbar-height));
-  padding: 2rem 1rem;
+  /* 底部多留一截，内容整体略高于几何中心 */
+  padding: 3rem 1.25rem 5rem;
 }
 
 .login {
-  width: min(520px, 100%);
+  width: min(320px, 100%);
   display: flex;
   flex-direction: column;
-  gap: 3.5rem;
-  margin-top: -10vh;
-  animation: loginFade 0.5s ease both;
+  gap: 2.5rem;
+  animation: loginFade 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes loginFade {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
@@ -28,56 +38,115 @@
   }
 }
 
+.loginHead {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  text-align: center;
+}
+
+/* 末字后面的那格 letter-spacing 也算进行宽，居中时视觉偏左半格；
+   padding-left 让文字右移半格，正好补回来，看起来才是居中的。 */
 .loginTitle {
   margin: 0;
-  font-size: clamp(2.4rem, 6vw, 3.6rem);
+  padding-left: 0.12em;
+  font-size: clamp(1.85rem, 5vw, 2.4rem);
   font-weight: 600;
-  letter-spacing: 0.14em;
+  line-height: 1.25;
+  letter-spacing: 0.12em;
+}
+
+.loginHint {
+  margin: 0;
+  padding-left: 0.08em;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  color: var(--ifm-color-emphasis-600);
 }
 
 .loginForm {
   display: flex;
-  align-items: center;
-  gap: 1rem;
-  border-bottom: 1px solid var(--ifm-color-emphasis-400);
-  transition: border-color 0.25s;
+  flex-direction: column;
+  gap: 0.85rem;
 }
 
-.loginForm:focus-within {
+/* 输入行本身是一条下划线，只有这一条「线」是视觉元素 */
+.loginRow {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+  transition: border-color 0.2s ease;
+}
+
+.loginRow:focus-within {
   border-color: var(--ifm-color-primary);
 }
 
-.loginForm input {
+.loginRowError,
+.loginRowError:focus-within {
+  border-color: var(--ifm-color-danger);
+}
+
+.loginInput {
   flex: 1;
   min-width: 0;
+  padding: 0.6rem 0.1rem;
   border: none;
   outline: none;
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 1.05rem;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  caret-color: var(--ifm-color-primary);
 }
 
-.loginForm input::placeholder {
+.loginInput::placeholder {
   color: var(--ifm-color-emphasis-500);
+  letter-spacing: 0.06em;
 }
 
+/* 浏览器自动填充（记住的密钥/密码）会给输入框刷一层浅蓝底，
+   用页面底色做 inset 阴影盖掉；transition 的极长延迟防止闪烁。 */
+.loginInput:-webkit-autofill,
+.loginInput:-webkit-autofill:hover,
+.loginInput:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ifm-font-color-base);
+  caret-color: var(--ifm-color-primary);
+  transition: background-color 100000s ease-in-out 0s;
+  -webkit-box-shadow: 0 0 0 1000px var(--ifm-background-color) inset;
+  box-shadow: 0 0 0 1000px var(--ifm-background-color) inset;
+}
+
+/* 只有图标：未输入时压暗，填入密钥后变成主题色，hover 时箭头右移 */
 .loginBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
   border: none;
+  border-radius: 50%;
   background: transparent;
-  color: var(--ifm-color-primary);
-  font: inherit;
-  font-size: 0.95rem;
+  color: var(--ifm-color-emphasis-500);
   cursor: pointer;
-  padding: 0.6rem 0.2rem;
-  white-space: nowrap;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.loginBtn:not(:disabled) {
+  color: var(--ifm-color-primary);
+}
+
+.loginBtn:not(:disabled):hover {
+  background: var(--ifm-color-emphasis-100);
 }
 
 .loginBtn:disabled {
-  color: var(--ifm-color-emphasis-500);
+  color: var(--ifm-color-emphasis-400);
   cursor: default;
 }
 
@@ -86,5 +155,29 @@
 }
 
 .loginBtn:not(:disabled):hover svg {
-  transform: translateX(3px);
+  transform: translateX(2px);
+}
+
+.spinner {
+  animation: loginSpin 0.9s linear infinite;
+}
+
+@keyframes loginSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loginError {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.02em;
+  color: var(--ifm-color-danger);
+  animation: loginFade 0.28s ease both;
+}
+
+@media (max-height: 620px) {
+  .loginWrap {
+    padding-bottom: 2rem;
+  }
 }
