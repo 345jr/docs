@@ -7,7 +7,7 @@ tags: [站点建设, 前端, 后端]
 
 # 私有白板接口约定
 
-白板是**一块存成 `.excalidraw` JSON 的私有文件**，落 steward 的 `data/private-boards/`，鉴权复用编辑器已有的 `SessionStore`，不 commit、不触发构建。
+白板是**一块私有的 Excalidraw 场景**，落 steward 的 `data/private-boards/<板名>/`，鉴权复用编辑器已有的 `SessionStore`，不 commit、不触发构建。
 
 :::tip[实现状态]
 前端与后端均已上线（2026-11-01）。本文既是接口约定，也是实现记录——第六节的验收清单已逐条跑过。
@@ -192,14 +192,15 @@ POST /boards/delete
 ## 三、存储与安全约束
 
 - 根目录：`data/private-boards/`（与 `data/private-docs/` 平级，`data/` 已在 `.gitignore`，不进 git、不触发构建）。
-- 只允许 `.excalidraw` 扩展名，大小写不敏感。
+- 一块白板一个目录，目录名是板名。里面固定两份文件：`board.excalidraw`（场景 JSON）和 `agent.md`（保存时派生的只读视图，给 `ssh cat` / grep 用）。例如 API 路径 `零号白板.excalidraw` 落在 `data/private-boards/零号白板/board.excalidraw`。对外 path、前端 URL、`.revs.json` 的 key 仍是 `<板名>.excalidraw`，目录只是磁盘布局。
+- 没有分类树，不接受带子目录的 path（`a/b.excalidraw` 会被拒绝），否则列表只扫一层时会漏掉。
+- API 路径只允许 `.excalidraw` 扩展名，大小写不敏感，落盘前规范成小写扩展名。root 下残留的旧平铺文件（`<板名>.excalidraw` + `<板名>.agent.md`）在启动、列表和读取时收进对应目录。
 - 路径校验复用 `privatedocs.validateRel` 的规则：拒绝空段、`.`、`..`、绝对路径、`~`、`\`，防目录逃逸。
 - 单文件上限 **16 MB**（`content` 解码后的字节数），超出返回 `413`。前端已同步拦同一阈值。
-- 写入用「临时文件 + fsync + rename」的原子替换，避免并发/断电写坏文件（白板是纯覆盖写，没有 git 兜底）。临时文件名是 `.tmp-<随机>`，**不带** `.excalidraw` 后缀，写盘瞬间不会被 `List` 当成一块白板列出来。
+- 写入用「临时文件 + fsync + rename」的原子替换，避免并发/断电写坏文件（白板是纯覆盖写，没有 git 兜底）。临时文件名是 `.tmp-<随机>`，放在板目录里，写盘瞬间不会被 `List` 当成一块白板。
 - 所有写操作共用一把 `writeMu` 串行化（照抄 `privatedocs.Store` 的做法）。
-- `rev` 索引落在 `<root>/.revs.json`。原计划只用内存 map，实现时改成落盘：steward 自更新/重启会让内存归零，正在编辑的标签页下一次自动保存就撞假冲突，而「载入最新」会把未保存的改动丢掉——用一次重启换一次数据丢失不划算。索引损坏或缺失时退化为空（各板从 1 开始），最坏只是多一次冲突提示。
-- 扩展名大小写不敏感。磁盘上若是外部拷进来的 `.EXCALIDRAW`，读/写会回退到原始文件名，避免「列表里看得见却读不了」。
-- `GET /boards` 读全文件再 `json.Unmarshal` 到 `struct{Title string \`json:"_title"\`}` 拿标题（16 MB 上限下可接受）。坏 JSON 不让整页挂掉：标题退回文件名，仍列出来让用户能打开修或删。
+- `rev` 索引落在 `<root>/.revs.json`。原计划只用内存 map，实现时改成落盘：steward 自更新/重启会让内存归零，正在编辑的标签页下一次自动保存就撞假冲突，而「载入最新」会把未保存的改动丢掉——用一次重启换一次数据丢失不划算。索引损坏或缺失时退化为空（各板从 1 开始），最坏只是多一次冲突提示。改名只挪目录，不改 rev。
+- `GET /boards` 读各目录里的 `board.excalidraw`，再 `json.Unmarshal` 到 `struct{Title string \`json:"_title"\`}` 拿标题（16 MB 上限下可接受）。坏 JSON 不让整页挂掉：标题退回目录名，仍列出来让用户能打开修或删。
 
 ## 四、steward 侧改动
 
