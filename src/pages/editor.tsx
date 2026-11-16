@@ -38,6 +38,7 @@ import {
   saveCategory as pvSaveCategory,
 } from '../utils/privateClient';
 import type {FileEntry} from '../types/privateTypes';
+import {API_ORIGIN} from '../utils/apiOrigin';
 import type {
   ArticleEditorProps,
   ArticleMeta,
@@ -84,7 +85,7 @@ function errMsg(e: unknown): string {
 
 // ── API ──────────────────────────────────────────────
 
-const API = '/editor/api';
+const API = `${API_ORIGIN}/docs-api/docs-editor`;
 // session 失效时广播，EditorPage 监听后清 token、回到登录页。
 const UNAUTHORIZED_EVENT = 'docs-editor:unauthorized';
 

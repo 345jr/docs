@@ -15,8 +15,9 @@ import type {
   SaveDocArgs,
   UnlockPayload,
 } from '../types/privateTypes';
+import {API_ORIGIN} from './apiOrigin';
 
-const API = '/editor/api/private';
+const API = `${API_ORIGIN}/docs-api/docs-editor/private`;
 const TOKEN_KEY = 'docs-editor-token';
 
 // 与编辑器页面同名事件：401 时两边一起回登录页。
@@ -31,7 +32,7 @@ export function getToken(): string | null {
  * @returns session token
  */
 export async function unlock(key: string): Promise<string> {
-  const res = await fetch('/editor/api/unlock', {
+  const res = await fetch(`${API_ORIGIN}/docs-api/docs-editor/unlock`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({key}),

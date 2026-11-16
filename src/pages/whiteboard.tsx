@@ -15,6 +15,7 @@ import toast, {Toaster} from 'react-hot-toast';
 // 刻意用相对路径而非 `@site/` 别名：站点没有 tsconfig，`@site/*` 只由打包器
 // 解析，tsc 会报 TS2307 并让下游参数退化成隐式 any（同 private.tsx）。
 import LoginForm from '../components/LoginForm';
+import {API_ORIGIN} from '../utils/apiOrigin';
 import BoardList from '../components/board/BoardList';
 import SaveIndicator from '../components/board/SaveIndicator';
 import CanvasLoading from '../components/board/CanvasLoading';
@@ -390,7 +391,7 @@ export default function WhiteboardPage(): React.ReactNode {
         title: pending.title,
         base_rev: cur.rev,
       });
-      void fetch('/editor/api/boards/save', {
+      void fetch(`${API_ORIGIN}/docs-api/boards/save`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

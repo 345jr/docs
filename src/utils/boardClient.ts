@@ -2,17 +2,16 @@
  * 私有白板 API 客户端。
  *
  * 与私有文档/在线编辑共用同一个 session token（`docs-editor-token`），
- * 没有第二套解锁。后端挂载点与私有文档一致（nginx `/editor/api/` →
- * steward `/docs-api/`），只是路径前缀换成 `/boards`：
+ * 没有第二套解锁。请求打到 api.lopop.top，路径与 Go 一致：
  *
- *   GET    /editor/api/boards            列表
- *   GET    /editor/api/boards/read       读单个白板（?files=ref 不展开图片）
- *   POST   /editor/api/boards/blob       上传一张图片，返回 r2: 引用
- *   GET    /editor/api/boards/blob/<name> 按内容哈希取回图片字节
- *   POST   /editor/api/boards/save       保存（带 base_rev 做并发检测）
- *   POST   /editor/api/boards/create     新建（空场景）
- *   POST   /editor/api/boards/rename     改名 / 移动
- *   POST   /editor/api/boards/delete     删除
+ *   GET    /docs-api/boards            列表
+ *   GET    /docs-api/boards/read       读单个白板（?files=ref 不展开图片）
+ *   POST   /docs-api/boards/blob       上传一张图片，返回 r2: 引用
+ *   GET    /docs-api/boards/blob/<name> 按内容哈希取回图片字节
+ *   POST   /docs-api/boards/save       保存（带 base_rev 做并发检测）
+ *   POST   /docs-api/boards/create     新建（空场景）
+ *   POST   /docs-api/boards/rename     改名 / 移动
+ *   POST   /docs-api/boards/delete     删除
  *
  * 接口约定详见 docs/project-iteration/private-whiteboard-api.md。
  */
@@ -25,8 +24,9 @@ import type {
   RenameBoardArgs,
   SaveBoardArgs,
 } from '../types/boardTypes';
+import {API_ORIGIN} from './apiOrigin';
 
-const API = '/editor/api/boards';
+const API = `${API_ORIGIN}/docs-api/boards`;
 const TOKEN_KEY = 'docs-editor-token';
 
 // 与私有文档/编辑器同名事件：401 时整站一起回登录页。
@@ -41,7 +41,7 @@ export function getToken(): string | null {
  * @returns session token
  */
 export async function unlock(key: string): Promise<string> {
-  const res = await fetch('/editor/api/unlock', {
+  const res = await fetch(`${API_ORIGIN}/docs-api/docs-editor/unlock`, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({key}),
