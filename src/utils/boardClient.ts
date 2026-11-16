@@ -6,7 +6,9 @@
  * steward `/docs-api/`），只是路径前缀换成 `/boards`：
  *
  *   GET    /editor/api/boards            列表
- *   GET    /editor/api/boards/read       读单个白板
+ *   GET    /editor/api/boards/read       读单个白板（?files=ref 不展开图片）
+ *   POST   /editor/api/boards/blob       上传一张图片，返回 r2: 引用
+ *   GET    /editor/api/boards/blob/<name> 按内容哈希取回图片字节
  *   POST   /editor/api/boards/save       保存（带 base_rev 做并发检测）
  *   POST   /editor/api/boards/create     新建（空场景）
  *   POST   /editor/api/boards/rename     改名 / 移动
@@ -95,9 +97,60 @@ export async function fetchBoards(): Promise<BoardSummary[]> {
   return data.boards || [];
 }
 
-/** 读取单个白板的场景 JSON。 */
-export function readBoard(path: string): Promise<BoardPayload> {
-  return call(`/read?path=${encodeURIComponent(path)}`);
+/**
+ * 读取单个白板的场景 JSON。
+ * files='ref' 时 content 里的图片是 r2: 引用，调用方自己拉字节再还原成 data URL。
+ */
+export function readBoard(path: string, files?: 'ref'): Promise<BoardPayload> {
+  const q = new URLSearchParams({path});
+  if (files) q.set('files', files);
+  return call(`/read?${q.toString()}`);
+}
+
+function authHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+function rejectUnauthorized(status: number): void {
+  if (status !== 401) return;
+  sessionStorage.removeItem(TOKEN_KEY);
+  window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+}
+
+/** 上传一张图片的原始字节，返回场景里要写的 r2: 引用。 */
+export async function putBlob(bytes: Uint8Array, mime: string): Promise<string> {
+  const res = await fetch(`${API}/blob`, {
+    method: 'POST',
+    headers: {
+      ...authHeaders(),
+      'Content-Type': mime || 'application/octet-stream',
+    },
+    body: new Blob([bytes.slice()]),
+  });
+  const data: {error?: string; ref?: string} = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    rejectUnauthorized(res.status);
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  if (!data.ref) throw new Error('图片上传没有返回引用');
+  return data.ref;
+}
+
+/** 按 r2: 引用里的文件名取回图片字节。 */
+export async function fetchBlob(name: string): Promise<{mime: string; bytes: ArrayBuffer}> {
+  const res = await fetch(`${API}/blob/${encodeURIComponent(name)}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    rejectUnauthorized(res.status);
+    const data: {error?: string} = await res.json().catch(() => ({}));
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  const mime = (res.headers.get('Content-Type') || 'application/octet-stream').split(';')[0].trim();
+  return {mime, bytes: await res.arrayBuffer()};
 }
 
 /** 保存白板。baseRev 与服务端 rev 不一致时抛 ConflictError。 */

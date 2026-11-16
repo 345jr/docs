@@ -31,6 +31,12 @@ import {
   unlock,
 } from '../utils/boardClient';
 import {
+  externalizeCached,
+  externalizeScene,
+  hydrateScene,
+  prefetchSceneImages,
+} from '../utils/boardFiles';
+import {
   MAX_BOARD_BYTES,
   byteSize,
   emptyScene,
@@ -306,7 +312,12 @@ export default function WhiteboardPage(): React.ReactNode {
       const cur = currentRef.current;
       if (!pending || !cur) return true;
 
-      const payload = writeTitle(pending.content, pending.title);
+      let payload = writeTitle(pending.content, pending.title);
+      try {
+        payload = await externalizeScene(payload);
+      } catch {
+        // 上传失败不阻断保存：服务端保存时还会再外置一次。
+      }
       const size = byteSize(payload);
       if (size > MAX_BOARD_BYTES) {
         pendingRef.current = null;
@@ -354,6 +365,7 @@ export default function WhiteboardPage(): React.ReactNode {
       const cur = currentRef.current;
       if (!cur) return;
       pendingRef.current = {content, title: cur.title};
+      prefetchSceneImages(content);
       setStatus((s) => (s === 'saving' ? s : 'dirty'));
       clearTimer();
       timerRef.current = window.setTimeout(() => {
@@ -374,7 +386,7 @@ export default function WhiteboardPage(): React.ReactNode {
       // 卸载时没法 await，直接发请求（keepalive 保证页面关闭也能发出去）
       const body = JSON.stringify({
         path: cur.path,
-        content: writeTitle(pending.content, pending.title),
+        content: externalizeCached(writeTitle(pending.content, pending.title)),
         title: pending.title,
         base_rev: cur.rev,
       });
@@ -426,8 +438,8 @@ export default function WhiteboardPage(): React.ReactNode {
       pendingRef.current = null;
       setStatus('idle');
       try {
-        const payload = await readBoard(path);
-        const content = ensureScene(payload.content);
+        const payload = await readBoard(path, 'ref');
+        const content = await hydrateScene(ensureScene(payload.content));
         setCurrent({
           path: payload.path,
           title: payload.title || readTitle(content) || pathToTitle(payload.path),
@@ -666,8 +678,8 @@ export default function WhiteboardPage(): React.ReactNode {
     pendingRef.current = null;
     setStatus('idle');
     try {
-      const payload = await readBoard(cur.path);
-      const content = ensureScene(payload.content);
+      const payload = await readBoard(cur.path, 'ref');
+      const content = await hydrateScene(ensureScene(payload.content));
       setCurrent({
         path: payload.path,
         title: payload.title || pathToTitle(payload.path),

@@ -24,6 +24,7 @@ tags: [站点建设, 前端, 后端]
 | `src/components/board/BoardList.tsx` | 白板列表（搜索、行内「更多操作」菜单改名/删除、可收起）；底部 `footer` 插槽只放保存状态灯 |
 | `src/components/board/SaveIndicator.tsx` | 侧栏底部的保存状态灯（idle 时返回 null，footer 随之隐藏） |
 | `src/utils/boardClient.ts` | 接口封装（本文的调用方） |
+| `src/utils/boardFiles.ts` | 图片 data URL 与 `r2:` 引用互转；保存前上传，打开时拉回 |
 | `src/utils/boardScene.ts` | 场景 JSON 读写、标题与文件名转换、体积上限 |
 | `src/types/boardTypes.ts` | 共享类型 |
 | `plugins/excalidraw-assets/index.js` | 把 Excalidraw 的 CSS 与字体拷到 `assets/excalidraw/<版本>/` |
@@ -32,9 +33,11 @@ tags: [站点建设, 前端, 后端]
 
 | 文件 | 作用 |
 | --- | --- |
-| `internal/privateboards/store.go` | `Store`：`root` + `writeMu` + rev 索引；`List / Read / Save / Create / Rename / Delete` |
-| `internal/handlers/privateboards.go` | 6 个 handler，`ready()` + `requireSession()` 照抄 `privatedocs.go` |
-| `internal/handlers/router.go` | `Router.privboards` 字段 + 6 条路由注册 |
+| `internal/privateboards/store.go` | `Store`：`root` + `writeMu` + rev 索引；`List / Read / Save / Create / Rename / Delete`。保存前外置图片 |
+| `internal/privateboards/blobs.go` | data URL ↔ `r2:` 引用，上传/读取走 `ObjectStore` |
+| `internal/privateboards/r2.go` | Cloudflare R2 的 SigV4 客户端（不引 aws-sdk） |
+| `internal/handlers/privateboards.go` | 白板 CRUD + `POST/GET /boards/blob`。`ready()` + `requireSession()` 照抄 `privatedocs.go` |
+| `internal/handlers/router.go` | `Router.privboards` 字段 + 路由注册 |
 | `cmd/steward/main.go` | `privateboards.New("data/private-boards")` 注入 |
 
 路由：`/whiteboard` 与 `/whiteboard/*`（后者由 `docusaurus.config.js` 的内联插件注册，`postBuild` 会删掉 SSG 生成的占位目录）。导航栏「白板」入口位于「在线编辑」之后。
@@ -108,6 +111,7 @@ GET /boards/read?path=<相对路径>
 ```
 
 - `content` 是**字符串**（场景 JSON 原文），不是嵌套对象——前端 `JSON.parse` 后交给画布。
+- 默认会把场景里的 `r2:` 图片引用还原成 `data:` URL，旧前端不用改。`?files=ref` 返回磁盘上的瘦身 JSON，新前端自己用 `/boards/blob` 拉图片。图床暂时不可用时，还原失败的那张留着引用，其余内容照常返回。
 - `rev` 是服务端维护的写入序号，从 1 开始，每次成功保存 +1。索引落在 `data/private-boards/.revs.json`（点开头，不会被当成白板列出），**进程重启不丢**——否则 steward 每次自更新都会让正在编辑的标签页撞一次假冲突，而「载入最新」会把未保存的改动丢掉。
 - 路径不存在返回 `404`。
 
@@ -141,7 +145,34 @@ Content-Type: application/json
 - `base_rev = -1` 表示**强制覆盖**（用户在冲突提示里点了「覆盖保存」），此时跳过 rev 校验。字段缺失时也按 `-1` 处理，避免漏传字段导致每次保存都冲突。
 - 文件不存在时返回 `404`（新建走 `/create`，不在这里隐式创建，避免手滑路径写错就在别处生文件）。
 - 写入前把 `title` 同步进场景 JSON 的顶层 `_title`（前端也会写，后端做一次兜底，保证列表标题永远与内容一致）。解析失败时原样保留内容，不把用户数据改成非法 JSON。
+- 若配置了 `BOARD_R2_*`，保存（以及新建、改名）会把 `files` 里的 `data:` URL 换成 `r2:<sha256>.<ext>`，字节写到 R2。没有 data URL 时场景字节原样保留。图床失败返回 `502`，不会把半份引用写进磁盘。未配置时行为与以前一样，图片继续嵌在 JSON 里。
 - 请求体上限在 handler 侧放宽到 32 MB（`content` 经 JSON 转义后可能翻倍），真正的 16 MB 业务上限仍由 store 按 `content` 解码后的字节数把关，超出返回 `413`。
+
+### 3b. 图片
+
+画布里 Excalidraw 只认 `data:` URL（0.18 把 `dataURL` 直接赋给 `img.src`，缩放时还按 data URL 做 `atob`）。磁盘和自动保存的正文里不放 base64，改成内容寻址的引用。
+
+```
+POST /boards/blob
+Content-Type: image/png
+<body 为原始字节，不是 JSON>
+
+→ 200 { "ref": "r2:<64 位 sha256>.png" }
+```
+
+```
+GET /boards/blob/<sha256>.<ext>
+Authorization: Bearer <token>
+
+→ 200 原始字节，Content-Type 为图片类型
+  Cache-Control: private, max-age=31536000, immutable
+```
+
+- 引用格式 `r2:<64 位小写 hex>.<ext>`，对象键 `<BOARD_R2_PREFIX>/<sha>.<ext>`，默认前缀 `blobs`。同一张图只存一份（先 HEAD，已有就不再 PUT）。
+- 接受 png / jpeg / gif / webp / svg。单张上限 8 MB，超出 `413`。类型对不上、或文件名不是这个格式，返回 `400`。
+- 桶保持私有。浏览器不能把 token 塞进 `<img src>`，所以前端 `fetch` 带 Bearer，转回 data URL 再交给画布。不要给这个桶开公共域名。
+- 环境变量（只放 steward 的 `.env`，不进仓库）：`BOARD_R2_ACCOUNT_ID`、`BOARD_R2_ACCESS_KEY_ID`、`BOARD_R2_SECRET_ACCESS_KEY`、`BOARD_R2_BUCKET`、`BOARD_R2_PREFIX`。前四项缺任何一个，功能关闭。
+- 前端在画布改动时就后台上传，自动保存的正文因此很小。关标签页的 `keepalive` 请求大约只有 64KB，来不及上传的部分由服务端保存时再外置。
 
 ### 4. 新建
 
@@ -196,7 +227,7 @@ POST /boards/delete
 - 没有分类树，不接受带子目录的 path（`a/b.excalidraw` 会被拒绝），否则列表只扫一层时会漏掉。
 - API 路径只允许 `.excalidraw` 扩展名，大小写不敏感，落盘前规范成小写扩展名。root 下残留的旧平铺文件（`<板名>.excalidraw` + `<板名>.agent.md`）在启动、列表和读取时收进对应目录。
 - 路径校验复用 `privatedocs.validateRel` 的规则：拒绝空段、`.`、`..`、绝对路径、`~`、`\`，防目录逃逸。
-- 单文件上限 **16 MB**（`content` 解码后的字节数），超出返回 `413`。前端已同步拦同一阈值。
+- 单文件上限 **16 MB**（`content` 解码后的字节数，外置图片之后再量），超出返回 `413`。前端已同步拦同一阈值。图片字节不在这个文件里，单张另有 8 MB 上限。
 - 写入用「临时文件 + fsync + rename」的原子替换，避免并发/断电写坏文件（白板是纯覆盖写，没有 git 兜底）。临时文件名是 `.tmp-<随机>`，放在板目录里，写盘瞬间不会被 `List` 当成一块白板。
 - 所有写操作共用一把 `writeMu` 串行化（照抄 `privatedocs.Store` 的做法）。
 - `rev` 索引落在 `<root>/.revs.json`。原计划只用内存 map，实现时改成落盘：steward 自更新/重启会让内存归零，正在编辑的标签页下一次自动保存就撞假冲突，而「载入最新」会把未保存的改动丢掉——用一次重启换一次数据丢失不划算。索引损坏或缺失时退化为空（各板从 1 开始），最坏只是多一次冲突提示。改名只挪目录，不改 rev。
@@ -219,6 +250,8 @@ POST /boards/delete
 mux.HandleFunc("GET /boards", r.privboards.HandleList)
 mux.HandleFunc("GET /boards/read", r.privboards.HandleRead)
 mux.HandleFunc("POST /boards/save", r.privboards.HandleSave)
+mux.HandleFunc("POST /boards/blob", r.privboards.HandleBlobPut)
+mux.HandleFunc("GET /boards/blob/{name}", r.privboards.HandleBlobGet)
 mux.HandleFunc("POST /boards/create", r.privboards.HandleCreate)
 mux.HandleFunc("POST /boards/rename", r.privboards.HandleRename)
 mux.HandleFunc("POST /boards/delete", r.privboards.HandleDelete)
@@ -317,6 +350,7 @@ server {
 
 - **无版本历史**：白板不进 git，保存是覆盖写，误删不可恢复。后续要留历史得靠服务端定期快照（`data/private-boards/.snapshots/`）。
 - **无协作**：没有实时多人编辑，冲突靠 `base_rev` 事后检测。rev 索引是落盘的（`.revs.json`），但删掉它或换机器后各板会从 1 重新计数，届时开着的标签页可能撞一次冲突——点「载入最新」前先确认没有未保存的改动。
+- **图片在私有 R2**：`BOARD_R2_*` 配齐后，场景 JSON 里是 `r2:` 引用，字节在桶 `whiteboard`。导出的 `.excalidraw` 若在外置之后保存，拿到的是引用不是像素；要在官方应用里打开，得先在本站打开（会还原成 data URL）再导出。图床密钥和 SkyDrop 是同一把账号级令牌，轮换时两边一起失效。
 - **导出走 Excalidraw 自带菜单**（PNG/SVG/`.excalidraw` 文件），本站不额外做导出接口。
 - **不做公开分享**：目前白板只有私有入口。若要嵌进私有文档或公开分享，需要额外的「导出为图片 + 上传」链路。
 - `appState.name` 上游只标 `browser`（导出/服务端都丢），所以标题存的是自定义顶层键 `_title`；Excalidraw 的 `restore()` 会忽略未知顶层键，文件仍是合法 `.excalidraw`，官方应用可直接打开。
