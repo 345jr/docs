@@ -406,7 +406,6 @@ export default function PrivatePage() {
       {!mounted ? null : !token ? (
         <LoginForm
           title="私有文档"
-          submitLabel="解锁"
           onSubmit={async (key) => {
             const t = await unlock(key);
             setToken(t);

@@ -701,7 +701,6 @@ export default function WhiteboardPage(): React.ReactNode {
       {!mounted ? null : !token ? (
         <LoginForm
           title="私有白板"
-          submitLabel="解锁"
           onSubmit={async (key) => {
             const t = await unlock(key);
             setToken(t);

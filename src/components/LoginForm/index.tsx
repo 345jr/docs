@@ -7,7 +7,7 @@ import styles from './styles.module.css';
  *
  * - 提交成功后由调用方处理跳转/状态与 toast；这里只清理输入框。
  * - 提交失败在本组件内联展示（调用方不再需要自己 catch 出 toast）。
- * - 提交按钮只有箭头图标，文字退到 aria-label / title 里。
+ * - 提交按钮是输入框下方居中的文字按钮（不再挤在输入行右侧），加载时换成 spinner。
  */
 export default function LoginForm({
   title,
@@ -68,49 +68,38 @@ export default function LoginForm({
               enterKeyHint="go"
               autoFocus
             />
-            <button
-              type="submit"
-              className={styles.loginBtn}
-              disabled={loading || !key.trim()}
-              aria-label={loading ? '处理中' : submitLabel}
-              title={loading ? '处理中' : submitLabel}
-            >
-              {loading ? (
-                <svg
-                  className={styles.spinner}
-                  width="17"
-                  height="17"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  aria-hidden="true">
-                  <circle
-                    cx="8"
-                    cy="8"
-                    r="6.25"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    opacity="0.3"
-                  />
-                  <path
-                    d="M8 1.75A6.25 6.25 0 0 1 14.25 8"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              ) : (
-                <svg width="17" height="17" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path
-                    d="M2 8h11M9 3.5 13.5 8 9 12.5"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
-            </button>
           </div>
+          <button
+            type="submit"
+            className={styles.loginBtn}
+            disabled={loading || !key.trim()}
+          >
+            {loading ? (
+              <svg
+                className={styles.spinner}
+                width="15"
+                height="15"
+                viewBox="0 0 16 16"
+                fill="none"
+                aria-hidden="true">
+                <circle
+                  cx="8"
+                  cy="8"
+                  r="6.25"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  opacity="0.3"
+                />
+                <path
+                  d="M8 1.75A6.25 6.25 0 0 1 14.25 8"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : null}
+            <span className={styles.loginBtnLabel}>{loading ? '处理中' : submitLabel}</span>
+          </button>
           {error ? (
             <p id="login-form-error" role="alert" className={styles.loginError}>
               {error}

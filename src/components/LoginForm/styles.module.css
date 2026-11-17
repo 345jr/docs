@@ -1,6 +1,6 @@
 /* 解锁/登录页（在线编辑、私有文档、私有白板共用）
  *
- * 版式：一个居中的窄栏，标题 + 一行下划线式输入，没有卡片、没有边框盒子。
+ * 版式：一个居中的窄栏，标题 + 一行下划线式输入 + 下方居中的文字按钮，没有卡片、没有边框盒子。
  * 三个细节值得记下来：
  * 1. letter-spacing 会在末字右侧多出一格空隙，居中对齐时文字看起来偏左，
  *    所以 `.loginTitle / .loginHint` 用 padding-left 抵消（见注释）。
@@ -74,7 +74,6 @@
 .loginRow {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
   border-bottom: 1px solid var(--ifm-color-emphasis-300);
   transition: border-color 0.2s ease;
 }
@@ -119,18 +118,25 @@
   box-shadow: 0 0 0 1000px var(--ifm-background-color) inset;
 }
 
-/* 只有图标：未输入时压暗，填入密钥后变成主题色，hover 时箭头右移 */
+/* 提交按钮：输入行下面单独一行居中的文字按钮，不再挤在输入行右侧。
+ * 文字带字距时末字右边会多出一格，用 padding-left 补回半格看着才居中；
+ * 未输入时压暗，填入密钥后变主题色，hover 加一层很浅的底。 */
 .loginBtn {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  margin-top: 1rem;
+  min-height: 2.75rem;
+  padding: 0.7rem 1.6rem 0.7rem calc(1.6rem + 0.26em);
   border: none;
-  border-radius: 50%;
+  border-radius: 999px;
   background: transparent;
-  color: var(--ifm-color-emphasis-500);
+  color: var(--ifm-color-emphasis-600);
+  font: inherit;
+  font-size: 0.95rem;
+  letter-spacing: 0.26em;
   cursor: pointer;
   transition:
     color 0.2s ease,
@@ -138,7 +144,7 @@
 }
 
 .loginBtn:not(:disabled) {
-  color: var(--ifm-color-primary);
+  color: var(--ifm-font-color-base);
 }
 
 .loginBtn:not(:disabled):hover {
@@ -146,19 +152,16 @@
 }
 
 .loginBtn:disabled {
-  color: var(--ifm-color-emphasis-400);
+  color: var(--ifm-color-emphasis-600);
   cursor: default;
 }
 
-.loginBtn svg {
-  transition: transform 0.2s ease;
-}
-
-.loginBtn:not(:disabled):hover svg {
-  transform: translateX(2px);
+.loginBtnLabel {
+  line-height: 1;
 }
 
 .spinner {
+  flex: none;
   animation: loginSpin 0.9s linear infinite;
 }
 
